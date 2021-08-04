@@ -1,24 +1,22 @@
-html,body{
+html, body {
     overflow: hidden
 }
 .title {
     text-align: center;
 }
 .board {
-    display: table;
     margin: auto;
     padding: 0px;
     width: 64vmin;
     height: 64vmin;
     background: rgb(36, 153, 114);
     border-collapse: collapse;
+    font-size: 0pt;
 }
 .cell {
-    display: table-cell;
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    margin: 0px;
     border: 0.25vmin solid rgb(0, 0, 0);
 }
 .black_stone {
@@ -43,7 +41,7 @@ html,body{
     margin: 0px;
     width: 8vmin;
     height: 8vmin;
-    background: rgb(95, 95, 95);
+    background: rgb(36, 153, 114);
     text-align: center;
     display: inline-block;
 }
