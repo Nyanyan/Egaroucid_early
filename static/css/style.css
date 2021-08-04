@@ -1,0 +1,19 @@
+html,body{
+    overflow: hidden
+}
+div {
+    text-align: center;
+}
+.board {
+    margin: auto;
+    width: 80vmin;
+    height: 80vmin;
+    background: rgb(36, 153, 114);
+}
+.black {
+    width: 8vmin;
+    height: 8vmin;
+    background-color: rgb(0, 0, 0);
+    border-radius: 50%;
+    text-align: center;
+}
