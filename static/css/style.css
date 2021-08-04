@@ -37,6 +37,15 @@ html, body {
     text-align: center;
     display: inline-block;
 }
+.legal_stone {
+    margin: 0px;
+    width: 3vmin;
+    height: 3vmin;
+    background-color: rgb(58, 189, 206);
+    border-radius: 50%;
+    text-align: center;
+    display: inline-block;
+}
 .empty_stone {
     margin: 0px;
     width: 8vmin;

@@ -3,8 +3,9 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
-        <title>Egaroucid</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <link rel="stylesheet" href="static/css/style.css">
+        <title>Egaroucid</title>
     </head>
     <body>
         <div class="title">
@@ -19,6 +20,8 @@
                         <td class="cell"><span class="black_stone"></span></td>
                     {% elif stone == 1 %}
                         <td class="cell"><span class="white_stone"></span></td>
+                    {% elif stone == 2 %}
+                        <td class="cell" onclick="move(this.parentNode.rowIndex, this.cellIndex)"><span class="legal_stone"></span></td>
                     {% else %}
                         <td class="cell"><span class="empty_stone"></span></td>
                     {% endif %}
