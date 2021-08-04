@@ -1,19 +1,46 @@
 html,body{
     overflow: hidden
 }
-div {
+.title {
     text-align: center;
 }
 .board {
     margin: auto;
+    padding: 0px;
     width: 80vmin;
     height: 80vmin;
     background: rgb(36, 153, 114);
 }
-.black {
-    width: 8vmin;
-    height: 8vmin;
+.board_row {
+    margin: 0px;
+    letter-spacing: 0px;
+}
+.black_stone {
+    margin: 0px;
+    width: 10vmin;
+    height: 10vmin;
     background-color: rgb(0, 0, 0);
     border-radius: 50%;
     text-align: center;
+    display: inline-block;
+    _display: inline;
+}
+.white_stone {
+    margin: 0px;
+    width: 10vmin;
+    height: 10vmin;
+    background-color: rgb(255, 255, 255);
+    border-radius: 50%;
+    text-align: center;
+    display: inline-block;
+    _display: inline;
+}
+.empty_stone {
+    margin: 0px;
+    width: 10vmin;
+    height: 10vmin;
+    background-color: rgb(94, 94, 94);
+    text-align: center;
+    display: inline-block;
+    _display: inline;
 }

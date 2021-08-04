@@ -7,13 +7,25 @@
         <link rel="stylesheet" href="static/css/style.css">
     </head>
     <body>
-        <div>
+        <div class="title">
             <h1>Egaroucid - Othello AI</h1>
             <h2>This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</h2>
         </div>
         <div>
             <div class="board">
-                board
+                {% for row in grid %}
+                    <p class="board_row">
+                        {% for stone in row %}
+                            {% if stone == 0 %}
+                                <div class="black_stone"></div>
+                            {% elif stone == 1 %}
+                                <div class="white_stone"></div>
+                            {% else %}
+                                <div class="empty_stone"></div>
+                            {% endif %}
+                        {% endfor %}
+                    </p>
+                {% endfor %}
             </div>
         </div>
         <script src="static/js/script.js"></script>
