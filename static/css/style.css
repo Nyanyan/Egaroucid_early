@@ -5,42 +5,45 @@ html,body{
     text-align: center;
 }
 .board {
+    display: table;
     margin: auto;
     padding: 0px;
-    width: 80vmin;
-    height: 80vmin;
+    width: 64vmin;
+    height: 64vmin;
     background: rgb(36, 153, 114);
+    border-collapse: collapse;
 }
-.board_row {
+.cell {
+    display: table-cell;
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px;
     margin: 0px;
-    letter-spacing: 0px;
+    border: 0.25vmin solid rgb(0, 0, 0);
 }
 .black_stone {
     margin: 0px;
-    width: 10vmin;
-    height: 10vmin;
+    width: 6vmin;
+    height: 6vmin;
     background-color: rgb(0, 0, 0);
     border-radius: 50%;
     text-align: center;
     display: inline-block;
-    _display: inline;
 }
 .white_stone {
     margin: 0px;
-    width: 10vmin;
-    height: 10vmin;
+    width: 6vmin;
+    height: 6vmin;
     background-color: rgb(255, 255, 255);
     border-radius: 50%;
     text-align: center;
     display: inline-block;
-    _display: inline;
 }
 .empty_stone {
     margin: 0px;
-    width: 10vmin;
-    height: 10vmin;
-    background-color: rgb(94, 94, 94);
+    width: 8vmin;
+    height: 8vmin;
+    background: rgb(95, 95, 95);
     text-align: center;
     display: inline-block;
-    _display: inline;
 }
