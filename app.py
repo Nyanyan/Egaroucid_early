@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask import *
+import json
 import subprocess
 from time import sleep
 
@@ -130,13 +131,22 @@ rv.check_pass()
 def index():
     return render_template('base.html', grid=rv.grid)
 
+def return_grid():
+    res = {}
+    for y in range(hw):
+        for x in range(hw):
+            res[y * hw + x] = rv.grid[y][x]
+    print(res)
+    return jsonify(values=json.dumps(res))
+
 @app.route("/move", methods=["POST"])
-def plusone():
+def get_move():
     req = dict(request.form)
-    rv.move(int(req["r"]), int(req["c"]))
+    print(req)
+    rv.move(int(req['r']), int(req['c']))
     if rv.check_pass() and rv.check_pass():
-        return render_template('base.html', grid=rv.grid)
-    return render_template('base.html', grid=rv.grid)
+        return return_grid()
+    return return_grid()
 
 if __name__ == '__main__':
     app.run()

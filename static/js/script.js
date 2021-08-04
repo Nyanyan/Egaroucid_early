@@ -3,20 +3,25 @@ function disableScroll(event) {
 }
 document.addEventListener('touchmove', disableScroll, {passive: false});
 function move(r, c) {
-    var post = $.ajax({
+    alert(r + " " + c);
+    $.ajax({
         type: "POST",
         url: "/move",
         data: {r: r, c: c},
         async: false,
         dataType: "json",
-        success: function(response) {
-            console.log(response);
-            count = response.count;
-        }, 
-        error: function(error) {
-            console.log("Error occurred in move().");
-            console.log(error);
-            alert("An error occurred. Please try again.");
+    }).done(function(data) {
+        const grid = JSON.parse(data.values);
+        var table = document.getElementById("board");
+        for (var y = 0; y < 8; y++) {
+            for (var x = 0; x < 8; x++) {
+                alert(grid[y * 8 + x]);
+            }
         }
-    })
+        console.log("done");
+        alert("done");
+    }).fail(function(data) {
+        console.log("fail");
+        alert("An error occurred. Please try again.")
+    });
 }
