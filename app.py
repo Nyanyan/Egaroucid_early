@@ -144,6 +144,7 @@ def update_grid():
     res[64] = rv.nums[0]
     res[65] = rv.nums[1]
     res[66] = rv.player
+    res[67] = rv.nums[0] + rv.nums[1] - 3
     return jsonify(values=json.dumps(res))
 
 @app.route("/move", methods=["POST"])
