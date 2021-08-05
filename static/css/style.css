@@ -3,12 +3,12 @@ html, body {
 }
 .title {
     text-align: center;
-    font-size: 5vw;
+    font-size: 5vmin;
     font-weight: bolder;
 }
 .sub_title {
     text-align: center;
-    font-size: 2.5vw;
+    font-size: 2.5vmin;
     font-weight: bold;
 }
 .board {
