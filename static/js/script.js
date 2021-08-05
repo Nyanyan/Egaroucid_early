@@ -7,7 +7,7 @@ function move(r, c) {
         type: "POST",
         url: "/move",
         data: {r: r, c: c},
-        async: true,
+        async: false,
         dataType: "json",
     }).done(function(data) {
         const received_data = JSON.parse(data.values);

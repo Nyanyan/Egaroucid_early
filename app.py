@@ -136,7 +136,12 @@ def index():
     start_reversi()
     return render_template('base.html', grid=rv.grid)
 
-def update_grid():
+@app.route("/move", methods=["POST"])
+def get_move():
+    req = dict(request.form)
+    rv.move(int(req['r']), int(req['c']))
+    if rv.check_pass() and rv.check_pass():
+        rv.player = 2
     res = {}
     for y in range(hw):
         for x in range(hw):
@@ -146,14 +151,6 @@ def update_grid():
     res[66] = rv.player
     res[67] = rv.nums[0] + rv.nums[1] - 3
     return jsonify(values=json.dumps(res))
-
-@app.route("/move", methods=["POST"])
-def get_move():
-    req = dict(request.form)
-    rv.move(int(req['r']), int(req['c']))
-    if rv.check_pass() and rv.check_pass():
-        rv.player = 2
-    return update_grid()
 
 if __name__ == '__main__':
     app.run()
