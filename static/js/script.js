@@ -29,6 +29,19 @@ function move(r, c) {
                 }
             }
         }
+        table = document.getElementById("status");
+        table.rows[0].cells[2].firstChild.innerHTML = grid[64];
+        table.rows[0].cells[4].firstChild.innerHTML = grid[65];
+        if (grid[66] == 0) {
+            table.rows[0].cells[0].innerHTML = '<span class="legal_stone"></span>';
+            table.rows[0].cells[6].innerHTML = '<span class="state_blank"></span>';
+        } else if (grid[66] == 1) {
+            table.rows[0].cells[0].innerHTML = '<span class="state_blank"></span>';
+            table.rows[0].cells[6].innerHTML = '<span class="legal_stone"></span>';
+        } else {
+            table.rows[0].cells[0].innerHTML = '<span class="state_blank"></span>';
+            table.rows[0].cells[6].innerHTML = '<span class="state_blank"></span>';
+        }
         console.log("done");
     }).fail(function(data) {
         console.log("fail");

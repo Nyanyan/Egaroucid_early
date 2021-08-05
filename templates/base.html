@@ -8,11 +8,9 @@
         <title>Egaroucid</title>
     </head>
     <body>
-        <div class="title">
-            <h1>Egaroucid - Othello AI</h1>
-            <h2>This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</h2>
-        </div>
-        <table class="board" id="board" border="1" align="center">
+        <div class="title">Egaroucid - Othello AI</div>
+        <div class="sub_title">This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</div>
+        <table class="board" id="board" align="center">
             {% for row in grid %}
                 <tr>
                 {% for stone in row %}
@@ -28,6 +26,17 @@
                 {% endfor %}
                 </tr>
             {% endfor %}
+        </table>
+        <table class="status" id="status" align="center">
+            <tr>
+                <td class="status_cell"><span class="legal_stone"></span></td>
+                <td class="status_cell"><span class="black_stone"></span></td>
+                <td class="status_char"><span class="state_blank">2</span></td>
+                <td class="status_char"><span class="state_blank">-</span></td>
+                <td class="status_char"><span class="state_blank">2</span></td>
+                <td class="status_cell"><span class="white_stone"></span></td>
+                <td class="status_cell"><span class="state_blank"></span></td>
+            </tr>
         </table>
         <script src="static/js/script.js"></script>
     </body>

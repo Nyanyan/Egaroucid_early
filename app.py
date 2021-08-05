@@ -131,11 +131,14 @@ rv.check_pass()
 def index():
     return render_template('base.html', grid=rv.grid)
 
-def return_grid():
+def update_grid():
     res = {}
     for y in range(hw):
         for x in range(hw):
             res[y * hw + x] = rv.grid[y][x]
+    res[64] = rv.nums[0]
+    res[65] = rv.nums[1]
+    res[66] = rv.player
     return jsonify(values=json.dumps(res))
 
 @app.route("/move", methods=["POST"])
@@ -143,8 +146,8 @@ def get_move():
     req = dict(request.form)
     rv.move(int(req['r']), int(req['c']))
     if rv.check_pass() and rv.check_pass():
-        return return_grid()
-    return return_grid()
+        rv.player = 2
+    return update_grid()
 
 if __name__ == '__main__':
     app.run()

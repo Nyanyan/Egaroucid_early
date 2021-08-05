@@ -3,20 +3,30 @@ html, body {
 }
 .title {
     text-align: center;
+    font-size: 5vw;
+    font-weight: bolder;
+}
+.sub_title {
+    text-align: center;
+    font-size: 2.5vw;
+    font-weight: bold;
 }
 .board {
     margin: auto;
     padding: 0px;
-    width: 64vmin;
-    height: 64vmin;
+    width: 56vmin;
+    height: 56vmin;
     background: rgb(36, 153, 114);
     border-collapse: collapse;
     font-size: 0pt;
+    table-layout: fixed;
 }
 .cell {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
+    width: 7vmin;
+    height: 7vmin;
     border: 0.25vmin solid rgb(0, 0, 0);
 }
 .black_stone {
@@ -41,16 +51,49 @@ html, body {
     margin: 0px;
     width: 3vmin;
     height: 3vmin;
-    background-color: rgb(58, 189, 206);
+    background-color: rgb(57, 179, 206);
     border-radius: 50%;
     text-align: center;
     display: inline-block;
 }
 .empty_stone {
     margin: 0px;
-    width: 8vmin;
-    height: 8vmin;
+    width: 7vmin;
+    height: 7vmin;
     background: rgb(36, 153, 114);
+    text-align: center;
+    display: inline-block;
+}
+.status {
+    margin-top: 1vmin;
+    padding: 0px;
+    width: 49vmin;
+    height: 7vmin;
+    border-collapse: collapse;
+    font-size: 0vw;
+}
+.status_cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px;
+    width: 7vmin;
+    height: 7vmin;
+    background-color: rgb(180, 180, 180);
+}
+.status_char {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px;
+    width: 7vmin;
+    height: 7vmin;
+    background-color: rgb(180, 180, 180);
+    font-size: 4vw;
+    font-weight: bolder;
+}
+.status_blank {
+    margin: 0px;
+    width: 7vmin;
+    height: 7vmin;
     text-align: center;
     display: inline-block;
 }
