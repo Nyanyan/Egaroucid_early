@@ -136,13 +136,11 @@ def return_grid():
     for y in range(hw):
         for x in range(hw):
             res[y * hw + x] = rv.grid[y][x]
-    print(res)
     return jsonify(values=json.dumps(res))
 
 @app.route("/move", methods=["POST"])
 def get_move():
     req = dict(request.form)
-    print(req)
     rv.move(int(req['r']), int(req['c']))
     if rv.check_pass() and rv.check_pass():
         return return_grid()
