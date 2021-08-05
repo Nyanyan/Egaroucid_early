@@ -124,11 +124,16 @@ class reversi:
 app = Flask(__name__)
 
 rv = reversi()
-rv.check_pass()
-rv.check_pass()
+
+def start_reversi():
+    global rv
+    rv = reversi()
+    rv.check_pass()
+    rv.check_pass()
 
 @app.route('/')
 def index():
+    start_reversi()
     return render_template('base.html', grid=rv.grid)
 
 def update_grid():
