@@ -123,37 +123,15 @@ class reversi:
 
 app = Flask(__name__)
 
-rv = reversi()
-
-def start_reversi():
-    global rv
-    rv = reversi()
-    rv.check_pass()
-    rv.check_pass()
-
 @app.route('/')
 def index():
-    start_reversi()
-    return render_template('base.html', grid=rv.grid)
-
-def update_grid():
-    res = {}
-    for y in range(hw):
-        for x in range(hw):
-            res[y * hw + x] = rv.grid[y][x]
-    res[64] = rv.nums[0]
-    res[65] = rv.nums[1]
-    res[66] = rv.player
-    res[67] = rv.nums[0] + rv.nums[1] - 3
-    return jsonify(values=json.dumps(res))
+    return render_template('base.html')
 
 @app.route("/move", methods=["POST"])
 def get_move():
     req = dict(request.form)
-    rv.move(int(req['r']), int(req['c']))
-    if rv.check_pass() and rv.check_pass():
-        rv.player = 2
-    return update_grid()
+    y = int(req['r'])
+    x = int(req['c'])
 
 if __name__ == '__main__':
     app.run()

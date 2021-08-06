@@ -10,23 +10,7 @@
     <body>
         <div class="title">Egaroucid - Othello AI</div>
         <div class="sub_title">This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</div>
-        <table class="board" id="board" align="center">
-            {% for row in grid %}
-                <tr>
-                {% for stone in row %}
-                    {% if stone == 0 %}
-                        <td class="cell"><span class="black_stone"></span></td>
-                    {% elif stone == 1 %}
-                        <td class="cell"><span class="white_stone"></span></td>
-                    {% elif stone == 2 %}
-                        <td class="cell" onclick="move(this.parentNode.rowIndex, this.cellIndex)"><span class="legal_stone"></span></td>
-                    {% else %}
-                        <td class="cell"><span class="empty_stone"></span></td>
-                    {% endif %}
-                {% endfor %}
-                </tr>
-            {% endfor %}
-        </table>
+        <table class="board" id="board" align="center"></table>
         <table class="status" id="status" align="center">
             <tr>
                 <td class="status_cell"><span class="legal_stone"></span></td>
@@ -38,7 +22,6 @@
                 <td class="status_cell"><span class="state_blank"></span></td>
             </tr>
         </table>
-        <div id="turn">turn comes here</div>
         <script src="static/js/script.js"></script>
     </body>
 </html>
