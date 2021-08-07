@@ -593,6 +593,7 @@ void init(){
         for (j = 0; j < eval_param.pattern_variation[i]; ++j){
             for (k = 0; k < eval_param.pattern_space[i]; ++k){
                 cerr << all_idx << endl;
+                
                 eval_param.pattern_translate[i][j][k][0] = consts[all_idx] / hw;
                 eval_param.pattern_translate[i][j][k][1] = consts[all_idx++] % hw;
             }
