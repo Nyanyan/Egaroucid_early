@@ -554,27 +554,22 @@ int board_reverse(int idx){
     return res;
 }
 
+const int translate[hw2] = {
+    0, 1, 2, 3, 3, 2, 1, 0,
+    1, 4, 5, 6, 6, 5, 4, 1,
+    2, 5, 7, 8, 8, 7, 5, 2,
+    3, 6, 8, 9, 9, 8, 6, 3,
+    3, 6, 8, 9, 9, 8, 6, 3,
+    2, 5, 7, 8, 8, 7, 5, 2,
+    1, 4, 5, 6, 6, 5, 4, 1,
+    0, 1, 2, 3, 3, 2, 1, 0
+};
+
 void init(){
-    cerr << "a" << endl;
     int strt = tim();
-    cerr << "b" << endl;
     int i, j, k, l;
-    cerr << "c" << endl;
-    int translate[hw2] = {
-        0, 1, 2, 3, 3, 2, 1, 0,
-        1, 4, 5, 6, 6, 5, 4, 1,
-        2, 5, 7, 8, 8, 7, 5, 2,
-        3, 6, 8, 9, 9, 8, 6, 3,
-        3, 6, 8, 9, 9, 8, 6, 3,
-        2, 5, 7, 8, 8, 7, 5, 2,
-        1, 4, 5, 6, 6, 5, 4, 1,
-        0, 1, 2, 3, 3, 2, 1, 0
-    };
-    cerr << "d" << endl;
     double weight_buf[10];
-    cerr << "e" << endl;
     int all_idx = 0;
-    cerr << "f" << endl;
     for (i = 0; i < hw2; ++i)
         eval_param.avg_canput[i] = params[all_idx++];
     for (i = 0; i < 10; i++)
