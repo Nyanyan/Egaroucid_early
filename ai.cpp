@@ -555,6 +555,7 @@ int board_reverse(int idx){
 }
 
 void init(){
+    cerr << "starting init func" << endl;
     int strt = tim();
     int i, j, k, l;
     int translate[hw2] = {
@@ -619,6 +620,7 @@ void init(){
             }
         }
     }
+    cerr << "before unzipping" << endl;
     all_idx = 0;
     for (i = 0; i < super_compress_pattern.length(); ++i){
         if ((int)super_compress_pattern[i] >= num_s){
