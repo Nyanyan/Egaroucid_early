@@ -9,6 +9,10 @@ hw = 8
 app = Flask(__name__)
 ai = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
+sleep(0.2)
+if ai == None:
+    exit(1)
+
 @app.route('/')
 def index():
     return render_template('base.html')
