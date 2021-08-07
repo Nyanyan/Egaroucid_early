@@ -1273,6 +1273,8 @@ int main(){
 
     init();
     prob_init();
+
+    cerr << "AI initialized" << endl;
     
     while (true){
         outy = -1;
