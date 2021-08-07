@@ -558,7 +558,7 @@ void init(){
     int strt = tim();
     int i, j, k, l;
     cerr << "a" << endl;
-    const int translate[hw2] = {
+    static int translate[hw2] = {
         0, 1, 2, 3, 3, 2, 1, 0,
         1, 4, 5, 6, 6, 5, 4, 1,
         2, 5, 7, 8, 8, 7, 5, 2,
