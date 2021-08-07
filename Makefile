@@ -1,2 +1,2 @@
 AI: ai.cpp
-	g++ ai.cpp -O2 -o ai.out
+	g++ ai.cpp -O3 -o ai.out

@@ -1272,9 +1272,8 @@ int main(){
     cerr << "start AI" << endl;
 
     init();
-    prob_init();
-
     cerr << "AI initialized" << endl;
+    prob_init();
     
     while (true){
         outy = -1;
