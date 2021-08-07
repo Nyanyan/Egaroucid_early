@@ -7,7 +7,7 @@ from time import sleep
 hw = 8
 
 app = Flask(__name__)
-ai = subprocess.Popen('./a.exe'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+ai = subprocess.Popen('./a.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 @app.route('/')
 def index():
