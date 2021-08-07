@@ -20,6 +20,8 @@ let grid = [
     [-1, -1, -1, -1, -1, -1, -1, -1]
 ];
 var player = 0;
+var ai_player = 1;
+var tl = 100;
 
 function show() {
     var table = document.getElementById("board");
@@ -143,6 +145,33 @@ window.onload = function init() {
     show();
 }
 
+function ai() {
+    var data_json = {};
+    for (var y = 0; y < hw; ++y) {
+        for (var x = 0; x < hw; ++x) {
+            data_json[y * hw + x] = grid[y][x];
+        }
+    }
+    data_json["ai_player"] = ai_player;
+    data_json["tl"] = tl;
+    $.ajax({
+        type: "POST",
+        url: "/ai",
+        data: data_json,
+        async: false,
+        dataType: "json",
+    }).done(function(data) {
+        const received_data = JSON.parse(data.values);
+        var r = received_data["r"];
+        var c = received_data["c"];
+        move(r, c);
+        console.log("done");
+    }).fail(function(data) {
+        console.log("fail");
+        alert("An error occurred.")
+    });
+}
+
 function move(y, x) {
     grid[y][x] = player;
     for (var dr = 0; dr < 8; ++dr) {
@@ -178,6 +207,9 @@ function move(y, x) {
     }
     player = 1 - player;
     show();
+    if (player == ai_player) {
+        ai();
+    }
 }
 
 /*
