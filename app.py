@@ -7,7 +7,7 @@ from time import sleep
 hw = 8
 
 app = Flask(__name__)
-ai = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+ai = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None)
 
 @app.route('/')
 def index():
@@ -27,7 +27,7 @@ def call_ai():
         for x in range(hw):
             stdin += '0' if grid[y][x] == 0 else '1' if grid[y][x] == 1 else '.'
     ai.stdin.write(stdin.encode('utf-8'))
-    #ai.stdin.flush()
+    ai.stdin.flush()
     print('sent')
     r, c = [int(i) for i in ai.stdout.readline().decode().strip().split()]
     print(r, c)
