@@ -555,8 +555,11 @@ int board_reverse(int idx){
 }
 
 void init(){
+    cerr << "a" << endl;
     int strt = tim();
+    cerr << "b" << endl;
     int i, j, k, l;
+    cerr << "c" << endl;
     int translate[hw2] = {
         0, 1, 2, 3, 3, 2, 1, 0,
         1, 4, 5, 6, 6, 5, 4, 1,
@@ -567,33 +570,30 @@ void init(){
         1, 4, 5, 6, 6, 5, 4, 1,
         0, 1, 2, 3, 3, 2, 1, 0
     };
+    cerr << "d" << endl;
     double weight_buf[10];
+    cerr << "e" << endl;
     int all_idx = 0;
-    cerr << "a" << endl;
+    cerr << "f" << endl;
     for (i = 0; i < hw2; ++i)
         eval_param.avg_canput[i] = params[all_idx++];
     for (i = 0; i < 10; i++)
         weight_buf[i] = params[all_idx++];
     for (i = 0; i < hw2; i++)
         eval_param.weight[i] = weight_buf[translate[i]];
-    cerr << "b" << endl;
     for (i = 0; i < param_num; ++i)
         eval_param.weight_sme[i] = params[all_idx++];
     all_idx = 0;
     for (i = 0; i < board_index_num; ++i)
         board_param.pattern_space[i] = consts[all_idx++];
-    cerr << "c" << endl;
     for (i = 0; i < board_index_num; ++i){
         for (j = 0; j < board_param.pattern_space[i]; ++j)
             board_param.board_translate[i][j] = consts[all_idx++];
     }
-    cerr << "d" << endl;
     for (i = 0; i < pattern_num; ++i)
         eval_param.pattern_space[i] = consts[all_idx++];
-    cerr << "e" << endl;
     for (i = 0; i < pattern_num; ++i)
         eval_param.pattern_variation[i] = consts[all_idx++];
-    cerr << "f" << endl;
     for (i = 0; i < pattern_num; ++i){
         for (j = 0; j < eval_param.pattern_variation[i]; ++j){
             for (k = 0; k < eval_param.pattern_space[i]; ++k){
@@ -602,7 +602,6 @@ void init(){
             }
         }
     }
-    cerr << "g" << endl;
     int idx;
     for (i = 0; i < hw2; ++i){
         idx = 0;
@@ -617,7 +616,6 @@ void init(){
         for (j = idx; j < 4; ++j)
             board_param.board_rev_translate[i][j][0] = -1;
     }
-    cerr << "h" << endl;
     for (i = 0; i < hw2; ++i){
         for (j = 0; j < board_index_num; ++j){
             board_param.put[i][j] = -1;
