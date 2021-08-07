@@ -590,15 +590,17 @@ void init(){
         eval_param.pattern_variation[i] = consts[all_idx++];
     cerr << "a" << endl;
     for (i = 0; i < pattern_num; ++i){
+        cerr << "b" << endl;
         for (j = 0; j < eval_param.pattern_variation[i]; ++j){
+            cerr << "c" << endl;
             for (k = 0; k < eval_param.pattern_space[i]; ++k){
+                cerr << "d" << endl;
                 eval_param.pattern_translate[i][j][k][0] = consts[all_idx] / hw;
-                eval_param.pattern_translate[i][j][k][1] = consts[all_idx] % hw;
-                ++all_idx;
+                eval_param.pattern_translate[i][j][k][1] = consts[all_idx++] % hw;
             }
         }
     }
-    cerr << "b" << endl;
+    cerr << "end of crash" << endl;
     int idx;
     for (i = 0; i < hw2; ++i){
         idx = 0;
