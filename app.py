@@ -7,7 +7,7 @@ from time import sleep
 hw = 8
 
 app = Flask(__name__)
-ai = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=None)
+ai = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 @app.route('/')
 def index():
@@ -35,4 +35,5 @@ def call_ai():
     return jsonify(values=json.dumps(res))
 
 if __name__ == '__main__':
+    print('start python')
     app.run()

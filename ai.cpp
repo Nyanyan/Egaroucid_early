@@ -1269,6 +1269,8 @@ int main(){
     int board_size;
     string action;
 
+    cerr << "start AI" << endl;
+
     init();
     prob_init();
     
