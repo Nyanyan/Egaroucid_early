@@ -557,6 +557,7 @@ int board_reverse(int idx){
 void init(){
     int strt = tim();
     int i, j, k, l;
+    cerr << "a" << endl;
     const int translate[hw2] = {
         0, 1, 2, 3, 3, 2, 1, 0,
         1, 4, 5, 6, 6, 5, 4, 1,
@@ -567,6 +568,7 @@ void init(){
         1, 4, 5, 6, 6, 5, 4, 1,
         0, 1, 2, 3, 3, 2, 1, 0
     };
+    cerr << "b" << endl;
     double weight_buf[10];
     int all_idx = 0;
     for (i = 0; i < hw2; ++i)
