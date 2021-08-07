@@ -1281,11 +1281,7 @@ int main(){
         canput = 0;
         cin >> ai_player;
         cin >> search_param.tl;
-        if (ai_player == 0){
-            cerr << "AI initialized AI is Black timeout in " << search_param.tl << " ms" << endl;
-        }else{
-            cerr << "AI initialized AI is White timeout in " << search_param.tl << " ms" << endl;
-        }
+        cerr << "AI: " << ai_player << " timeout in " << search_param.tl << "ms" << endl;
         for (i = 0; i < hw2; ++i){
             cin >> elem;
             cerr << elem;

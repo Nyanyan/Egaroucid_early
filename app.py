@@ -27,7 +27,7 @@ def call_ai():
         for x in range(hw):
             stdin += '0' if grid[y][x] == 0 else '1' if grid[y][x] == 1 else '.'
     ai.stdin.write(stdin.encode('utf-8'))
-    ai.stdin.flush()
+    #ai.stdin.flush()
     print('sent')
     r, c = [int(i) for i in ai.stdout.readline().decode().strip().split()]
     print(r, c)
