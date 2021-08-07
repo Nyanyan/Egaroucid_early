@@ -569,7 +569,8 @@ void init(){
         0, 1, 2, 3, 3, 2, 1, 0
     };
     cerr << "b" << endl;
-    double weight_buf[10];
+    static double weight_buf[10];
+    cerr << "c" << endl;
     int all_idx = 0;
     for (i = 0; i < hw2; ++i)
         eval_param.avg_canput[i] = params[all_idx++];
