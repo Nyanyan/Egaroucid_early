@@ -164,11 +164,16 @@ function ai() {
         const received_data = JSON.parse(data.values);
         var r = received_data["r"];
         var c = received_data["c"];
-        move(r, c);
-        console.log("done");
+        if (r < 0 || 8 <= r || c < 0 || 8 <= c) {
+            console.log("fail coord out of range");
+            alert("An error occurred.");
+        } else {
+            move(r, c);
+            console.log("done");
+        }
     }).fail(function(data) {
         console.log("fail");
-        alert("An error occurred.")
+        alert("An error occurred.");
     });
 }
 

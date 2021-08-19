@@ -19,9 +19,28 @@ def call_ai():
     grid = [[-1 for _ in range(hw)] for _ in range(hw)]
     for y in range(hw):
         for x in range(hw):
-            grid[y][x] = int(req[str(y * hw + x)])
-    ai_player = int(req["ai_player"])
-    tl = int(req["tl"])
+            tmp = req[str(y * hw + x)]
+            try:
+                tmp = int(tmp)
+                if -1 <= tmp <= 2:
+                    grid[y][x] = tmp
+                else:
+                    return jsonify(values=json.dumps({"r": -1, "c": -1}))
+            except:
+                return jsonify(values=json.dumps({"r": -1, "c": -1}))
+    print('grid done')
+    try:
+        ai_player = int(req["ai_player"])
+        if ai_player != 0 and ai_player != 1:
+            return jsonify(values=json.dumps({"r": -1, "c": -1}))
+    except:
+        return jsonify(values=json.dumps({"r": -1, "c": -1}))
+    try:
+        tl = int(req["tl"])
+        if tl < 10 or 200 < tl:
+            return jsonify(values=json.dumps({"r": -1, "c": -1}))
+    except:
+        return jsonify(values=json.dumps({"r": -1, "c": -1}))
     stdin = str(ai_player) + '\n' + str(tl) + '\n'
     for y in range(hw):
         for x in range(hw):
