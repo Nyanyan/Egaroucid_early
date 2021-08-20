@@ -1,5 +1,3 @@
-/* global BigInt */
-
 function disableScroll(event) {
     event.preventDefault();
 }
@@ -129,6 +127,41 @@ window.onload = function init() {
     grid[4][3] = 0
     grid[4][4] = 1
     player = 0;
+    var coord_top = document.getElementById('coord_top');
+    var row = document.createElement('tr');
+    for (var x = 0; x < hw; ++x) {
+        var cell = document.createElement('td');
+        cell.className = "coord_cell";
+        var coord = document.createElement('span');
+        coord.className = "coord";
+        coord.innerHTML = String.fromCharCode(65 + x);
+        cell.appendChild(coord);
+        row.appendChild(cell);
+    }
+    coord_top.appendChild(row);
+    var coord_left = document.getElementById('coord_left');
+    for (var y = 0; y < hw; ++y) {
+        var row = document.createElement('tr');
+        var cell = document.createElement('td');
+        cell.className = "coord_cell";
+        var coord = document.createElement('span');
+        coord.className = "coord";
+        coord.innerHTML = y + 1;
+        cell.appendChild(coord);
+        row.appendChild(cell);
+        coord_left.appendChild(row);
+    }
+    var coord_right = document.getElementById('coord_right');
+    for (var y = 0; y < hw; ++y) {
+        var row = document.createElement('tr');
+        var cell = document.createElement('td');
+        cell.className = "coord_cell";
+        var coord = document.createElement('span');
+        coord.className = "coord";
+        cell.appendChild(coord);
+        row.appendChild(cell);
+        coord_right.appendChild(row);
+    }
     var table = document.getElementById('board');
     for (var y = 0; y < hw; ++y) {
         var row = document.createElement('tr');
@@ -216,53 +249,3 @@ function move(y, x) {
         ai();
     }
 }
-
-/*
-function move(r, c) {
-    $.ajax({
-        type: "POST",
-        url: "/move",
-        data: {r: r, c: c},
-        async: false,
-        dataType: "json",
-    }).done(function(data) {
-        const received_data = JSON.parse(data.values);
-        var table = document.getElementById("board");
-        for (var y = 0; y < 8; y++) {
-            for (var x = 0; x < 8; x++) {
-                if (received_data[y * 8 + x] == 0) {
-                    table.rows[y].cells[x].innerHTML = '<span class="black_stone"></span>';
-                    table.rows[y].cells[x].setAttribute('onclick', "");
-                } else if (received_data[y * 8 + x] == 1) {
-                    table.rows[y].cells[x].innerHTML = '<span class="white_stone"></span>';
-                    table.rows[y].cells[x].setAttribute('onclick', "");
-                } else if (received_data[y * 8 + x] == 2) {
-                    table.rows[y].cells[x].innerHTML = '<span class="legal_stone"></span>';
-                    table.rows[y].cells[x].setAttribute('onclick', "move(this.parentNode.rowIndex, this.cellIndex)");
-                } else {
-                    table.rows[y].cells[x].innerHTML = '<span class="empty_stone"></span>';
-                    table.rows[y].cells[x].setAttribute('onclick', "");
-                }
-            }
-        }
-        table = document.getElementById("status");
-        table.rows[0].cells[2].firstChild.innerHTML = received_data[64];
-        table.rows[0].cells[4].firstChild.innerHTML = received_data[65];
-        if (received_data[66] == 0) {
-            table.rows[0].cells[0].innerHTML = '<span class="legal_stone"></span>';
-            table.rows[0].cells[6].innerHTML = '<span class="state_blank"></span>';
-        } else if (received_data[66] == 1) {
-            table.rows[0].cells[0].innerHTML = '<span class="state_blank"></span>';
-            table.rows[0].cells[6].innerHTML = '<span class="legal_stone"></span>';
-        } else {
-            table.rows[0].cells[0].innerHTML = '<span class="state_blank"></span>';
-            table.rows[0].cells[6].innerHTML = '<span class="state_blank"></span>';
-        }
-        document.getElementById("turn").innerHTML = received_data[67];
-        console.log("done");
-    }).fail(function(data) {
-        console.log("fail");
-        alert("An error occurred. Please try again.")
-    });
-}
-*/

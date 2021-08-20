@@ -21,6 +21,26 @@ html, body {
     font-size: 0pt;
     table-layout: fixed;
 }
+.coords {
+    border-collapse: collapse;
+}
+.coord_cell {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px;
+    width: 7vmin;
+    height: 7vmin;
+    border: 0.25vmin solid transparent;
+}
+.coord {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px;
+    width: 7vmin;
+    height: 7vmin;
+    font-size: 3.5vmin;
+    font-weight: bolder;
+}
 .cell {
     text-align: center;
     vertical-align: middle;
@@ -87,7 +107,7 @@ html, body {
     width: 7vmin;
     height: 7vmin;
     background-color: rgb(180, 180, 180);
-    font-size: 4vw;
+    font-size: 4vmin;
     font-weight: bolder;
 }
 .status_blank {

@@ -10,7 +10,14 @@
     <body>
         <div class="title">Egaroucid - Othello AI</div>
         <div class="sub_title">This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</div>
-        <table class="board" id="board" align="center"></table>
+        <table class="coords" id="coord_top" align="center"></table>
+        <table align="center">
+            <tr>
+                <td><table class="coords" id="coord_left" align="center"></table></td>
+                <td><table class="board" id="board" align="center"></table></td>
+                <td><table class="coords" id="coord_right" align="center"></table></td>
+            </tr>
+        </table>
         <table class="status" id="status" align="center">
             <tr>
                 <td class="status_cell"><span class="legal_stone"></span></td>
