@@ -6,14 +6,26 @@ from time import sleep
 
 hw = 8
 
-app = Flask(__name__)
+application = Flask(__name__)
 ai = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
-@app.route('/')
+ip_dict = {}
+
+def ip2num(ip):
+    nums = [int(i) for i in ip.split('.')]
+    res = 0
+    for num in nums:
+        res *= 256
+        res += num
+    return res
+
+@application.route('/')
 def index():
+    ip_num = ip2num(request.remote_addr)
+    
     return render_template('base.html')
 
-@app.route("/ai", methods=["POST"])
+@application.route("/ai", methods=["POST"])
 def call_ai():
     req = dict(request.form)
     grid = [[-1 for _ in range(hw)] for _ in range(hw)]
@@ -55,4 +67,4 @@ def call_ai():
 
 if __name__ == '__main__':
     print('start python')
-    app.run()
+    application.run()
