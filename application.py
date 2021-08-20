@@ -2,30 +2,24 @@
 from flask import *
 import json
 import subprocess
-from time import sleep
+from time import sleep, time
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 hw = 8
+reload_limit = 1.0
 
 application = Flask(__name__)
+limiter = Limiter(application, key_func=get_remote_address, default_limits=["500 per day", "50 per hour"])
 ai = subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
-ip_dict = {}
-
-def ip2num(ip):
-    nums = [int(i) for i in ip.split('.')]
-    res = 0
-    for num in nums:
-        res *= 256
-        res += num
-    return res
-
 @application.route('/')
+@limiter.limit("1/second", override_defaults=False)
 def index():
-    ip_num = ip2num(request.remote_addr)
-    
     return render_template('base.html')
 
 @application.route("/ai", methods=["POST"])
+@limiter.limit("2/second", override_defaults=False)
 def call_ai():
     req = dict(request.form)
     grid = [[-1 for _ in range(hw)] for _ in range(hw)]
