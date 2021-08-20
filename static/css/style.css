@@ -50,38 +50,51 @@ html, body {
     border: 0.25vmin solid rgb(0, 0, 0);
 }
 .black_stone {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px;
     margin: 0px;
     width: 6vmin;
     height: 6vmin;
     background-color: rgb(0, 0, 0);
     border-radius: 50%;
-    text-align: center;
     display: inline-block;
 }
 .white_stone {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0px;
     margin: 0px;
     width: 6vmin;
     height: 6vmin;
     background-color: rgb(255, 255, 255);
     border-radius: 50%;
-    text-align: center;
     display: inline-block;
 }
 .legal_stone {
+    text-align: center;
     margin: 0px;
     width: 3vmin;
     height: 3vmin;
     background-color: rgb(57, 179, 206);
     border-radius: 50%;
-    text-align: center;
     display: inline-block;
 }
 .empty_stone {
+    text-align: center;
     margin: 0px;
     width: 7vmin;
     height: 7vmin;
     background: rgb(36, 153, 114);
+    display: inline-block;
+}
+.last_stone {
     text-align: center;
+    vertical-align: middle;
+    width: 3vmin;
+    height: 3vmin;
+    background-color: rgb(255, 65, 65);
+    border-radius: 50%;
     display: inline-block;
 }
 .status {

@@ -21,7 +21,7 @@ var player = 0;
 var ai_player = 1;
 var tl = 100;
 
-function show() {
+function show(r, c) {
     var table = document.getElementById("board");
     if (!check_mobility()) {
         player = 1 - player;
@@ -45,6 +45,9 @@ function show() {
                 table.rows[y].cells[x].setAttribute('onclick', "");
             }
         }
+    }
+    if (inside(r, c)) {
+        table.rows[r].cells[c].firstChild.innerHTML = '<span class="last_stone"></span>';
     }
     var black_count = 0, white_count = 0;
     for (var y = 0; y < hw; ++y) {
@@ -175,7 +178,7 @@ window.onload = function init() {
         }
         table.appendChild(row);
     }
-    show();
+    show(-1, -1);
 }
 
 function ai() {
@@ -244,7 +247,7 @@ function move(y, x) {
         }
     }
     player = 1 - player;
-    show();
+    show(y, x);
     if (player == ai_player) {
         ai();
     }
