@@ -31,6 +31,7 @@ function show(r, c) {
     }
     for (var y = 0; y < 8; ++y) {
         for (var x = 0; x < 8; ++x) {
+            table.rows[y].cells[x].style.backgroundColor = "#249972";
             if (grid[y][x] == 0) {
                 table.rows[y].cells[x].innerHTML = '<span class="black_stone"></span>';
                 table.rows[y].cells[x].setAttribute('onclick', "");
@@ -47,7 +48,7 @@ function show(r, c) {
         }
     }
     if (inside(r, c)) {
-        table.rows[r].cells[c].firstChild.innerHTML = '<span class="last_stone"></span>';
+        table.rows[r].cells[c].style.backgroundColor = "#d14141";
     }
     var black_count = 0, white_count = 0;
     for (var y = 0; y < hw; ++y) {

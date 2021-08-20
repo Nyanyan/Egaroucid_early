@@ -11,16 +11,6 @@ html, body {
     font-size: 2.5vmin;
     font-weight: bold;
 }
-.board {
-    margin: auto;
-    padding: 0px;
-    width: 56vmin;
-    height: 56vmin;
-    background: rgb(36, 153, 114);
-    border-collapse: collapse;
-    font-size: 0pt;
-    table-layout: fixed;
-}
 .coords {
     border-collapse: collapse;
 }
@@ -41,6 +31,16 @@ html, body {
     font-size: 3.5vmin;
     font-weight: bolder;
 }
+.board {
+    margin: auto;
+    padding: 0px;
+    width: 56vmin;
+    height: 56vmin;
+    background: rgb(36, 153, 114);
+    border-collapse: collapse;
+    font-size: 0pt;
+    table-layout: fixed;
+}
 .cell {
     text-align: center;
     vertical-align: middle;
@@ -53,7 +53,6 @@ html, body {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    margin: 0px;
     width: 6vmin;
     height: 6vmin;
     background-color: rgb(0, 0, 0);
@@ -64,7 +63,6 @@ html, body {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    margin: 0px;
     width: 6vmin;
     height: 6vmin;
     background-color: rgb(255, 255, 255);
@@ -88,12 +86,19 @@ html, body {
     background: rgb(36, 153, 114);
     display: inline-block;
 }
-.last_stone {
-    text-align: center;
-    vertical-align: middle;
+.last_black_stone {
     width: 3vmin;
     height: 3vmin;
     background-color: rgb(255, 65, 65);
+    border: solid 1.5vmin rgb(0, 0, 0);
+    border-radius: 50%;
+    display: inline-block;
+}
+.last_white_stone {
+    width: 3vmin;
+    height: 3vmin;
+    background-color: rgb(255, 65, 65);
+    border: solid 1.5vmin rgb(255, 255, 255);
     border-radius: 50%;
     display: inline-block;
 }
