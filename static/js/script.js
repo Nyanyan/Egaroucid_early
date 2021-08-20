@@ -1,8 +1,10 @@
+/*
 function disableScroll(event) {
     event.preventDefault();
 }
 
 document.addEventListener('touchmove', disableScroll, {passive: false});
+*/
 
 var hw = 8;
 let dy = [0, 1, 0, -1, 1, 1, -1, -1];
@@ -18,8 +20,23 @@ let grid = [
     [-1, -1, -1, -1, -1, -1, -1, -1]
 ];
 var player = 0;
-var ai_player = 1;
-var tl = 100;
+var ai_player = -1;
+
+function start() {
+    ai_player = -1;
+    let players = document.getElementsByName('ai_player');
+    for (var i = 0; i < 2; ++i) {
+        players.item(i).disabled = true;
+        if (players.item(i).checked) {
+            ai_player = players.item(i).value;
+        }
+    }
+    document.getElementById('start').disabled = true;
+    show(-1, -1);
+    if (ai_player == 0) {
+        ai();
+    }
+}
 
 function show(r, c) {
     var table = document.getElementById("board");
@@ -39,8 +56,13 @@ function show(r, c) {
                 table.rows[y].cells[x].innerHTML = '<span class="white_stone"></span>';
                 table.rows[y].cells[x].setAttribute('onclick', "");
             } else if (grid[y][x] == 2) {
-                table.rows[y].cells[x].innerHTML = '<span class="legal_stone"></span>';
-                table.rows[y].cells[x].setAttribute('onclick', "move(this.parentNode.rowIndex, this.cellIndex)");
+                if (r == -1 || inside(r, c)) {
+                    table.rows[y].cells[x].innerHTML = '<span class="legal_stone"></span>';
+                    table.rows[y].cells[x].setAttribute('onclick', "move(this.parentNode.rowIndex, this.cellIndex)");
+                } else {
+                    table.rows[y].cells[x].innerHTML = '<span class="empty_stone"></span>';
+                    table.rows[y].cells[x].setAttribute('onclick', "");
+                }
             } else {
                 table.rows[y].cells[x].innerHTML = '<span class="empty_stone"></span>';
                 table.rows[y].cells[x].setAttribute('onclick', "");
@@ -179,7 +201,7 @@ window.onload = function init() {
         }
         table.appendChild(row);
     }
-    show(-1, -1);
+    show(-2, -2);
 }
 
 function ai() {
@@ -190,6 +212,15 @@ function ai() {
         }
     }
     data_json["ai_player"] = ai_player;
+    var tl = 100;
+    let tls = document.getElementsByName('tl');
+    var ln = tls.length;
+    for (var i = 0; i < ln; ++i) {
+        if (tls.item(i).checked) {
+            tl = tls.item(i).value;
+            break;
+        }
+    }
     data_json["tl"] = tl;
     $.ajax({
         type: "POST",

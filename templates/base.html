@@ -10,6 +10,18 @@
     <body>
         <div class="title">Egaroucid - Othello AI</div>
         <div class="sub_title">This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</div>
+        <p align="center">
+            <input type="radio" name="ai_player" value="0" id="black"><label for="black" class="setting">AI: 黒 あなた: 白</label>
+            <input type="radio" name="ai_player" value="1" id="white" checked><label for="white" class="setting">あなた: 黒 AI: 白</label>
+        </p>
+        <p align="center"><input type="submit" value="対局開始" onclick="start()" id="start"></p>
+        <p align="center">
+            <input type="radio" name="tl" value="5" id="5"><label for="5" class="setting">0.005</label>
+            <input type="radio" name="tl" value="10" id="10"><label for="10" class="setting">0.010</label>
+            <input type="radio" name="tl" value="50" id="50"><label for="50" class="setting">0.050</label>
+            <input type="radio" name="tl" value="100" id="100" checked><label for="100" class="setting">0.100</label>
+            <input type="radio" name="tl" value="200" id="200"><label for="200" class="setting">0.200</label>
+        </p>
         <table class="coords" id="coord_top" align="center"></table>
         <table align="center">
             <tr>

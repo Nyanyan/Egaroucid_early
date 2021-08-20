@@ -42,7 +42,7 @@ def call_ai():
         return jsonify(values=json.dumps({"r": -1, "c": -1}))
     try:
         tl = int(req["tl"])
-        if tl < 10 or 200 < tl:
+        if tl < 5 or 200 < tl:
             return jsonify(values=json.dumps({"r": -1, "c": -1}))
     except:
         return jsonify(values=json.dumps({"r": -1, "c": -1}))

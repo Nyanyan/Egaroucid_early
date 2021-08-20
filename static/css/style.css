@@ -11,6 +11,9 @@ html, body {
     font-size: 2.5vmin;
     font-weight: bold;
 }
+.setting {
+    font-size: 2.5vmin;
+}
 .coords {
     border-collapse: collapse;
 }
