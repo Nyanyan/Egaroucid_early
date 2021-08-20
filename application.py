@@ -34,7 +34,6 @@ def call_ai():
                     return jsonify(values=json.dumps({"r": -1, "c": -1}))
             except:
                 return jsonify(values=json.dumps({"r": -1, "c": -1}))
-    print('grid done')
     try:
         ai_player = int(req["ai_player"])
         if ai_player != 0 and ai_player != 1:
@@ -53,7 +52,6 @@ def call_ai():
             stdin += '0' if grid[y][x] == 0 else '1' if grid[y][x] == 1 else '.'
     ai.stdin.write(stdin.encode('utf-8'))
     ai.stdin.flush()
-    print('sent')
     r, c = [int(i) for i in ai.stdout.readline().decode().strip().split()]
     print(r, c)
     res = {"r": r, "c": c}
