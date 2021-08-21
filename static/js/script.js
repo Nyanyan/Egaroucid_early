@@ -49,7 +49,7 @@ var graph = new Chart(ctx, {
             ticks: {
                 suggestedMax: 10,
                 suggestedMin: -10,
-                stepSize: 1.0,
+                stepSize: 2.0,
                 callback: function(value, index, values){
                     return  value
                 }

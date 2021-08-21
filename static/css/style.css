@@ -1,27 +1,28 @@
 html, body {
     font-family: "Arial", "メイリオ";
+    font-size: large;
 }
 .title {
     text-align: center;
-    font-size: 5vmin;
+    font-size: xxx-large;
     font-weight: bolder;
 }
 .sub_title {
     text-align: center;
-    font-size: 2.5vmin;
+    font-size: xx-large;
     font-weight: bold;
 }
 .sub_sub_title {
     text-align: center;
-    font-size: 2vmin;
+    font-size: x-large;
     font-weight: bold;
 }
 .setting {
-    font-size: 2.5vmin;
+    font-size: x-large;
 }
 .radio_size {
-    width: 2.5vmin;
-    height: 2.5vmin;
+    width: x-large;
+    height: x-large;
 }
 .coords {
     border-collapse: collapse;
