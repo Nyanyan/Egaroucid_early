@@ -71,7 +71,7 @@ html, body {
     width: 6vmin;
     height: 6vmin;
     background-color: rgb(0, 0, 0);
-    border-radius: 50%;
+    border-radius: 3vmin;
     display: inline-block;
 }
 .white_stone {
@@ -81,7 +81,7 @@ html, body {
     width: 6vmin;
     height: 6vmin;
     background-color: rgb(255, 255, 255);
-    border-radius: 50%;
+    border-radius: 3vmin;
     display: inline-block;
 }
 .legal_stone {
@@ -90,7 +90,7 @@ html, body {
     width: 3vmin;
     height: 3vmin;
     background-color: rgb(57, 179, 206);
-    border-radius: 50%;
+    border-radius: 1.5vmin;
     display: inline-block;
 }
 .empty_stone {
@@ -136,4 +136,43 @@ html, body {
 }
 .record {
     overflow-wrap: break-word;
+}
+.popup {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    opacity: 0;
+    visibility: hidden;
+    transition: .6s;
+}
+.popup.is-show {
+    opacity: 1;
+    visibility: visible;
+}
+.popup-inner {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    width: 80%;
+    max-width: 600px;
+    padding: 50px;
+    background-color: #fff;
+    z-index: 2;
+}
+.popup-inner img {
+    width: 100%;
+}
+.black-background {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,.8);
+    z-index: 1;
+    cursor: pointer;
 }

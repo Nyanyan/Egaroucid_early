@@ -5,13 +5,14 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no">
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
         <script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0],p=/^http:/.test(d.location)?'http':'https';if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src=p+'://platform.twitter.com/widgets.js';fjs.parentNode.insertBefore(js,fjs);}}(document, 'script', 'twitter-wjs');</script>
+        <script id="twitter-wjs" src="http://platform.twitter.com/widgets.js"></script>
         <link rel="stylesheet" href="static/css/style.css">
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:site" content="@takuto_yamana" />
         <meta property="og:url" content="https://www.egaroucid.nyanyan.dev" />
         <meta property="og:title" content="Egaroucid - 世界10位のオセロAI" />
         <meta property="og:description" content="世界10位を経験したオセロAIと対戦！" />
-        <meta property="og:image" content="画像のURL" />
+        <meta property="og:image" content="https://raw.githubusercontent.com/Nyanyan/Web_Egaroucid/main/img.png" />
         <title>Egaroucid</title>
     </head>
     <body>
@@ -25,9 +26,6 @@
             <input type="radio" class="radio_size" name="ai_player" value="1" id="white" checked><label for="white" class="setting">黒(先手): あなた 白(後手): AI</label>
             <input type="radio" class="radio_size" name="ai_player" value="0" id="black"><label for="black" class="setting">黒(先手): AI 白(後手): あなた</label>
         </p>
-        <div align="center">
-            <input type="submit" class="setting" value="対局開始" onclick="start()" id="start">
-        </div>
         <p align="center">
             <span class="setting"><a href="#strength">AIの強さ</a></span>
             <input type="radio" class="radio_size" name="tl" value="3" id="3"><label for="3" class="setting">作者より弱い</label>
@@ -37,25 +35,43 @@
             <input type="radio" class="radio_size" name="tl" value="100" id="100"><label for="100" class="setting">人間世界トップくらい</label>
             <input type="radio" class="radio_size" name="tl" value="200" id="200"><label for="200" class="setting">😇😇😇</label>
         </p>
-        <table class="coords" id="coord_top" align="center"></table>
-        <table align="center">
-            <tr>
-                <td><table class="coords" id="coord_left" align="center"></table></td>
-                <td><table class="board" id="board" align="center"></table></td>
-                <td><table class="coords" id="coord_right" align="center"></table></td>
-            </tr>
-        </table>
-        <table class="status" id="status" align="center">
-            <tr>
-                <td class="status_cell"><span class="state_blank""></span></td>
-                <td class="status_cell"><span class="black_stone"></span></td>
-                <td class="status_char"><span class="state_blank">2</span></td>
-                <td class="status_char"><span class="state_blank">-</span></td>
-                <td class="status_char"><span class="state_blank">2</span></td>
-                <td class="status_cell"><span class="white_stone"></span></td>
-                <td class="status_cell"><span class="state_blank"></span></td>
-            </tr>
-        </table>
+        <div align="center">
+            <input type="submit" class="setting" value="対局開始" onclick="start()" id="start">
+        </div>
+        <div class="popup" id="js-popup">
+            <div class="popup-inner">
+                <p align="center" class="sub_title" id="result_text"></p>
+                <a href="#"><img id="game_result" src="" alt="game_result"></a>
+                <p align="center" id="tweet_result">
+                    結果をツイート！
+                    <a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-text="世界10位のオセロAI&quot;Egaroucid&quot;と勝負！" data-url="https://www.egaroucid.nyanyan.dev/" data-hashtags="egaroucid" data-related="takuto_yamana,Nyanyan_Cube" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+                </p>
+                <p align="center" class="text">上の画像は右クリックなどで保存できます。</p>
+                <p align="center" class="text">ポップアップの周りをタップすると元の画面に戻ります。</p>
+            </div>
+            <div class="black-background" id="js-black-bg"></div>
+        </div>
+        <div id="main">
+            <table class="coords" id="coord_top" align="center"></table>
+            <table align="center">
+                <tr>
+                    <td><table class="coords" id="coord_left" align="center"></table></td>
+                    <td><table class="board" id="board" align="center"></table></td>
+                    <td><table class="coords" id="coord_right" align="center"></table></td>
+                </tr>
+            </table>
+            <table class="status" id="status" align="center">
+                <tr>
+                    <td class="status_cell"><span class="state_blank""></span></td>
+                    <td class="status_cell"><span class="black_stone"></span></td>
+                    <td class="status_char"><span class="state_blank">2</span></td>
+                    <td class="status_char"><span class="state_blank">-</span></td>
+                    <td class="status_char"><span class="state_blank">2</span></td>
+                    <td class="status_cell"><span class="white_stone"></span></td>
+                    <td class="status_cell"><span class="state_blank"></span></td>
+                </tr>
+            </table>
+        </div>
         <div id="info" align="center">
             <div class="sub_title">-----対局情報-----</div>
             <div class="sub_sub_title">評価値グラフ</div>
@@ -66,8 +82,7 @@
         <div id="usage" align="center">
             <div class="sub_title">-----使い方-----</div>
             <div class="text">
-                手番を選択し、対局開始ボタンを押してください。<br>
-                AIの強さは対局前と対局中、いつでも変更できます。<br>
+                手番とAIの強さを選択し、対局開始ボタンを押してください。<br>
                 AIの強さについての詳細は<a href="#strength">こちら</a><br>
                 評価値グラフは左が序盤、右が現在の手です。<br>
                 値が大きくなるほどAI有利と判断していて、0が互角です。<br>
@@ -143,6 +158,7 @@
             </div>
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js"></script>
         <script src="static/js/script.js"></script>
     </body>
 </html>

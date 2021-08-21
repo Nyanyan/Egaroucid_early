@@ -21,6 +21,9 @@ let grid = [
 ];
 var player = 0;
 var ai_player = -1;
+var tl = 50;
+var tl_idx = -1;
+let tl_names = ['作者より弱い', '作者くらい', '強い。', '無理。', '人間世界トップくらい', '😇😇😇'];
 let record = [];
 var step = 0;
 var ctx = document.getElementById("graph");
@@ -66,6 +69,15 @@ function start() {
         players.item(i).disabled = true;
         if (players.item(i).checked) {
             ai_player = players.item(i).value;
+        }
+    }
+    let tls = document.getElementsByName('tl');
+    var ln = tls.length;
+    for (var i = 0; i < ln; ++i) {
+        tls.item(i).disabled = true;
+        if (tls.item(i).checked) {
+            tl = tls.item(i).value;
+            tl_idx = i;
         }
     }
     document.getElementById('start').disabled = true;
@@ -135,6 +147,7 @@ function show(r, c) {
     } else {
         table.rows[0].cells[0].firstChild.className = "state_blank";
         table.rows[0].cells[6].firstChild.className = "state_blank";
+        end_game();
     }
 }
 
@@ -176,7 +189,6 @@ function check_mobility() {
                     continue;
                 var flag = false;
                 var nny = ny, nnx = nx;
-                var plus = 0;
                 for (var d = 0; d < hw; ++d) {
                     if (!inside(nny, nnx))
                         break;
@@ -188,7 +200,6 @@ function check_mobility() {
                     }
                     nny += dy[dr];
                     nnx += dx[dr];
-                    ++plus;
                 }
                 if (flag) {
                     grid[y][x] = 2;
@@ -266,15 +277,6 @@ function ai() {
         }
     }
     data_json["ai_player"] = ai_player;
-    var tl = 100;
-    let tls = document.getElementsByName('tl');
-    var ln = tls.length;
-    for (var i = 0; i < ln; ++i) {
-        if (tls.item(i).checked) {
-            tl = tls.item(i).value;
-            break;
-        }
-    }
     data_json["tl"] = tl;
     $.ajax({
         type: "POST",
@@ -371,4 +373,47 @@ function update_graph(s) {
     graph.data.labels.push(record.length);
     graph.data.datasets[0].data.push(s);
     graph.update();
+}
+
+function end_game() {
+    html2canvas(document.getElementById('main'),{
+        onrendered: function(canvas){
+            var imgData = canvas.toDataURL();
+            document.getElementById("game_result").src = imgData;
+        }
+    });
+    let stones = [0, 0];
+    for (var y = 0; y < hw; ++y) {
+        for (var x = 0; x < hw; ++x) {
+            if (0 <= grid[y][x] <= 1) {
+                ++stones[grid[y][x]];
+            }
+        }
+    }
+    var tweet_str = "";
+    if (stones[ai_player] < stones[1 - ai_player]) {
+        document.getElementById('result_text').innerHTML = "あなたの勝ち！";
+        var dis = stones[1 - ai_player] - stones[ai_player];
+        tweet_str = "世界10位のオセロAIの「" + tl_names[tl_idx] + "」モードに" + dis + "石勝ちしました！ :)";
+    } else if (stones[ai_player] > stones[1 - ai_player]) {
+        document.getElementById('result_text').innerHTML = "AIの勝ち！";
+        var dis = stones[ai_player] - stones[1 - ai_player];
+        tweet_str = "世界10位のオセロAIの「" + tl_names[tl_idx] + "」モードに" + dis + "石負けしました… :(";
+    } else {
+        document.getElementById('result_text').innerHTML = "引き分け！";
+        tweet_str = "世界10位のオセロAIの「" + tl_names[tl_idx] + "」モードと引き分けました！ :|";
+    }
+    document.getElementById('tweet_result').innerHTML = '結果をツイート！<a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-text="' + tweet_str + '" data-url="https://www.egaroucid.nyanyan.dev/" data-hashtags="egaroucid" data-related="takuto_yamana,Nyanyan_Cube" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>';
+    twttr.widgets.load();
+    var popup = document.getElementById('js-popup');
+    if(!popup) return;
+    popup.classList.add('is-show');
+    var blackBg = document.getElementById('js-black-bg');
+    closePopUp(blackBg);
+    function closePopUp(elem) {
+        if(!elem) return;
+        elem.addEventListener('click', function() {
+            popup.classList.remove('is-show');
+        })
+    }
 }
