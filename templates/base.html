@@ -18,7 +18,7 @@
         <p align="center"><input type="submit" class="setting" value="対局開始" onclick="start()" id="start"></p>
         <p align="center">
             <span class="setting"><a href="#strength">AIの強さ</a></span>
-            <input type="radio" class="radio_size" name="tl" value="2" id="2"><label for="2" class="setting">作者より弱い</label>
+            <input type="radio" class="radio_size" name="tl" value="3" id="3"><label for="3" class="setting">作者より弱い</label>
             <input type="radio" class="radio_size" name="tl" value="5" id="5"><label for="5" class="setting">作者くらい</label>
             <input type="radio" class="radio_size" name="tl" value="10" id="10"><label for="10" class="setting">強い。</label>
             <input type="radio" class="radio_size" name="tl" value="50" id="50"><label for="50" class="setting">無理。</label>
@@ -47,8 +47,9 @@
         <div id="info" align="center">
             <div class="sub_title">-----対局情報-----</div>
             <div class="sub_sub_title">棋譜</div>
-            <div id="record"></div>
+            <div class="record" id="record"></div>
             <div class="sub_sub_title">評価値グラフ</div>
+            <canvas id="graph"></canvas>
         </div>
         <div id="usage" align="center">
             <div class="sub_title">-----使い方-----</div>
@@ -65,7 +66,7 @@
                 各強さでの計算時間は以下の通りです。
             </div>
             <ul>
-                <li>作者より弱い: 0.002秒/手</li>
+                <li>作者より弱い: 0.003秒/手</li>
                 <li>作者くらい: 0.005秒/手</li>
                 <li>強い。: 0.010秒/手</li>
                 <li>無理。: 0.050秒/手</li>
@@ -81,6 +82,7 @@
             <a href="https://twitter.com/takuto_yamana">Twitter(作品投稿)</a><br>
             <a href="https://twitter.com/Nyanyan_Cube">Twitter(雑多な方)</a>
         </div>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
         <script src="static/js/script.js"></script>
     </body>
 </html>

@@ -131,3 +131,6 @@ html, body {
     text-align: center;
     display: inline-block;
 }
+.record {
+    overflow-wrap: break-word;
+}

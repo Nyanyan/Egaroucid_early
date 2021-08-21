@@ -23,6 +23,41 @@ var player = 0;
 var ai_player = -1;
 let record = [];
 var step = 0;
+var ctx = document.getElementById("graph");
+var graph = new Chart(ctx, {
+    type: 'line',
+    data: {
+    labels: [],
+    datasets: [
+        {
+        label: '評価値',
+        data: [],
+        borderColor: "rgb(0,0,0)",
+        backgroundColor: "rgb(0,0,0)"
+        }
+    ],
+    },
+    options: {
+        title: {
+            display: false
+        },
+        legend: {
+            display: false
+        },
+        scales: {
+            yAxes: [{
+            ticks: {
+                suggestedMax: 10,
+                suggestedMin: -10,
+                stepSize: 1.0,
+                callback: function(value, index, values){
+                    return  value
+                }
+            }
+            }]
+        },
+    }
+});
 
 function start() {
     ai_player = -1;
@@ -52,21 +87,26 @@ function show(r, c) {
         for (var x = 0; x < 8; ++x) {
             table.rows[y].cells[x].style.backgroundColor = "#249972";
             if (grid[y][x] == 0) {
-                table.rows[y].cells[x].innerHTML = '<span class="black_stone"></span>';
+                //table.rows[y].cells[x].innerHTML = '<span class="black_stone"></span>';
+                table.rows[y].cells[x].firstChild.className ="black_stone";
                 table.rows[y].cells[x].setAttribute('onclick', "");
             } else if (grid[y][x] == 1) {
-                table.rows[y].cells[x].innerHTML = '<span class="white_stone"></span>';
+                //table.rows[y].cells[x].innerHTML = '<span class="white_stone"></span>';
+                table.rows[y].cells[x].firstChild.className ="white_stone";
                 table.rows[y].cells[x].setAttribute('onclick', "");
             } else if (grid[y][x] == 2) {
                 if (r == -1 || inside(r, c)) {
-                    table.rows[y].cells[x].innerHTML = '<span class="legal_stone"></span>';
+                    //table.rows[y].cells[x].innerHTML = '<span class="legal_stone"></span>';
+                    table.rows[y].cells[x].firstChild.className ="legal_stone";
                     table.rows[y].cells[x].setAttribute('onclick', "move(this.parentNode.rowIndex, this.cellIndex)");
                 } else {
-                    table.rows[y].cells[x].innerHTML = '<span class="empty_stone"></span>';
+                    //table.rows[y].cells[x].innerHTML = '<span class="empty_stone"></span>';
+                    table.rows[y].cells[x].firstChild.className ="empty_stone";
                     table.rows[y].cells[x].setAttribute('onclick', "");
                 }
             } else {
-                table.rows[y].cells[x].innerHTML = '<span class="empty_stone"></span>';
+                //table.rows[y].cells[x].innerHTML = '<span class="empty_stone"></span>';
+                table.rows[y].cells[x].firstChild.className ="empty_stone";
                 table.rows[y].cells[x].setAttribute('onclick', "");
             }
         }
@@ -234,6 +274,8 @@ function ai() {
         const received_data = JSON.parse(data.values);
         var r = received_data["r"];
         var c = received_data["c"];
+        var s = Math.min(10.0, Math.max(-10.0, received_data["s"]));
+        update_graph(s);
         if (r < 0 || 8 <= r || c < 0 || 8 <= c) {
             console.log("fail coord out of range");
             alert("An error occurred.");
@@ -294,4 +336,10 @@ function update_record() {
     var record_html = document.getElementById('record');
     var new_coord = String.fromCharCode(65 + record[record.length - 1][1]) + String.fromCharCode(49 + record[record.length - 1][0]);
     record_html.innerHTML += new_coord;
+}
+
+function update_graph(s) {
+    graph.data.labels.push(record.length);
+    graph.data.datasets[0].data.push(s);
+    graph.update();
 }
