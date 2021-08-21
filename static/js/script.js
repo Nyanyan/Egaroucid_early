@@ -346,7 +346,7 @@ function ai_check() {
         ai();
     }
 }
-setInterval(ai_check, 100);
+setInterval(ai_check, 250);
 
 function update_record() {
     var record_html = document.getElementById('record');
