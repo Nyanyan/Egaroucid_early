@@ -9,7 +9,7 @@
     </head>
     <body>
         <div class="title">Egaroucid - Othello AI</div>
-        <div class="sub_title">This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</div>
+        <div class="sub_title">This AI got 10th in the world (<a href="https://www.codingame.com/multiplayer/bot-programming/othello-1/leaderboard" target="_blank">Codingame Othello</a>)</div>
         <p align="center" class="setting"><a href="#usage">使い方</a></p>
         <p align="center">
             <input type="radio" class="radio_size" name="ai_player" value="1" id="white" checked><label for="white" class="setting">黒(先手): あなた 白(後手): AI</label>
@@ -53,7 +53,7 @@
         </div>
         <div id="usage" align="center">
             <div class="sub_title">-----使い方-----</div>
-            <div>
+            <div class="text">
                 手番を選択し、対局開始ボタンを押してください。<br>
                 AIの強さは対局前と対局中、いつでも変更できます。<br>
                 AIの強さについての詳細は<a href="#strength">こちら</a><br>
@@ -63,66 +63,72 @@
         </div>
         <div id="strength" align="center">
             <div class="sub_title">-----AIの強さ-----</div>
-            <div>
+            <div class="text">
                 AIの強さはAIが1手に要する最大の計算時間で調整されます。<br>
                 各強さでの計算時間は以下の通りです。
             </div>
             <table>
                 <tr>
-                    <td>名称</td>
-                    <td>計算時間</td>
-                    <td>読み手数</td>
+                    <td class="text">名称</td>
+                    <td class="text">計算時間</td>
+                    <td class="text">読み手数</td>
                 </tr>
                 <tr>
-                    <td>作者より弱い</td>
-                    <td>0.003秒/手</td>
-                    <td>約3手</td>
+                    <td class="text">作者より弱い</td>
+                    <td class="text">0.003秒/手</td>
+                    <td class="text">約3手</td>
                 </tr>
                 <tr>
-                    <td>作者くらい</td>
-                    <td>0.005秒/手</td>
-                    <td>約4手</td>
+                    <td class="text">作者くらい</td>
+                    <td class="text">0.005秒/手</td>
+                    <td class="text">約4手</td>
                 </tr>
                 <tr>
-                    <td>強い。</td>
-                    <td>0.010秒/手</td>
-                    <td>約5手</td>
+                    <td class="text">強い。</td>
+                    <td class="text">0.010秒/手</td>
+                    <td class="text">約5手</td>
                 </tr>
                 <tr>
-                    <td>無理。</td>
-                    <td>0.050秒/手</td>
-                    <td>約9手</td>
+                    <td class="text">無理。</td>
+                    <td class="text">0.050秒/手</td>
+                    <td class="text">約9手</td>
                 </tr>
                 <tr>
-                    <td>人間世界トップくらい</td>
-                    <td>0.100秒/手</td>
-                    <td>約10手</td>
+                    <td class="text">人間世界トップくらい</td>
+                    <td class="text">0.100秒/手</td>
+                    <td class="text">約10手</td>
                 </tr>
                 <tr>
-                    <td>😇😇😇</td>
-                    <td>0.200秒/手</td>
-                    <td>約11手</td>
+                    <td class="text">😇😇😇</td>
+                    <td class="text">0.200秒/手</td>
+                    <td class="text">約11手</td>
                 </tr>
             </table>
         </div>
         <div align="center">
             <div class="sub_title">-----お知らせ-----</div>
-            正式公開前に、オセロ世界選手権世界4位経験者の方と0.100秒/手で対戦していただきました。<br>
-            その様子は<a href="https://www.youtube.com/watch?v=7SMzAaNkfVc&lc=UgwUHI1qZIok2TvpGDx4AaABAg.9RGEhjcbmpt9RGFdX1K6bB" target="_blank">YouTube</a>で見られます。
+            <div  class="text">
+                正式公開前に、オセロ世界選手権世界4位経験者の方と0.100秒/手で対戦していただきました。<br>
+                その様子は<a href="https://www.youtube.com/watch?v=7SMzAaNkfVc&lc=UgwUHI1qZIok2TvpGDx4AaABAg.9RGEhjcbmpt9RGFdX1K6bB" target="_blank">YouTube</a>で見られます。
+            </div>
         </div>
         <div align="center">
             <div class="sub_title">-----技術解説-----</div>
-            このAIはminimax系ゲーム木探索アルゴリズムであるNegascout法を主体に、葉ノード付近ではNegaalpha法に切り替えて高速化しています。move orderingを行う場合は開放度のようなものを用いています。<br>
-            オセロの状態管理には完全インデックス化を用いています。完全インデックス化は配列やビットボードよりも高速に処理できます。<br>
-            評価関数には、列や行のパターン、石数、着手可能数、各マスの重み、確定石数、潜在的着手可能数を正規化したものの重みつけ和を使っています。
+            <div class="text">
+                このAIはminimax系ゲーム木探索アルゴリズムであるNegascout法を主体に、葉ノード付近ではNegaalpha法に切り替えて高速化しています。move orderingを行う場合は開放度のようなものを用いています。<br>
+                オセロの状態管理には完全インデックス化を用いています。完全インデックス化は配列やビットボードよりも高速に処理できます。<br>
+                評価関数には、列や行のパターン、石数、着手可能数、各マスの重み、確定石数、潜在的着手可能数を正規化したものの重みつけ和を使っています。
+            </div>
         </div>
         <div align="center">
             <div class="sub_title">Made by にゃにゃん(山名琢翔)</div>
-            <a href="https://github.com/Nyanyan/Web_Egaroucid" target="_blank">このページのGitHubレポジトリ</a><br>
-            <a href="https://github.com/Nyanyan/Reversi" target="_blank">使われているAIの旧バージョンのGitHubレポジトリ</a><br>
-            <a href="https://nyanyan.github.io/" target="_blank">Webサイト</a><br>
-            <a href="https://twitter.com/takuto_yamana" target="_blank">Twitter(作品投稿)</a><br>
-            <a href="https://twitter.com/Nyanyan_Cube" target="_blank">Twitter(雑多な方)</a>
+            <div class="text">
+                <a href="https://github.com/Nyanyan/Web_Egaroucid" target="_blank">このページのGitHubレポジトリ</a><br>
+                <a href="https://github.com/Nyanyan/Reversi" target="_blank">使われているAIの旧バージョンのGitHubレポジトリ</a><br>
+                <a href="https://nyanyan.github.io/" target="_blank">Webサイト</a><br>
+                <a href="https://twitter.com/takuto_yamana" target="_blank">Twitter(作品投稿)</a><br>
+                <a href="https://twitter.com/Nyanyan_Cube" target="_blank">Twitter(雑多な方)</a>
+            </div>
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
         <script src="static/js/script.js"></script>

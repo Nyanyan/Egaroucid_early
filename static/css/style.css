@@ -1,15 +1,14 @@
 html, body {
     font-family: "Arial", "メイリオ";
-    font-size: large;
 }
 .title {
     text-align: center;
-    font-size: xxx-large;
+    font-size: xx-large;
     font-weight: bolder;
 }
 .sub_title {
     text-align: center;
-    font-size: xx-large;
+    font-size: x-large;
     font-weight: bold;
 }
 .sub_sub_title {
@@ -19,6 +18,9 @@ html, body {
 }
 .setting {
     font-size: x-large;
+}
+.text {
+    font-size: large;
 }
 .radio_size {
     width: x-large;
@@ -31,24 +33,24 @@ html, body {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    width: 6vmin;
-    height: 6vmin;
+    width: 7vmin;
+    height: 7vmin;
     border: 0.25vmin solid transparent;
 }
 .coord {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    width: 6vmin;
-    height: 6vmin;
+    width: 7vmin;
+    height: 7vmin;
     font-size: 3.5vmin;
     font-weight: bolder;
 }
 .board {
     margin: auto;
     padding: 0px;
-    width: 48vmin;
-    height: 48vmin;
+    width: 56vmin;
+    height: 56vmin;
     background: rgb(36, 153, 114);
     border-collapse: collapse;
     font-size: 0pt;
@@ -58,16 +60,16 @@ html, body {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    width: 6vmin;
-    height: 6vmin;
+    width: 7vmin;
+    height: 7vmin;
     border: 0.25vmin solid rgb(0, 0, 0);
 }
 .black_stone {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    width: 5vmin;
-    height: 5vmin;
+    width: 6vmin;
+    height: 6vmin;
     background-color: rgb(0, 0, 0);
     border-radius: 50%;
     display: inline-block;
@@ -76,8 +78,8 @@ html, body {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    width: 5vmin;
-    height: 5vmin;
+    width: 6vmin;
+    height: 6vmin;
     background-color: rgb(255, 255, 255);
     border-radius: 50%;
     display: inline-block;
@@ -94,16 +96,16 @@ html, body {
 .empty_stone {
     text-align: center;
     margin: 0px;
-    width: 6vmin;
-    height: 6vmin;
+    width: 7vmin;
+    height: 7vmin;
     background: rgb(36, 153, 114);
     display: inline-block;
 }
 .status {
     margin-top: 1vmin;
     padding: 0px;
-    width: 42vmin;
-    height: 6vmin;
+    width: 49vmin;
+    height: 7vmin;
     border-collapse: collapse;
     font-size: 0vw;
 }
@@ -111,24 +113,24 @@ html, body {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    width: 6vmin;
-    height: 6vmin;
+    width: 7vmin;
+    height: 7vmin;
     background-color: rgb(180, 180, 180);
 }
 .status_char {
     text-align: center;
     vertical-align: middle;
     padding: 0px;
-    width: 6vmin;
-    height: 6vmin;
+    width: 7vmin;
+    height: 7vmin;
     background-color: rgb(180, 180, 180);
     font-size: 4vmin;
     font-weight: bolder;
 }
 .status_blank {
     margin: 0px;
-    width: 6vmin;
-    height: 6vmin;
+    width: 7vmin;
+    height: 7vmin;
     text-align: center;
     display: inline-block;
 }
