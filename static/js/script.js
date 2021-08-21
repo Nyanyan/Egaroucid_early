@@ -127,15 +127,27 @@ function show(r, c) {
     table.rows[0].cells[2].firstChild.innerHTML = black_count;
     table.rows[0].cells[4].firstChild.innerHTML = white_count;
     if (player == 0) {
-        table.rows[0].cells[0].innerHTML = '<span class="legal_stone"></span>';
-        table.rows[0].cells[6].innerHTML = '<span class="state_blank"></span>';
+        table.rows[0].cells[0].firstChild.className = "legal_stone";
+        table.rows[0].cells[6].firstChild.className = "state_blank";
     } else if (player == 1) {
-        table.rows[0].cells[0].innerHTML = '<span class="state_blank"></span>';
-        table.rows[0].cells[6].innerHTML = '<span class="legal_stone"></span>';
+        table.rows[0].cells[0].firstChild.className = "state_blank";
+        table.rows[0].cells[6].firstChild.className = "legal_stone";
     } else {
-        table.rows[0].cells[0].innerHTML = '<span class="state_blank"></span>';
-        table.rows[0].cells[6].innerHTML = '<span class="state_blank"></span>';
+        table.rows[0].cells[0].firstChild.className = "state_blank";
+        table.rows[0].cells[6].firstChild.className = "state_blank";
     }
+}
+
+function draw(element){
+    if (!element) { return; }
+    var n = document.createTextNode(' ');
+    var disp = element.style.display;
+    element.appendChild(n);
+    element.style.display = 'none';
+    setTimeout(function(){
+        element.style.display = disp;
+        n.parentNode.removeChild(n);
+    },20);
 }
 
 function empty(y, x) {
@@ -327,10 +339,14 @@ function move(y, x) {
     update_record();
     player = 1 - player;
     show(y, x);
+}
+
+function ai_check() {
     if (player == ai_player) {
         ai();
     }
 }
+setInterval(ai_check, 100);
 
 function update_record() {
     var record_html = document.getElementById('record');
