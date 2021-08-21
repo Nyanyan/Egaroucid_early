@@ -289,15 +289,28 @@ function ai() {
         var s = Math.min(10.0, Math.max(-10.0, received_data["s"]));
         update_graph(s);
         if (r < 0 || 8 <= r || c < 0 || 8 <= c) {
-            console.log("fail coord out of range");
-            alert("An error occurred.");
+            if (r == -1) {
+                alert("[ERROR] grid broken status -1");
+            } else if (r == -2) {
+                alert("[ERROR] grid broken status -2");
+            } else if (r == -3) {
+                alert("[ERROR] ai_player broken status -3");
+            } else if (r == -4) {
+                alert("[ERROR] ai_player broken status -4");
+            } else if (r == -5) {
+                alert("[ERROR] time limit out of range status -5");
+            } else if (r == -6) {
+                alert("[ERROR] time limit broken status -6");
+            }
+            setTimeout(ai(), "300");
         } else {
             move(r, c);
             console.log("done");
         }
     }).fail(function(data) {
-        console.log("fail");
-        alert("An error occurred.");
+        alert("[ERROR] connection failed click OK to try again");
+        setTimeout(ai(), "300");
+        ai();
     });
 }
 
