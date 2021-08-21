@@ -19,7 +19,7 @@ def index():
     return render_template('base.html')
 
 @application.route("/ai", methods=["POST"])
-@limiter.limit("2/second", override_defaults=False)
+@limiter.limit("5/second", override_defaults=False)
 def call_ai():
     req = dict(request.form)
     grid = [[-1 for _ in range(hw)] for _ in range(hw)]
@@ -42,7 +42,7 @@ def call_ai():
         return jsonify(values=json.dumps({"r": -1, "c": -1}))
     try:
         tl = int(req["tl"])
-        if tl < 5 or 200 < tl:
+        if tl < 2 or 200 < tl:
             return jsonify(values=json.dumps({"r": -1, "c": -1}))
     except:
         return jsonify(values=json.dumps({"r": -1, "c": -1}))

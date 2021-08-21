@@ -10,18 +10,20 @@
     <body>
         <div class="title">Egaroucid - Othello AI</div>
         <div class="sub_title">This AI got 10th in the world (<a href="https://www.codingame.com/ide/puzzle/othello-1" target="_blank">Codingame Othello</a>)</div>
+        <p align="center" class="setting"><a href="#usage">使い方</a></p>
         <p align="center">
-            <input type="radio" class="radio_size" name="ai_player" value="0" id="black"><label for="black" class="setting">AI: 黒 あなた: 白</label>
-            <input type="radio" class="radio_size" name="ai_player" value="1" id="white" checked><label for="white" class="setting">あなた: 黒 AI: 白</label>
+            <input type="radio" class="radio_size" name="ai_player" value="1" id="white" checked><label for="white" class="setting">黒: あなた 白: AI</label>
+            <input type="radio" class="radio_size" name="ai_player" value="0" id="black"><label for="black" class="setting">黒: AI 白: あなた</label>
         </p>
         <p align="center"><input type="submit" class="setting" value="対局開始" onclick="start()" id="start"></p>
         <p align="center">
-            <span class="setting">思考時間</span>
-            <input type="radio" class="radio_size" name="tl" value="5" id="5"><label for="5" class="setting">0.005秒</label>
-            <input type="radio" class="radio_size" name="tl" value="10" id="10"><label for="10" class="setting">0.010秒</label>
-            <input type="radio" class="radio_size" name="tl" value="50" id="50"><label for="50" class="setting">0.050秒</label>
-            <input type="radio" class="radio_size" name="tl" value="100" id="100" checked><label for="100" class="setting">0.100秒</label>
-            <input type="radio" class="radio_size" name="tl" value="200" id="200"><label for="200" class="setting">0.200秒</label>
+            <span class="setting"><a href="#strength">AIの強さ</a></span>
+            <input type="radio" class="radio_size" name="tl" value="2" id="2"><label for="2" class="setting">作者より弱い</label>
+            <input type="radio" class="radio_size" name="tl" value="5" id="5"><label for="5" class="setting">作者くらい</label>
+            <input type="radio" class="radio_size" name="tl" value="10" id="10"><label for="10" class="setting">強い。</label>
+            <input type="radio" class="radio_size" name="tl" value="50" id="50"><label for="50" class="setting">無理。</label>
+            <input type="radio" class="radio_size" name="tl" value="100" id="100" checked><label for="100" class="setting">人間世界トップくらい</label>
+            <input type="radio" class="radio_size" name="tl" value="200" id="200"><label for="200" class="setting">😇😇😇</label>
         </p>
         <table class="coords" id="coord_top" align="center"></table>
         <table align="center">
@@ -42,6 +44,36 @@
                 <td class="status_cell"><span class="state_blank"></span></td>
             </tr>
         </table>
+        <div id="usage" align="center">
+            <div class="sub_title">-----使い方-----</div>
+            <div>
+                手番を選択し、対局開始ボタンを押してください。<br>
+                AIの強さは対局前と対局中、いつでも変更できます。<br>
+                AIの強さについての詳細は<a href="#strength">こちら</a>
+            </div>
+        </div>
+        <div id="strength" align="center">
+            <div class="sub_title">-----AIの強さ-----</div>
+            <div>
+                AIの強さはAIが1手に要する最大の計算時間で調整されます。<br>
+                各強さでの計算時間は以下の通りです。
+            </div>
+            <ul>
+                <li>作者より弱い: 0.002秒/手</li>
+                <li>作者くらい: 0.005秒/手</li>
+                <li>強い。: 0.010秒/手</li>
+                <li>無理。: 0.050秒/手</li>
+                <li>人間世界トップくらい: 0.100秒/手</li>
+                <li>😇😇😇: 0.200秒/手</li>
+            </ul>
+        </div>
+        <div align="center">
+            <div class="sub_title">Made by にゃにゃん(山名琢翔)</div>
+            <a href="https://github.com/Nyanyan/Web_Egaroucid">GitHubレポジトリ</a><br>
+            <a href="https://nyanyan.github.io/">Webサイト</a><br>
+            <a href="https://twitter.com/takuto_yamana">Twitter(作品投稿)</a><br>
+            <a href="https://twitter.com/Nyanyan_Cube">Twitter(雑多な方)</a>
+        </div>
         <script src="static/js/script.js"></script>
     </body>
 </html>
