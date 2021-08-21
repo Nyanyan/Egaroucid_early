@@ -111,6 +111,12 @@
             その様子は<a href="https://www.youtube.com/watch?v=7SMzAaNkfVc&lc=UgwUHI1qZIok2TvpGDx4AaABAg.9RGEhjcbmpt9RGFdX1K6bB" target="_blank">YouTube</a>で見られます。
         </div>
         <div align="center">
+            <div class="sub_title">-----技術解説-----</div>
+            このAIはminimax系ゲーム木探索アルゴリズムであるNegascout法を主体に、葉ノード付近ではNegaalpha法に切り替えて高速化しています。move orderingを行う場合は開放度のようなものを用いています。<br>
+            オセロの状態管理には完全インデックス化を用いています。完全インデックス化は配列やビットボードよりも高速に処理できます。<br>
+            評価関数には、列や行のパターン、石数、着手可能数、各マスの重み、確定石数、潜在的着手可能数を正規化したものの重みつけ和を使っています。
+        </div>
+        <div align="center">
             <div class="sub_title">Made by にゃにゃん(山名琢翔)</div>
             <a href="https://github.com/Nyanyan/Web_Egaroucid" target="_blank">このページのGitHubレポジトリ</a><br>
             <a href="https://github.com/Nyanyan/Reversi" target="_blank">使われているAIの旧バージョンのGitHubレポジトリ</a><br>
