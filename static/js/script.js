@@ -21,6 +21,8 @@ let grid = [
 ];
 var player = 0;
 var ai_player = -1;
+let record = [];
+var step = 0;
 
 function start() {
     ai_player = -1;
@@ -278,9 +280,18 @@ function move(y, x) {
             }
         }
     }
+    ++record.length;
+    record[record.length - 1] = [y, x];
+    update_record();
     player = 1 - player;
     show(y, x);
     if (player == ai_player) {
         ai();
     }
+}
+
+function update_record() {
+    var record_html = document.getElementById('record');
+    var new_coord = String.fromCharCode(65 + record[record.length - 1][1]) + String.fromCharCode(49 + record[record.length - 1][0]);
+    record_html.innerHTML += new_coord;
 }
