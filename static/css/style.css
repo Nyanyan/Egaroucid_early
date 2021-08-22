@@ -179,3 +179,9 @@ html, body {
 .image {
     width: 50vmin;
 }
+.hidden {
+    visibility: hidden;
+}
+.show {
+    visibility: visible;
+}

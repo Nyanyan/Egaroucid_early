@@ -403,17 +403,23 @@ function end_game() {
         document.getElementById('result_text').innerHTML = "引き分け！";
         tweet_str = "世界10位のオセロAIの「" + tl_names[tl_idx] + "」モードと引き分けました！ :|";
     }
-    document.getElementById('tweet_result').innerHTML = '結果をツイート！<a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-text="' + tweet_str + '" data-url="https://www.egaroucid.nyanyan.dev/" data-hashtags="egaroucid" data-related="takuto_yamana,Nyanyan_Cube" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>';
+    var tweet_result = document.getElementById('tweet_result');
+    tweet_result.innerHTML = '結果をツイート！<a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-text="' + tweet_str + '" data-url="https://www.egaroucid.nyanyan.dev/" data-hashtags="egaroucid" data-related="takuto_yamana,Nyanyan_Cube" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>';
     twttr.widgets.load();
     var popup = document.getElementById('js-popup');
     if(!popup) return;
     popup.classList.add('is-show');
     var blackBg = document.getElementById('js-black-bg');
+    tweet_result.classList.add('show');
+    var new_game = document.getElementById('new_game');
+    new_game.classList.add('show');
     closePopUp(blackBg);
     function closePopUp(elem) {
         if(!elem) return;
         elem.addEventListener('click', function() {
             popup.classList.remove('is-show');
+            tweet_result.classList.remove('show');
+            new_game.classList.remove('show');
         })
     }
 }
