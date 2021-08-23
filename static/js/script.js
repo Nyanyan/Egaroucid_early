@@ -63,6 +63,15 @@ var graph = new Chart(ctx, {
 });
 
 function start() {
+    var data_json = {};
+    data_json["a"] = 1;
+    $.ajax({
+        type: "POST",
+        url: "/start",
+        data: data_json,
+        async: false,
+        dataType: "json",
+    });
     ai_player = -1;
     let players = document.getElementsByName('ai_player');
     for (var i = 0; i < 2; ++i) {
@@ -375,12 +384,6 @@ function update_graph(s) {
 }
 
 function end_game() {
-    html2canvas(document.getElementById('main'),{
-        onrendered: function(canvas){
-            var imgData = canvas.toDataURL();
-            document.getElementById("game_result").src = imgData;
-        }
-    });
     let stones = [0, 0];
     for (var y = 0; y < hw; ++y) {
         for (var x = 0; x < hw; ++x) {
@@ -389,6 +392,25 @@ function end_game() {
             }
         }
     }
+    var data_json = {};
+    if (stones[ai_player] > stones[1 - ai_player]) {
+        data_json["a"] = 'win';
+    } else {
+        data_json["a"] = 'lose';
+    }
+    $.ajax({
+        type: "POST",
+        url: "/end",
+        data: data_json,
+        async: false,
+        dataType: "json",
+    });
+    html2canvas(document.getElementById('main'),{
+        onrendered: function(canvas){
+            var imgData = canvas.toDataURL();
+            document.getElementById("game_result").src = imgData;
+        }
+    });
     var tweet_str = "";
     if (stones[ai_player] < stones[1 - ai_player]) {
         document.getElementById('result_text').innerHTML = "あなたの勝ち！";

@@ -13,14 +13,14 @@ html, body {
 }
 .sub_sub_title {
     text-align: center;
-    font-size: x-large;
+    font-size: large;
     font-weight: bold;
 }
 .setting {
-    font-size: x-large;
+    font-size: large;
 }
 .text {
-    font-size: large;
+    font-size: medium;
 }
 .radio_size {
     width: x-large;
