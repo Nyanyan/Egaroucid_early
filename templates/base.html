@@ -105,7 +105,7 @@
                     <td class="text">-1</td>
                     <td class="text">0.003秒/手</td>
                     <td class="text">約3手</td>
-                    <td class="text">評価値の一番低い手を返します</td>
+                    <td class="text">評価値の一番低い手を指し、負けようと試みます</td>
                 </tr>
                 <tr>
                     <td class="text">1</td>
@@ -143,14 +143,20 @@
                     <td class="text">7</td>
                     <td class="text">0.400秒/手</td>
                     <td class="text">約9手</td>
+                    <td class="text">オセロ有段者の方なら勝てると思います</td>
                 </tr>
             </table>
         </div>
         <div align="center">
             <div class="sub_title">-----お知らせ-----</div>
-            <div  class="text">
+            <div class="text">
+                <p class="sub_sub_title">オセロ世界4位の方と対戦</p>
                 正式公開前に、オセロ世界選手権世界4位経験者の方と0.100秒/手で対戦していただきました。<br>
                 その様子は<a href="https://www.youtube.com/watch?v=7SMzAaNkfVc&lc=UgwUHI1qZIok2TvpGDx4AaABAg.9RGEhjcbmpt9RGFdX1K6bB" target="_blank">YouTube</a>で見られます。
+            </div>
+            <div class="text">
+                <p class="sub_sub_title">レベル-1(負けようとする)に負ける方法の解説記事</p>
+                Ar-Rayさん(<a href="https://twitter.com/Ray255Ar" target="_blank">Twitter</a>)がこのAIのレベル-1(一番負けそうな手を指す)に負ける方法を<a href="https://ar-ray.hatenablog.com/entry/2021/08/23/214227" target="_blank">はてなブログの記事</a>にしてくださいました。
             </div>
         </div>
         <div id="achievement" align="center">
@@ -175,7 +181,8 @@
             <div class="text">
                 このAIはminimax系ゲーム木探索アルゴリズムであるNegascout法を主体に、葉ノード付近ではNegaalpha法に切り替えて高速化しています。move orderingを行う場合は開放度のようなものを用いています。<br>
                 オセロの状態管理には完全インデックス化を用いています。完全インデックス化は配列やビットボードよりも高速に処理できます。<br>
-                評価関数には、列や行のパターン、石数、着手可能数、各マスの重み、確定石数、潜在的着手可能数を正規化したものの重みつけ和を使っています。
+                評価関数には、列や行のパターン、石数、着手可能数、各マスの重み、確定石数、潜在的着手可能数を正規化したものの重みつけ和を使っています。<br>
+                序盤、中盤、終盤で評価関数のパラメータのみを変えて全く同じアルゴリズムで探索しています。今後は序盤のbook活用、終盤の必勝読みなどを加えたいです。
             </div>
         </div>
         <div align="center">
@@ -237,6 +244,22 @@
                         <ul>
                             <li>「お願い」の追加</li>
                             <li>予想以上に流行ってきたので「世界10位」に関する詳細を追加(叩かないで…)</li>
+                        </ul>
+                    </td>
+                </tr>
+                <tr>
+                    <td class="logs">2021/08/23 22:50</td>
+                    <td class="logs">
+                        [不具合解決]<br>
+                        <ul>
+                            <li>サーバで動かすAIを少し増やした</li>
+                        </ul>
+                        [表示変更]
+                        <ul>
+                            <li>Ar-Rayさんの記事を紹介</li>
+                            <li>文字の大きさを変更</li>
+                            <li>レベル7の備考を追加</li>
+                            <li>技術解説の追記</li>
                         </ul>
                     </td>
                 </tr>
