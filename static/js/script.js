@@ -312,7 +312,6 @@ function ai() {
     }).fail(function(data) {
         alert("[ERROR] connection failed click OK to try again");
         setTimeout(ai(), "300");
-        ai();
     });
 }
 
