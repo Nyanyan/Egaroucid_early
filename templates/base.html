@@ -28,12 +28,14 @@
         </p>
         <p align="center">
             <span class="setting"><a href="#strength">AIの強さ</a></span>
-            <input type="radio" class="radio_size" name="tl" value="3" id="3"><label for="3" class="setting">作者より弱い</label>
-            <input type="radio" class="radio_size" name="tl" value="5" id="5"><label for="5" class="setting">作者くらい</label>
-            <input type="radio" class="radio_size" name="tl" value="10" id="10" checked><label for="10" class="setting">強い。</label>
-            <input type="radio" class="radio_size" name="tl" value="50" id="50"><label for="50" class="setting">無理。</label>
-            <input type="radio" class="radio_size" name="tl" value="100" id="100"><label for="100" class="setting">人間世界トップくらい</label>
-            <input type="radio" class="radio_size" name="tl" value="200" id="200"><label for="200" class="setting">😇😇😇</label>
+            <input type="radio" class="radio_size" name="tl" value="-3" id="-3"><label for="-3" class="setting">レベル-1</label>
+            <input type="radio" class="radio_size" name="tl" value="3" id="3"><label for="3" class="setting">レベル1</label>
+            <input type="radio" class="radio_size" name="tl" value="5" id="5"><label for="5" class="setting">レベル2</label>
+            <input type="radio" class="radio_size" name="tl" value="10" id="10" checked><label for="10" class="setting">レベル3</label>
+            <input type="radio" class="radio_size" name="tl" value="50" id="50"><label for="50" class="setting">レベル4</label>
+            <input type="radio" class="radio_size" name="tl" value="100" id="100"><label for="100" class="setting">レベル5</label>
+            <input type="radio" class="radio_size" name="tl" value="200" id="200"><label for="200" class="setting">レベル6</label>
+            <input type="radio" class="radio_size" name="tl" value="400" id="400"><label for="400" class="setting">レベル7</label>
         </p>
         <div align="center">
             <input type="submit" class="setting" value="対局開始" onclick="start()" id="start">
@@ -42,10 +44,7 @@
             <div class="popup-inner">
                 <p align="center" class="sub_title" id="result_text"></p>
                 <a href="#"><img class="image" id="game_result" src=""></a>
-                <p align="center" class="hidden" id="tweet_result">
-                    結果をツイート！
-                    <a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-text="世界10位のオセロAI&quot;Egaroucid&quot;と勝負！" data-url="https://www.egaroucid.nyanyan.dev/" data-hashtags="egaroucid" data-related="takuto_yamana,Nyanyan_Cube" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
-                </p>
+                <p align="center" class="hidden" id="tweet_result"></p>
                 <p align="center" class="text">上の画像は右クリックなどで保存できます。</p>
                 <div class="hidden" id="new_game"><p align="center" class="text"><a href="https://www.egaroucid.nyanyan.dev">新しい対局を開始(リロードします)</a></p></div>
                 <p align="center" class="text">ポップアップの周りをタップするとポップアップが消えます。</p>
@@ -97,39 +96,53 @@
             </div>
             <table>
                 <tr>
-                    <td class="text">名称</td>
+                    <td class="text">レベル</td>
                     <td class="text">計算時間</td>
                     <td class="text">読み手数</td>
+                    <td class="text">備考</td>
                 </tr>
                 <tr>
-                    <td class="text">作者より弱い</td>
+                    <td class="text">-1</td>
+                    <td class="text">0.003秒/手</td>
+                    <td class="text">約3手</td>
+                    <td class="text">評価値の一番低い手を返します</td>
+                </tr>
+                <tr>
+                    <td class="text">1</td>
                     <td class="text">0.003秒/手</td>
                     <td class="text">約3手</td>
                 </tr>
                 <tr>
-                    <td class="text">作者くらい</td>
+                    <td class="text">2</td>
                     <td class="text">0.005秒/手</td>
                     <td class="text">約4手</td>
+                    <td class="text">作者の実力はこのくらいです</td>
                 </tr>
                 <tr>
-                    <td class="text">強い。</td>
+                    <td class="text">3</td>
                     <td class="text">0.010秒/手</td>
                     <td class="text">約5手</td>
                 </tr>
                 <tr>
-                    <td class="text">無理。</td>
+                    <td class="text">4</td>
                     <td class="text">0.050秒/手</td>
+                    <td class="text">約7手</td>
+                </tr>
+                <tr>
+                    <td class="text">5</td>
+                    <td class="text">0.100秒/手</td>
+                    <td class="text">約8手</td>
+                    <td class="text">このモードで世界4位の方と対戦していただきました</td>
+                </tr>
+                <tr>
+                    <td class="text">6</td>
+                    <td class="text">0.200秒/手</td>
                     <td class="text">約9手</td>
                 </tr>
                 <tr>
-                    <td class="text">人間世界トップくらい</td>
-                    <td class="text">0.100秒/手</td>
+                    <td class="text">7</td>
+                    <td class="text">0.400秒/手</td>
                     <td class="text">約10手</td>
-                </tr>
-                <tr>
-                    <td class="text">😇😇😇</td>
-                    <td class="text">0.200秒/手</td>
-                    <td class="text">約11手</td>
                 </tr>
             </table>
         </div>
@@ -149,16 +162,8 @@
             </div>
         </div>
         <div align="center">
-            <div class="sub_title">-----更新履歴-----</div>
-            <table>
-                <tr>
-                    <td>2021/08/22</td>
-                    <td>公開</td>
-                </tr>
-            </table>
-        </div>
-        <div align="center">
             <div class="sub_title">Made by にゃにゃん(山名琢翔)</div>
+            <p class="text">不具合報告はTwitterやGitHubでお願いします。</p>
             <div class="text">
                 <a href="https://github.com/Nyanyan/Web_Egaroucid" target="_blank">このページのGitHubレポジトリ</a><br>
                 <a href="https://github.com/Nyanyan/Reversi" target="_blank">使われているAIの旧バージョンのGitHubレポジトリ</a><br>
@@ -166,6 +171,36 @@
                 <a href="https://twitter.com/takuto_yamana" target="_blank">Twitter(作品投稿)</a><br>
                 <a href="https://twitter.com/Nyanyan_Cube" target="_blank">Twitter(雑多な方)</a>
             </div>
+        </div>
+        <div align="center">
+            <div class="sub_title">-----更新履歴-----</div>
+            <p class="text">時間はJSTです(作者の生活習慣はUTCです)</p>
+            <table>
+                <tr>
+                    <td class="logs">2021/08/22 23:30</td>
+                    <td class="logs">公開</td>
+                </tr>
+                <tr>
+                    <td class="logs">2021/08/23 </td>
+                    <td class="logs">
+                        [不具合解決]<br>
+                        <ul>
+                            <li>サーバの負荷軽減</li>
+                            <li>意図せずツイート画面に飛ぶバグの解消</li>
+                        </ul>
+                        [表示変更]
+                        <ul>
+                            <li>想定よりも読み手数が少なくなっているのでとりあえずモード表示を変更</li>
+                            <li>レイアウトを若干変更</li>
+                        </ul>
+                        [追加機能]<br>
+                        <ul>
+                            <li>読み手数が少ないからか最強モード(レベル6)が結構負けるので「レベル7」を追加(サーバ負荷が大きかったらやめます)</li>
+                            <li>レベル1相当でもまあまあ強いので、評価値が一番低い手を打つ「レベル-1」を追加</li>
+                        </ul>
+                    </td>
+                </tr>
+            </table>
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.bundle.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/0.4.1/html2canvas.js"></script>

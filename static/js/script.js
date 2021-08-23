@@ -23,7 +23,7 @@ var player = 0;
 var ai_player = -1;
 var tl = 50;
 var tl_idx = -1;
-let tl_names = ['作者より弱い', '作者くらい', '強い。', '無理。', '人間世界トップくらい', '😇😇😇'];
+let tl_names = ['レベル-1', 'レベル1', 'レベル2', 'レベル3', 'レベル4', 'レベル5', 'レベル6', 'レベル7'];
 let record = [];
 var step = 0;
 var ctx = document.getElementById("graph");
@@ -393,14 +393,14 @@ function end_game() {
     if (stones[ai_player] < stones[1 - ai_player]) {
         document.getElementById('result_text').innerHTML = "あなたの勝ち！";
         var dis = stones[1 - ai_player] - stones[ai_player];
-        tweet_str = "世界10位のオセロAIの「" + tl_names[tl_idx] + "」モードに" + dis + "石勝ちしました！ :)";
+        tweet_str = "世界10位のオセロAIのレベル7中「" + tl_names[tl_idx] + "」に" + dis + "石勝ちしました！ :)";
     } else if (stones[ai_player] > stones[1 - ai_player]) {
         document.getElementById('result_text').innerHTML = "AIの勝ち！";
         var dis = stones[ai_player] - stones[1 - ai_player];
-        tweet_str = "世界10位のオセロAIの「" + tl_names[tl_idx] + "」モードに" + dis + "石負けしました… :(";
+        tweet_str = "世界10位のオセロAIのレベル7中「" + tl_names[tl_idx] + "」に" + dis + "石負けしました… :(";
     } else {
         document.getElementById('result_text').innerHTML = "引き分け！";
-        tweet_str = "世界10位のオセロAIの「" + tl_names[tl_idx] + "」モードと引き分けました！ :|";
+        tweet_str = "世界10位のオセロAIのレベル7中「" + tl_names[tl_idx] + "」と引き分けました！ :|";
     }
     var tweet_result = document.getElementById('tweet_result');
     tweet_result.innerHTML = '結果をツイート！<a href="https://twitter.com/share?ref_src=twsrc%5Etfw" class="twitter-share-button" data-text="' + tweet_str + '" data-url="https://www.egaroucid.nyanyan.dev/" data-hashtags="egaroucid" data-related="takuto_yamana,Nyanyan_Cube" data-show-count="false">Tweet</a><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>';
