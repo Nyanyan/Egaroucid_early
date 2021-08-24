@@ -28,7 +28,8 @@
         </p>
         <p align="center">
             <span class="setting"><a href="#strength">AIの強さ</a></span>
-            <input type="radio" class="radio_size" name="tl" value="-3" id="-3"><label for="-3" class="setting">レベル-1</label>
+            <input type="radio" class="radio_size" name="tl" value="-10" id="-10"><label for="-10" class="setting_blue">レベル-2</label>
+            <input type="radio" class="radio_size" name="tl" value="-3" id="-3"><label for="-3" class="setting_blue">レベル-1</label>
             <input type="radio" class="radio_size" name="tl" value="3" id="3"><label for="3" class="setting">レベル1</label>
             <input type="radio" class="radio_size" name="tl" value="5" id="5"><label for="5" class="setting">レベル2</label>
             <input type="radio" class="radio_size" name="tl" value="10" id="10" checked><label for="10" class="setting">レベル3</label>
@@ -101,6 +102,12 @@
                         <td class="text">計算時間</td>
                         <td class="text">読み手数</td>
                         <td class="text">備考</td>
+                    </tr>
+                    <tr>
+                        <td class="text">-2</td>
+                        <td class="text">0.010秒/手</td>
+                        <td class="text">約5手</td>
+                        <td class="text">レベル-1よりも負けやすい評価関数で負けようとします</td>
                     </tr>
                     <tr>
                         <td class="text">-1</td>
@@ -185,7 +192,8 @@
                 <summary class="summary">レベル-1について</summary>
                 <div  class="text">
                     単純に勝つための評価値を逆にしたら負けようとするかと言われると、そうではないことを作者は承知しています。<br>
-                    この機能はレベル1でもそこそこ強くて勝てない人を見て、そういう方でも楽しんでいただけたらと思って作りました。
+                    この機能はレベル1でもそこそこ強くて勝てない人を見て、そういう方でも楽しんでいただけたらと思って作りました。<br>
+                    ちなみにレベル-2はレベル-1よりも負けやすくなるよう評価関数をいじってみました。ぜひ挑戦してみてください。
                 </div>
             </details>
             <details class="details">
@@ -318,6 +326,19 @@
                             <ul>
                                 <li>ページが長くなってきたのでdetailsを使用</li>
                                 <li>オセロAIの紹介記事を掲載</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="logs">2021/08/25 03:</td>
+                        <td class="logs">
+                            [機能追加]<br>
+                            <ul>
+                                <li>レベル-1よりも負けようと頑張る「レベル-2」を追加</li>
+                            </ul>
+                            [仕様変更]<br>
+                            <ul>
+                                <li>バックエンドのメモリ効率を良くした</li>
                             </ul>
                         </td>
                     </tr>

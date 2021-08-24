@@ -19,6 +19,10 @@ html, body {
 .setting {
     font-size: large;
 }
+.setting_blue {
+    font-size: large;
+    color: blue;
+}
 .text {
     font-size: medium;
 }
