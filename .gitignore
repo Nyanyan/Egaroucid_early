@@ -1,6 +1,8 @@
 __pycache__
 ai.cpp
+ai_init.cpp
 ai.out
+ai_init.out
 Procfile
 app.py
 statistics
