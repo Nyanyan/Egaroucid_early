@@ -22,6 +22,7 @@ html, body {
 .setting_blue {
     font-size: large;
     color: blue;
+    font-weight: bold;
 }
 .text {
     font-size: medium;

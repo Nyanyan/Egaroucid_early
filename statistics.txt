@@ -1,1 +1,2 @@
-GET DATA start 112 end 75 win 56
+LOGGING start 267 end 218 win 173
+LOGGING start 19 end 18 win 16
