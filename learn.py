@@ -280,13 +280,39 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(64, activation='relu', input_shape=(128,)))
-model.add(Dense(64, activation='relu'))
+model.add(Dense(64, activation='tanh', input_shape=(128,)))
+model.add(Dense(64, activation='tanh'))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=30)
-history = model.fit(train_data, train_labels, epochs=500, validation_split=0.2, callbacks=[early_stop])
-model.save_weights('param.hdf5')
+history = model.fit(train_data, train_labels, epochs=20, validation_split=0.2, callbacks=[early_stop])
+for layer_num, layer in enumerate(model.layers):
+    print(layer.weights[0].numpy())
+    with open('param/w' + str(layer_num + 1) + '.txt', 'w') as f:
+        for i in range(len(layer.weights[0].numpy())):
+            if len(layer.weights[0].numpy()[i]) > 1:
+                f.write('{')
+            for j in range(len(layer.weights[0].numpy()[i])):
+                if j == len(layer.weights[0].numpy()[i]) - 1 and len(layer.weights[0].numpy()[i]) > 1:
+                    f.write(str(layer.weights[0].numpy()[i][j]))
+                else:
+                    f.write(str(layer.weights[0].numpy()[i][j]) + ',')
+            if len(layer.weights[0].numpy()[i]) > 1:
+                if i == len(layer.weights[0].numpy()) - 1:
+                    f.write('}')
+                else:
+                    f.write('},\n')
+    if layer_num == len(model.layers) - 1:
+        break
+    print(layer.weights[1].numpy())
+    with open('param/b' + str(layer_num + 1) + '.txt', 'w') as f:
+        f.write('{')
+        for i in range(len(layer.weights[1].numpy())):
+            if i == len(layer.weights[1].numpy()) - 1:
+                f.write(str(layer.weights[1].numpy()[i]) + '}')
+            else:
+                f.write(str(layer.weights[1].numpy()[i]) + ',')
+        
 plt.plot(history.history['loss'], label='train loss')
 plt.plot(history.history['val_loss'], label='val loss')
 plt.xlabel('epoch')
@@ -300,3 +326,5 @@ test_num = min(test_labels.shape[0], test_num)
 test_predictions = model.predict(test_data[0:test_num]).flatten()
 print([round(i, 2) for i in test_labels[0:test_num]])
 print([round(i, 2) for i in test_predictions[0:test_num]])
+for i in range(10):
+    print(list(test_data[i]))
