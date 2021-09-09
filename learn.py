@@ -234,7 +234,8 @@ def collect_data(s):
         if rv.end():
             break
     rv.check_pass()
-    score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
+    #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
+    score = rv.nums[0] - rv.nums[1]
     for sgn, grid in grids:
         if grid in dict_data:
             dict_data[grid][0] += sgn * score
@@ -269,7 +270,7 @@ def divide_data(ratio):
     test_labels = np.array(test_labels)
     
 
-data_num = 100
+data_num = 1000
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
@@ -280,12 +281,23 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(64, activation='tanh', input_shape=(128,)))
-model.add(Dense(64, activation='tanh'))
+model.add(Dense(128, activation='tanh', input_shape=(128,)))
+model.add(Dropout(0.0625))
+model.add(Dense(24, activation='tanh'))
+model.add(Dense(8, activation='tanh'))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
-early_stop = EarlyStopping(monitor='val_loss', patience=30)
-history = model.fit(train_data, train_labels, epochs=20, validation_split=0.2, callbacks=[early_stop])
+early_stop = EarlyStopping(monitor='val_loss', patience=20)
+history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
+with open('param/param.txt', 'w') as f:
+    for i in (0, 2):
+        for item in model.layers[i].weights[1].numpy():
+            f.write(str(item) + '\n')
+    for i in (0, 2, 3):
+        for arr in model.layers[i].weights[0].numpy():
+            for item in arr:
+                f.write(str(item) + '\n')
+'''
 for layer_num, layer in enumerate(model.layers):
     print(layer.weights[0].numpy())
     with open('param/w' + str(layer_num + 1) + '.txt', 'w') as f:
@@ -312,7 +324,7 @@ for layer_num, layer in enumerate(model.layers):
                 f.write(str(layer.weights[1].numpy()[i]) + '}')
             else:
                 f.write(str(layer.weights[1].numpy()[i]) + ',')
-        
+'''
 plt.plot(history.history['loss'], label='train loss')
 plt.plot(history.history['val_loss'], label='val loss')
 plt.xlabel('epoch')
@@ -321,10 +333,10 @@ plt.legend(loc='best')
 plt.show()
 test_loss, test_mae = model.evaluate(test_data, test_labels)
 print('result', test_loss, test_mae)
-test_num = 20
+test_num = 10
 test_num = min(test_labels.shape[0], test_num)
 test_predictions = model.predict(test_data[0:test_num]).flatten()
 print([round(i, 2) for i in test_labels[0:test_num]])
 print([round(i, 2) for i in test_predictions[0:test_num]])
-for i in range(10):
+for i in range(5):
     print(list(test_data[i]))

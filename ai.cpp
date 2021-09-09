@@ -337,7 +337,7 @@ struct board_param{
     int digit_pow[3][10];
     int put_idx[hw2][10];
     int put_idx_num[hw2];
-    int restore_p[6561], restore_o[6561];
+    int restore_p[6561][hw], restore_o[6561][hw];
 };
 
 struct eval_param{
@@ -393,6 +393,15 @@ inline double myrandom(){
     xorz = xorw;
     xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
     return (double)(xorw) / 2147483648.0;
+}
+
+inline double myrandom_int(){
+    int t = (xorx^(xorx<<11));
+    xorx = xory;
+    xory = xorz;
+    xorz = xorw;
+    xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
+    return xorw;
 }
 
 inline int randint(int fr, int to){
@@ -574,13 +583,13 @@ void init(){
         board_param.reverse[i] = board_reverse(i);
         p = reverse_line(create_p(i));
         o = reverse_line(create_o(i));
-        board_param.restore_p[i] = p;
-        board_param.restore_o[i] = o;
         eval_param.cnt_p[i] = 0;
         eval_param.cnt_o[i] = 0;
         for (j = 0; j < hw; ++j){
-            eval_param.cnt_p[i] += 1 & (p >> j);
-            eval_param.cnt_o[i] += 1 & (o >> j);
+            board_param.restore_p[i][j] = 1 & (p >> j);
+            board_param.restore_o[i][j] = 1 & (o >> j);
+            eval_param.cnt_p[i] += board_param.restore_p[i][j];
+            eval_param.cnt_o[i] += board_param.restore_o[i][j];
         }
         mobility = check_mobility(p, o);
         canput_num = 0;
@@ -633,17 +642,17 @@ void init(){
 
 inline double evaluate(const int *board){
     int i, j;
-    /*
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
             eval_param.nodes1[i * hw + j] = board_param.restore_p[board[i]][j];
             eval_param.nodes1[hw2 + i * hw + j] = board_param.restore_o[board[i]][j];
         }
     }
-    */
+    /*
     int tmp[hw2 * 2] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0};
     for (i = 0; i < hw2 * 2; ++i)
         eval_param.nodes1[i] = tmp[i];
+    */
     for (i = 0; i < stage2; ++i)
         eval_param.nodes2[i] = 0.0;
     for (i = 0; i < stage3; ++i)
@@ -655,6 +664,10 @@ inline double evaluate(const int *board){
             eval_param.nodes2[j] += w1[i][j];
     }
     for (i = 0; i < stage2; ++i){
+        if (!(myrandom_int() & 0b1111)){
+            eval_param.nodes2[i] = 0.0;
+            continue;
+        }
         eval_param.nodes2[i] += b1[i];
         eval_param.nodes2[i] = tanh(eval_param.nodes2[i]);
     }
@@ -1079,9 +1092,10 @@ int main(){
 
     init();
     cerr << "AI initialized" << endl;
-
+    /*
     cout << evaluate(board) << endl;
     return 0;
+    */
     
     while (true){
         outy = -1;
