@@ -21,8 +21,29 @@ test_labels = []
 
 hw = 8
 hw2 = 64
+board_index_num = 38
 dy = [0, 1, 0, -1, 1, 1, -1, -1]
 dx = [1, 0, -1, 0, 1, -1, 1, -1]
+pattern_space = []
+board_translate = []
+
+consts = [
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
+    62, 63, 0, 8, 16, 24, 32, 40, 48, 56, 1, 9, 17, 25, 33, 41, 49, 57, 2, 10, 18, 26, 34, 42, 50, 58, 3, 11, 19, 27, 35, 43, 51, 59, 4, 12, 20, 28, 36, 44, 52, 60, 5, 13, 21, 29, 37, 45, 53, 61, 6, 14, 22, 30, 38, 46, 54, 62, 7, 15, 23, 31, 39, 47, 55, 63, 5, 14, 23, 4, 13, 22, 31, 3, 12, 21, 30, 39, 2, 11, 20, 29, 38, 47, 1, 10, 19, 28, 37, 46, 55, 0, 9, 18, 27, 36, 45, 54, 63, 8,
+    17, 26, 35, 44, 53, 62, 16, 25, 34, 43, 52, 61, 24, 33, 42, 51, 60, 32, 41, 50, 59, 40, 49, 58, 2, 9, 16, 3, 10, 17, 24, 4, 11, 18, 25, 32, 5, 12, 19, 26, 33, 40, 6, 13, 20, 27, 34, 41, 48, 7, 14, 21, 28, 35, 42, 49, 56, 15, 22, 29, 36, 43, 50, 57, 23, 30, 37, 44, 51, 58, 31, 38, 45, 52, 59, 39, 46, 53, 60, 47, 54, 61, 10, 8, 8, 8, 8, 4, 4, 8, 2, 4, 54, 63, 62, 61, 60, 59, 58, 57,
+    56, 49, 49, 56, 48, 40, 32, 24, 16, 8, 0, 9, 9, 0, 1, 2, 3, 4, 5, 6, 7, 14, 14, 7, 15, 23, 31, 39, 47, 55, 63, 54, 3, 2, 1, 0, 9, 8, 16, 24, 4, 5, 6, 7, 14, 15, 23, 31, 60, 61, 62, 63, 54, 55, 47, 39, 59, 58, 57, 56, 49, 48, 40, 32, 0, 1, 2, 3, 8, 9, 10, 11, 0, 8, 16, 24, 1, 9, 17, 25, 7, 6, 5, 4, 15, 14, 13, 12, 7, 15, 23, 31, 6, 14, 22, 30, 63, 62, 61, 60,
+    55, 54, 53, 52, 63, 55, 47, 39, 62, 54, 46, 38, 56, 57, 58, 59, 48, 49, 50, 51, 56, 48, 40, 32, 57, 49, 41, 33, 0, 9, 18, 27, 36, 45, 54, 63, 7, 14, 21, 28, 35, 42, 49, 56, 0, 1, 2, 3, 4, 5, 6, 7, 7, 15, 23, 31, 39, 47, 55, 63, 63, 62, 61, 60, 59, 58, 57, 56, 56, 48, 40, 32, 24, 26, 8, 0
+]
+
+consts_idx = 0
+for i in range(board_index_num):
+    pattern_space.append(consts[consts_idx])
+    consts_idx += 1
+for i in range(board_index_num):
+    board_translate.append([])
+    for j in range(pattern_space[i]):
+        board_translate[-1].append(consts[consts_idx])
+        consts_idx += 1
 
 def empty(grid, y, x):
     return grid[y][x] == -1 or grid[y][x] == 2
@@ -64,6 +85,23 @@ def check(grid, player, y, x):
                 nnx = nx + d * dx[dr]
                 res_grid[nny][nnx] = True
     return res, res_grid
+
+def pot_canput_line(arr):
+    res_p = 0
+    res_o = 0
+    for i in range(hw - 1):
+        if arr[i] == -1 or arr[i] == 2:
+            if arr[i + 1] == 0:
+                res_o += 1
+            elif arr[i + 1] == 1:
+                res_p += 1
+    for i in range(1, hw):
+        if arr[i] == -1 or arr[i] == 2:
+            if arr[i - 1] == 0:
+                res_o += 1
+            elif arr[i - 1] == 1:
+                res_p += 1
+    return res_p, res_o
 
 class reversi:
     def __init__(self):
@@ -149,8 +187,20 @@ class reversi:
             #print('Draw!', self.nums[0], '-', self.nums[1])
             return -1
 
+    def pot_canput(self):
+        res_p = 0
+        res_o = 0
+        for i in range(board_index_num):
+            arr = []
+            for j in board_translate[i]:
+                arr.append(self.grid[j // hw][j % hw])
+            t1, t2 = pot_canput_line(arr)
+            res_p += t1
+            res_o += t2
+        return res_p, res_o
+
 def collect_data(s):
-    global data
+    global dict_data
     grids = []
     rv = reversi()
     idx = 2
@@ -164,6 +214,9 @@ def collect_data(s):
         if rv.move(y, x):
             print('error')
             break
+        pot_canput_p, pot_canput_o = rv.pot_canput()
+        pot_canput_p = str(pot_canput_p)
+        pot_canput_o = str(pot_canput_o)
         grid_str1 = ''
         for i in range(hw):
             for j in range(hw):
@@ -185,8 +238,8 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         grid_str1 = ''
         for i in range(hw):
@@ -209,8 +262,8 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
         
         grid_str1 = ''
         for i in reversed(range(hw)):
@@ -233,8 +286,8 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         grid_str1 = ''
         for i in reversed(range(hw)):
@@ -257,8 +310,8 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         if rv.end():
             break
@@ -299,7 +352,7 @@ def divide_data(ratio):
     test_labels = np.array(test_labels)
     
 
-data_num = 1000
+data_num = 100
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
@@ -310,7 +363,7 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(256, input_shape=(128,)))
+model.add(Dense(256, input_shape=(130,)))
 model.add(LeakyReLU(alpha=0.01))
 model.add(Dropout(0.0625))
 model.add(Dense(256))
@@ -318,7 +371,7 @@ model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
-history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
+history = model.fit(train_data, train_labels, epochs=10, validation_split=0.2, callbacks=[early_stop])
 '''
 with open('param/param.txt', 'w') as f:
     for i in (0, 3):
