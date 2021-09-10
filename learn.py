@@ -214,9 +214,9 @@ def collect_data(s):
         if rv.move(y, x):
             print('error')
             break
-        pot_canput_p, pot_canput_o = rv.pot_canput()
-        pot_canput_p = str(pot_canput_p)
-        pot_canput_o = str(pot_canput_o)
+        #pot_canput_p, pot_canput_o = rv.pot_canput()
+        #pot_canput_p = str(pot_canput_p)
+        #pot_canput_o = str(pot_canput_o)
         grid_str1 = ''
         for i in range(hw):
             for j in range(hw):
@@ -238,8 +238,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        grids.append([1, grid_str1 + grid_str2])
+        grids.append([-1, grid_str2 + grid_str1])
+        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         grid_str1 = ''
         for i in range(hw):
@@ -262,8 +264,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        grids.append([1, grid_str1 + grid_str2])
+        grids.append([-1, grid_str2 + grid_str1])
+        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
         
         grid_str1 = ''
         for i in reversed(range(hw)):
@@ -286,8 +290,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        grids.append([1, grid_str1 + grid_str2])
+        grids.append([-1, grid_str2 + grid_str1])
+        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         grid_str1 = ''
         for i in reversed(range(hw)):
@@ -310,8 +316,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        grids.append([1, grid_str1 + grid_str2])
+        grids.append([-1, grid_str2 + grid_str1])
+        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         if rv.end():
             break
@@ -352,7 +360,7 @@ def divide_data(ratio):
     test_labels = np.array(test_labels)
     
 
-data_num = 100
+data_num = 1000
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
@@ -371,7 +379,7 @@ model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
-history = model.fit(train_data, train_labels, epochs=10, validation_split=0.2, callbacks=[early_stop])
+history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
 '''
 with open('param/param.txt', 'w') as f:
     for i in (0, 3):
