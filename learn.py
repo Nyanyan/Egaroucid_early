@@ -3,6 +3,7 @@ from tensorflow.keras.layers import Activation, Dense, Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
+from keras.layers.advanced_activations import LeakyReLU
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -167,16 +168,23 @@ def collect_data(s):
         for i in range(hw):
             for j in range(hw):
                 if rv.grid[i][j] == 0:
-                    grid_str1 += '1'
+                    grid_str1 += '1 '
                 else:
-                    grid_str1 += '0'
+                    grid_str1 += '0 '
         grid_str2 = ''
         for i in range(hw):
             for j in range(hw):
                 if rv.grid[i][j] == 1:
-                    grid_str2 += '1'
+                    grid_str2 += '1 '
                 else:
-                    grid_str2 += '0'
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in range(hw):
+            for j in range(hw):
+                if rv.grid[i][j] == -1 or rv.grid[i][j] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
         grids.append([1, grid_str1 + grid_str2])
         grids.append([-1, grid_str2 + grid_str1])
 
@@ -184,16 +192,23 @@ def collect_data(s):
         for i in range(hw):
             for j in range(hw):
                 if rv.grid[j][i] == 0:
-                    grid_str1 += '1'
+                    grid_str1 += '1 '
                 else:
-                    grid_str1 += '0'
+                    grid_str1 += '0 '
         grid_str2 = ''
         for i in range(hw):
             for j in range(hw):
                 if rv.grid[j][i] == 1:
-                    grid_str2 += '1'
+                    grid_str2 += '1 '
                 else:
-                    grid_str2 += '0'
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in range(hw):
+            for j in range(hw):
+                if rv.grid[j][i] == -1 or rv.grid[j][i] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
         grids.append([1, grid_str1 + grid_str2])
         grids.append([-1, grid_str2 + grid_str1])
         
@@ -201,16 +216,23 @@ def collect_data(s):
         for i in reversed(range(hw)):
             for j in reversed(range(hw)):
                 if rv.grid[i][j] == 0:
-                    grid_str1 += '1'
+                    grid_str1 += '1 '
                 else:
-                    grid_str1 += '0'
+                    grid_str1 += '0 '
         grid_str2 = ''
         for i in reversed(range(hw)):
             for j in reversed(range(hw)):
                 if rv.grid[i][j] == 1:
-                    grid_str2 += '1'
+                    grid_str2 += '1 '
                 else:
-                    grid_str2 += '0'
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[i][j] == -1 or rv.grid[i][j] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
         grids.append([1, grid_str1 + grid_str2])
         grids.append([-1, grid_str2 + grid_str1])
 
@@ -218,16 +240,23 @@ def collect_data(s):
         for i in reversed(range(hw)):
             for j in reversed(range(hw)):
                 if rv.grid[j][i] == 0:
-                    grid_str1 += '1'
+                    grid_str1 += '1 '
                 else:
-                    grid_str1 += '0'
+                    grid_str1 += '0 '
         grid_str2 = ''
         for i in reversed(range(hw)):
             for j in reversed(range(hw)):
                 if rv.grid[j][i] == 1:
-                    grid_str2 += '1'
+                    grid_str2 += '1 '
                 else:
-                    grid_str2 += '0'
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[j][i] == -1 or rv.grid[j][i] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
         grids.append([1, grid_str1 + grid_str2])
         grids.append([-1, grid_str2 + grid_str1])
 
@@ -246,7 +275,7 @@ def collect_data(s):
 def reshape_data():
     global all_data, all_labels
     for grid_str in dict_data.keys():
-        grid = [int(i) for i in grid_str]
+        grid = [int(i) for i in grid_str.split()]
         score = dict_data[grid_str][0] / dict_data[grid_str][1]
         all_data.append(grid)
         all_labels.append(score)
@@ -281,22 +310,25 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(128, activation='tanh', input_shape=(128,)))
+model.add(Dense(256, input_shape=(128,)))
+model.add(LeakyReLU(alpha=0.01))
 model.add(Dropout(0.0625))
-model.add(Dense(24, activation='tanh'))
-model.add(Dense(8, activation='tanh'))
+model.add(Dense(256))
+model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
+'''
 with open('param/param.txt', 'w') as f:
-    for i in (0, 2):
+    for i in (0, 3):
         for item in model.layers[i].weights[1].numpy():
             f.write(str(item) + '\n')
-    for i in (0, 2, 3):
+    for i in (0, 3, 5):
         for arr in model.layers[i].weights[0].numpy():
             for item in arr:
                 f.write(str(item) + '\n')
+'''
 '''
 for layer_num, layer in enumerate(model.layers):
     print(layer.weights[0].numpy())

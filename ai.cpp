@@ -395,7 +395,7 @@ inline double myrandom(){
     return (double)(xorw) / 2147483648.0;
 }
 
-inline double myrandom_int(){
+inline int myrandom_int(){
     int t = (xorx^(xorx<<11));
     xorx = xory;
     xory = xorz;
