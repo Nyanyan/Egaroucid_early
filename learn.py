@@ -214,9 +214,9 @@ def collect_data(s):
         if rv.move(y, x):
             print('error')
             break
-        #pot_canput_p, pot_canput_o = rv.pot_canput()
-        #pot_canput_p = str(pot_canput_p)
-        #pot_canput_o = str(pot_canput_o)
+        pot_canput_p, pot_canput_o = rv.pot_canput()
+        pot_canput_p = str(pot_canput_p)
+        pot_canput_o = str(pot_canput_o)
         grid_str1 = ''
         for i in range(hw):
             for j in range(hw):
@@ -238,10 +238,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
-        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         grid_str1 = ''
         for i in range(hw):
@@ -264,10 +264,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
-        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
         
         grid_str1 = ''
         for i in reversed(range(hw)):
@@ -290,10 +290,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
-        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         grid_str1 = ''
         for i in reversed(range(hw)):
@@ -316,10 +316,10 @@ def collect_data(s):
                     grid_str3 += '1 '
                 else:
                     grid_str3 += '0 '
-        grids.append([1, grid_str1 + grid_str2])
-        grids.append([-1, grid_str2 + grid_str1])
-        #grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
-        #grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
 
         if rv.end():
             break
@@ -358,7 +358,12 @@ def divide_data(ratio):
     train_labels = np.array(train_labels)
     test_data = np.array(test_data)
     test_labels = np.array(test_labels)
-    
+    mean = train_data.mean(axis=0)
+    std = train_data.std(axis=0)
+    print('mean', mean)
+    print('std', std)
+    train_data = (train_data - mean) / std
+    test_data = (test_data - mean) / std
 
 data_num = 1000
 with open('third_party/xxx.gam', 'rb') as f:
@@ -371,7 +376,7 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(512, input_shape=(128,)))
+model.add(Dense(512, input_shape=(130,)))
 model.add(LeakyReLU(alpha=0.01))
 model.add(Dropout(0.0625))
 model.add(Dense(256))
