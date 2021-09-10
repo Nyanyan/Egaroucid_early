@@ -89,13 +89,13 @@ def check(grid, player, y, x):
 def pot_canput_line(arr):
     res_p = 0
     res_o = 0
-    for i in range(hw - 1):
+    for i in range(len(arr) - 1):
         if arr[i] == -1 or arr[i] == 2:
             if arr[i + 1] == 0:
                 res_o += 1
             elif arr[i + 1] == 1:
                 res_p += 1
-    for i in range(1, hw):
+    for i in range(1, len(arr)):
         if arr[i] == -1 or arr[i] == 2:
             if arr[i - 1] == 0:
                 res_o += 1
