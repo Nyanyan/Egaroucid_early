@@ -339,9 +339,9 @@ def reshape_data():
     global all_data, all_labels
     for grid_str in dict_data.keys():
         grid = [int(i) for i in grid_str.split()]
-        #score = dict_data[grid_str][0] / dict_data[grid_str][1]
+        score = dict_data[grid_str][0] / dict_data[grid_str][1]
         all_data.append(grid)
-        #all_labels.append(score)
+        all_labels.append(score)
     #all_data = np.array(all_data)
     #all_labels = np.array(all_labels)
 
@@ -352,14 +352,14 @@ def divide_data(ratio):
     shuffle(idxes)
     for i in range(test_num):
         test_data.append(all_data[idxes[i]])
-        #test_labels.append(all_labels[idxes[i]])
+        test_labels.append(all_labels[idxes[i]])
     for i in range(test_num, len(all_data)):
         train_data.append(all_data[idxes[i]])
         #train_labels.append(all_labels[idxes[i]])
     train_data = np.array(train_data)
     #train_labels = np.array(train_labels)
     test_data = np.array(test_data)
-    #test_labels = np.array(test_labels)
+    test_labels = np.array(test_labels)
     mean = train_data.mean(axis=0)
     std = train_data.std(axis=0)
     print('mean', mean)
@@ -367,7 +367,6 @@ def divide_data(ratio):
     train_data = (train_data - mean) / std
     test_data = (test_data - mean) / std
     train_labels = teacher.predict(train_data).flatten()
-    test_labels = teacher.predict(test_data).flatten()
 
 data_num = 1000
 with open('third_party/xxx.gam', 'rb') as f:
