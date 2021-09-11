@@ -9,7 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
 from random import random, randint, shuffle
-import subprocess
 
 dict_data = {}
 all_data = []
@@ -27,8 +26,6 @@ dy = [0, 1, 0, -1, 1, 1, -1, -1]
 dx = [1, 0, -1, 0, 1, -1, 1, -1]
 pattern_space = []
 board_translate = []
-
-my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 consts = [
     8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
@@ -217,31 +214,120 @@ def collect_data(s):
         if rv.move(y, x):
             print('error')
             break
+        pot_canput_p, pot_canput_o = rv.pot_canput()
+        pot_canput_p = str(pot_canput_p)
+        pot_canput_o = str(pot_canput_o)
         grid_str1 = ''
         for i in range(hw):
             for j in range(hw):
-                grid_str1 += '0' if rv.grid[i][j] == 0 else '1' if rv.grid[i][j] == 1 else '.'
+                if rv.grid[i][j] == 0:
+                    grid_str1 += '1 '
+                else:
+                    grid_str1 += '0 '
         grid_str2 = ''
         for i in range(hw):
             for j in range(hw):
-                grid_str2 += '0' if rv.grid[i][j] == 1 else '1' if rv.grid[i][j] == 0 else '.'
-        my_evaluate.stdin.write(grid_str1.encode('utf-8'))
-        my_evaluate.stdin.flush()
-        ins1 = my_evaluate.stdout.readline().decode().strip()
-        my_evaluate.stdin.write(grid_str2.encode('utf-8'))
-        my_evaluate.stdin.flush()
-        ins2 = my_evaluate.stdout.readline().decode().strip()
-        grids.append([1, ins1])
-        grids.append([-1, ins2])
+                if rv.grid[i][j] == 1:
+                    grid_str2 += '1 '
+                else:
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in range(hw):
+            for j in range(hw):
+                if rv.grid[i][j] == -1 or rv.grid[i][j] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+
+        grid_str1 = ''
+        for i in range(hw):
+            for j in range(hw):
+                if rv.grid[j][i] == 0:
+                    grid_str1 += '1 '
+                else:
+                    grid_str1 += '0 '
+        grid_str2 = ''
+        for i in range(hw):
+            for j in range(hw):
+                if rv.grid[j][i] == 1:
+                    grid_str2 += '1 '
+                else:
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in range(hw):
+            for j in range(hw):
+                if rv.grid[j][i] == -1 or rv.grid[j][i] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+        
+        grid_str1 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[i][j] == 0:
+                    grid_str1 += '1 '
+                else:
+                    grid_str1 += '0 '
+        grid_str2 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[i][j] == 1:
+                    grid_str2 += '1 '
+                else:
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[i][j] == -1 or rv.grid[i][j] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+
+        grid_str1 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[j][i] == 0:
+                    grid_str1 += '1 '
+                else:
+                    grid_str1 += '0 '
+        grid_str2 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[j][i] == 1:
+                    grid_str2 += '1 '
+                else:
+                    grid_str2 += '0 '
+        grid_str3 = ''
+        for i in reversed(range(hw)):
+            for j in reversed(range(hw)):
+                if rv.grid[j][i] == -1 or rv.grid[j][i] == 2:
+                    grid_str3 += '1 '
+                else:
+                    grid_str3 += '0 '
+        #grids.append([1, grid_str1 + grid_str2])
+        #grids.append([-1, grid_str2 + grid_str1])
+        grids.append([1, grid_str1 + grid_str2 + pot_canput_p + ' ' + pot_canput_o])
+        grids.append([-1, grid_str2 + grid_str1 + pot_canput_o + ' ' + pot_canput_p])
+
         if rv.end():
             break
     rv.check_pass()
     #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
     score = rv.nums[0] - rv.nums[1]
-    cnt = 0
     for sgn, grid in grids:
         if grid in dict_data:
-            cnt += 1
             dict_data[grid][0] += sgn * score
             dict_data[grid][1] += 1
         else:
@@ -250,7 +336,7 @@ def collect_data(s):
 def reshape_data():
     global all_data, all_labels
     for grid_str in dict_data.keys():
-        grid = [float(i) for i in grid_str.split()]
+        grid = [int(i) for i in grid_str.split()]
         score = dict_data[grid_str][0] / dict_data[grid_str][1]
         all_data.append(grid)
         all_labels.append(score)
@@ -278,7 +364,6 @@ def divide_data(ratio):
     print('std', std)
     train_data = (train_data - mean) / std
     test_data = (test_data - mean) / std
-    print(train_data[0])
 
 data_num = 1000
 with open('third_party/xxx.gam', 'rb') as f:
@@ -286,18 +371,20 @@ with open('third_party/xxx.gam', 'rb') as f:
 games = [i for i in raw_data.splitlines()]
 for i in trange(data_num):
     collect_data(str(games[i]))
-my_evaluate.kill()
 reshape_data()
 divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(64, input_shape=(31,)))
+model.add(Dense(512, input_shape=(130,)))
 model.add(LeakyReLU(alpha=0.01))
 model.add(Dropout(0.0625))
-model.add(Dense(64))
+model.add(Dense(256))
 model.add(LeakyReLU(alpha=0.01))
-model.add(Dropout(0.0625))
+model.add(Dense(128))
+model.add(LeakyReLU(alpha=0.01))
+model.add(Dense(128))
+model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
@@ -353,6 +440,6 @@ test_num = min(test_labels.shape[0], test_num)
 test_predictions = model.predict(test_data[0:test_num]).flatten()
 print([round(i, 2) for i in test_labels[0:test_num]])
 print([round(i, 2) for i in test_predictions[0:test_num]])
-#for i in range(5):
-#    print(list(test_data[i]))
-#model.save('model_big.h5')
+for i in range(5):
+    print(list(test_data[i]))
+model.save('model_big.h5')

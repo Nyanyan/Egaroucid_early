@@ -1,5 +1,6 @@
 __pycache__
 ai.out
+evaluation.out
 Procfile
 app.py
 statistics
