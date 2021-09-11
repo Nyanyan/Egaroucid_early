@@ -218,9 +218,13 @@ def collect_data(s):
             print('error')
             break
         grid_str1 = ''
+        grid_str_space1 = ''
+        grid_str_space2 = ''
         for i in range(hw):
             for j in range(hw):
                 grid_str1 += '0' if rv.grid[i][j] == 0 else '1' if rv.grid[i][j] == 1 else '.'
+                grid_str_space1 += '1 ' if rv.grid[i][j] == 0 else '0 '
+                grid_str_space2 += '1 ' if rv.grid[i][j] == 1 else '0 '
         grid_str2 = ''
         for i in range(hw):
             for j in range(hw):
@@ -231,8 +235,8 @@ def collect_data(s):
         my_evaluate.stdin.write(grid_str2.encode('utf-8'))
         my_evaluate.stdin.flush()
         ins2 = my_evaluate.stdout.readline().decode().strip()
-        grids.append([1, ins1])
-        grids.append([-1, ins2])
+        grids.append([1, grid_str_space1 + grid_str_space2 + ins1])
+        grids.append([-1, grid_str_space2 + grid_str_space1 + ins2])
         if rv.end():
             break
     rv.check_pass()
@@ -292,12 +296,13 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(64, input_shape=(31,)))
+model.add(Dense(128, input_shape=(159,)))
 model.add(LeakyReLU(alpha=0.01))
 model.add(Dropout(0.0625))
 model.add(Dense(64))
 model.add(LeakyReLU(alpha=0.01))
-model.add(Dropout(0.0625))
+model.add(Dense(16))
+model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
