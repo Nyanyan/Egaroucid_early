@@ -279,13 +279,19 @@ def divide_data(ratio):
     test_labels = np.array(test_labels)
     mean = train_data.mean(axis=0)
     std = train_data.std(axis=0)
+    with open('param/mean.txt', 'w') as f:
+        for i in mean:
+            f.write(str(i) + '\n')
+    with open('param/std.txt', 'w') as f:
+        for i in std:
+            f.write(str(i) + '\n')
     print('mean', mean)
     print('std', std)
     train_data = (train_data - mean) / std
     test_data = (test_data - mean) / std
     print(train_data[0])
 
-data_num = 1000
+data_num = 2500
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
@@ -297,7 +303,7 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(128, input_shape=(159,))) # 0
+model.add(Dense(128, input_shape=(137,))) # 0
 model.add(LeakyReLU(alpha=0.01)) # 1
 model.add(Dropout(0.0625)) # 2
 model.add(Dense(64)) # 3
@@ -357,6 +363,6 @@ test_num = min(test_labels.shape[0], test_num)
 test_predictions = model.predict(test_data[0:test_num]).flatten()
 print([round(i, 2) for i in test_labels[0:test_num]])
 print([round(i, 2) for i in test_predictions[0:test_num]])
-#for i in range(5):
-#    print(list(test_data[i]))
-#model.save('model_big.h5')
+for i in range(5):
+    print(list(test_data[i]))
+model.save('param/model.h5')

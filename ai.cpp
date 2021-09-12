@@ -36,6 +36,8 @@ using namespace std;
 #define pattern_elem_num 85293
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
+#define stage1 128
+#define stage2 64
 
 
 const double params[param_num + hw2 + 10] = {
@@ -368,6 +370,8 @@ struct eval_param{
     int confirm_p[6561], confirm_o[6561];
     int pot_canput_p[6561], pot_canput_o[6561];
     double open_eval[40];
+    double nodes1[stage1];
+    double nodes2[stage2];
 };
 
 struct search_param{
@@ -860,6 +864,53 @@ inline double pot_canput_eval(const int *board){
 }
 
 inline double evaluate(const int *board, const double open){
+    int i, j;
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j){
+            eval_param.nodes1[i * hw + j] = board_param.restore_p[board[i]][j];
+            eval_param.nodes1[hw2 + i * hw + j] = board_param.restore_o[board[i]][j];
+        }
+    }
+    /*
+    int tmp[hw2 * 2] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0};
+    for (i = 0; i < hw2 * 2; ++i)
+        eval_param.nodes1[i] = tmp[i];
+    */
+    for (i = 0; i < stage2; ++i)
+        eval_param.nodes2[i] = 0.0;
+    for (i = 0; i < stage3; ++i)
+        eval_param.nodes3[i] = 0.0;
+    // 1st layer
+    for (i = 0; i < stage1; ++i){
+        if (!eval_param.nodes1[i]) continue;
+        for (j = 0; j < stage2; ++j)
+            eval_param.nodes2[j] += w1[i][j];
+    }
+    for (i = 0; i < stage2; ++i){
+        if (!(myrandom_int() & 0b1111)){
+            eval_param.nodes2[i] = 0.0;
+            continue;
+        }
+        eval_param.nodes2[i] += b1[i];
+        eval_param.nodes2[i] = tanh(eval_param.nodes2[i]);
+    }
+    // 2nd layer
+    for (i = 0; i < stage2; ++i){
+        if (eval_param.nodes2[i] == 0.0) continue;
+        for (j = 0; j < stage3; ++j)
+            eval_param.nodes3[j] += eval_param.nodes2[i] * w2[i][j];
+    }
+    for (i = 0; i < stage3; ++i){
+        eval_param.nodes3[i] += b2[i];
+        eval_param.nodes3[i] = tanh(eval_param.nodes3[i]);
+    }
+    // 3rd layer
+    double res = 0.0;
+    for (i = 0; i < stage3; ++i)
+        res += eval_param.nodes3[i] * w3[i];
+    return res;
+
+
     double pattern = pattern_eval(board);
     double cnt = cnt_eval(board);
     double canput = canput_eval(board);

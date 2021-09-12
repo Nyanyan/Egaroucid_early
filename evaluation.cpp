@@ -865,7 +865,7 @@ inline double pot_canput_eval(const int *board){
 }
 
 inline double evaluate(const int *board, const double open){
-    double pattern = pattern_eval(board);
+    //double pattern = pattern_eval(board);
     double cnt = cnt_eval(board);
     double canput = canput_eval(board);
     double weight = weight_eval(board);

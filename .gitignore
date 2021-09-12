@@ -6,4 +6,4 @@ app.py
 statistics
 tmp.py
 third_party
-model_big.h5
+param/model.h5

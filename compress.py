@@ -1,8 +1,8 @@
-char_s = 35
-char_e = 91
-num_s = 93
+chars = sorted(list(set(range(35, 123)) - set([92])))
+print(chars)
+num_s = 123
 num_e = 126
-ln = char_e - char_s
+ln = len(chars)
 
 vals = []
 with open('param/param.txt', 'r') as f:
@@ -18,7 +18,7 @@ vals_variation = sorted(list(set(vals)))
 around = [0 for _ in range(1000)]
 err = 0.0
 step = 0.0001
-while len(around) > char_e - char_s + 1:
+while len(around) > ln:
     err += step
     around = []
     i = 0
@@ -33,7 +33,7 @@ while len(around) > char_e - char_s + 1:
         around.append(avg / cnt)
         i += cnt
 around.sort()
-print(len(around), char_e - char_s + 1, err)
+print(len(around), ln, err)
 print(around)
 
 res_arr = []
@@ -45,13 +45,15 @@ for i in range(pattern_all):
         if abs(val - k) < min_err:
             min_err = abs(val - k)
             tmp = j
-    res_arr.append(chr(tmp + char_s))
+    res_arr.append(chr(chars[tmp]))
 
 super_compress = []
+max_same = 0
 for i in range(len(res_arr)):
     if len(super_compress):
         if ord(super_compress[-1]) >= num_s:
             if ord(super_compress[-1]) < num_e and super_compress[-2] == res_arr[i]:
+                max_same = max(max_same, ord(super_compress[-1]) + 1 - num_s)
                 super_compress[-1] = chr(ord(super_compress[-1]) + 1)
             else:
                 super_compress.append(res_arr[i])
@@ -63,11 +65,18 @@ for i in range(len(res_arr)):
     else:
         super_compress.append(res_arr[i])
 
+print('max_same', max_same)
 
 with open('param/param_compressed.txt', 'w') as f:
+    flag = False
     for i in range(len(super_compress)):
         if i % 300 == 0:
+            flag = False
             f.write('"')
         f.write(super_compress[i])
         if i % 300 == 299:
+            flag = True
             f.write('"\n')
+    if not flag:
+        f.write('"')
+    f.write(';\n')
