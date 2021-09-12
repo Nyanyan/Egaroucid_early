@@ -723,7 +723,6 @@ inline double evaluate(const int *board){
     }
     // 2nd layer
     for (i = 0; i < stage2; ++i){
-        if (eval_param.nodes2[i] == 0.0) continue;
         for (j = 0; j < stage3; ++j)
             eval_param.nodes3[j] += eval_param.nodes2[i] * eval_param.w2[i][j];
     }
