@@ -1,3 +1,4 @@
+import tensorflow as tf
 from tensorflow.keras.datasets import boston_housing
 from tensorflow.keras.layers import Activation, Dense, Dropout
 from tensorflow.keras.models import Sequential
@@ -296,18 +297,16 @@ divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
-model.add(Dense(128, input_shape=(159,)))
-model.add(LeakyReLU(alpha=0.01))
-model.add(Dropout(0.0625))
-model.add(Dense(64))
-model.add(LeakyReLU(alpha=0.01))
-model.add(Dense(16))
-model.add(LeakyReLU(alpha=0.01))
-model.add(Dense(1))
+model.add(Dense(128, input_shape=(159,))) # 0
+model.add(LeakyReLU(alpha=0.01)) # 1
+model.add(Dropout(0.0625)) # 2
+model.add(Dense(64)) # 3
+model.add(LeakyReLU(alpha=0.01)) # 4
+model.add(Dense(1)) # 5
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
-'''
+
 with open('param/param.txt', 'w') as f:
     for i in (0, 3):
         for item in model.layers[i].weights[1].numpy():
@@ -316,7 +315,7 @@ with open('param/param.txt', 'w') as f:
         for arr in model.layers[i].weights[0].numpy():
             for item in arr:
                 f.write(str(item) + '\n')
-'''
+
 '''
 for layer_num, layer in enumerate(model.layers):
     print(layer.weights[0].numpy())
