@@ -220,35 +220,59 @@ def collect_data(s):
             break
         grid_str1 = ''
         grid_str2 = ''
-        grid_str_space1 = ''
-        grid_str_space2 = ''
+        grid_str3 = ''
+        grid_str4 = ''
+        grid_str_space1_0 = ''
+        grid_str_space1_1 = ''
+        grid_str_space2_0 = ''
+        grid_str_space2_1 = ''
+        grid_str_space3_0 = ''
+        grid_str_space3_1 = ''
+        grid_str_space4_0 = ''
+        grid_str_space4_1 = ''
         for i in range(hw):
             for j in range(hw):
                 grid_str1 += '0' if rv.grid[i][j] == 0 else '1' if rv.grid[i][j] == 1 else '.'
-                grid_str2 += '0' if rv.grid[i][j] == 1 else '1' if rv.grid[i][j] == 0 else '.'
-                grid_str_space1 += '1 ' if rv.grid[i][j] == 0 else '0 '
-                grid_str_space2 += '1 ' if rv.grid[i][j] == 1 else '0 '
+                grid_str2 += '0' if rv.grid[j][hw - 1 - i] == 0 else '1' if rv.grid[j][hw - 1 - i] == 1 else '.'
+                grid_str3 += '0' if rv.grid[hw - 1 - i][hw - 1 - j] == 0 else '1' if rv.grid[hw - 1 - i][hw - 1 - j] == 1 else '.'
+                grid_str4 += '0' if rv.grid[hw - 1 - j][i] == 0 else '1' if rv.grid[hw - 1 - j][i] == 1 else '.'
+                grid_str_space1_0 += '1 ' if rv.grid[i][j] == 0 else '0 '
+                grid_str_space1_1 += '1 ' if rv.grid[i][j] == 1 else '0 '
+                grid_str_space2_0 += '1 ' if rv.grid[j][hw - 1 - i] == 0 else '0 '
+                grid_str_space2_1 += '1 ' if rv.grid[j][hw - 1 - i] == 1 else '0 '
+                grid_str_space3_0 += '1 ' if rv.grid[hw - 1 - i][hw - 1 - j] == 0 else '0 '
+                grid_str_space3_1 += '1 ' if rv.grid[hw - 1 - i][hw - 1 - j] == 1 else '0 '
+                grid_str_space4_0 += '1 ' if rv.grid[hw - 1 - j][i] == 0 else '0 '
+                grid_str_space4_1 += '1 ' if rv.grid[hw - 1 - j][i] == 1 else '0 '
         my_evaluate.stdin.write(grid_str1.encode('utf-8'))
         my_evaluate.stdin.flush()
         ins1 = my_evaluate.stdout.readline().decode().strip()
         my_evaluate.stdin.write(grid_str2.encode('utf-8'))
         my_evaluate.stdin.flush()
         ins2 = my_evaluate.stdout.readline().decode().strip()
-        grids.append([1, grid_str_space1 + grid_str_space2 + ins1])
-        grids.append([-1, grid_str_space2 + grid_str_space1 + ins2])
+        my_evaluate.stdin.write(grid_str3.encode('utf-8'))
+        my_evaluate.stdin.flush()
+        ins3 = my_evaluate.stdout.readline().decode().strip()
+        my_evaluate.stdin.write(grid_str4.encode('utf-8'))
+        my_evaluate.stdin.flush()
+        ins4 = my_evaluate.stdout.readline().decode().strip()
+        grids.append(grid_str_space1_0 + grid_str_space1_1 + ins1)
+        grids.append(grid_str_space2_0 + grid_str_space2_1 + ins2)
+        grids.append(grid_str_space3_0 + grid_str_space3_1 + ins3)
+        grids.append(grid_str_space4_0 + grid_str_space4_1 + ins4)
         if rv.end():
             break
     rv.check_pass()
     #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
     score = rv.nums[0] - rv.nums[1]
     cnt = 0
-    for sgn, grid in grids:
+    for grid in grids:
         if grid in dict_data:
             cnt += 1
-            dict_data[grid][0] += sgn * score
+            dict_data[grid][0] += score
             dict_data[grid][1] += 1
         else:
-            dict_data[grid] = [sgn * score, 1]
+            dict_data[grid] = [score, 1]
 
 def reshape_data():
     global all_data, all_labels
