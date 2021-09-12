@@ -219,17 +219,15 @@ def collect_data(s):
             print('error')
             break
         grid_str1 = ''
+        grid_str2 = ''
         grid_str_space1 = ''
         grid_str_space2 = ''
         for i in range(hw):
             for j in range(hw):
                 grid_str1 += '0' if rv.grid[i][j] == 0 else '1' if rv.grid[i][j] == 1 else '.'
+                grid_str2 += '0' if rv.grid[i][j] == 1 else '1' if rv.grid[i][j] == 0 else '.'
                 grid_str_space1 += '1 ' if rv.grid[i][j] == 0 else '0 '
                 grid_str_space2 += '1 ' if rv.grid[i][j] == 1 else '0 '
-        grid_str2 = ''
-        for i in range(hw):
-            for j in range(hw):
-                grid_str2 += '0' if rv.grid[i][j] == 1 else '1' if rv.grid[i][j] == 0 else '.'
         my_evaluate.stdin.write(grid_str1.encode('utf-8'))
         my_evaluate.stdin.flush()
         ins1 = my_evaluate.stdout.readline().decode().strip()

@@ -522,8 +522,8 @@ void init(){
         eval_param.cnt_p[i] = 0;
         eval_param.cnt_o[i] = 0;
         for (j = 0; j < hw; ++j){
-            board_param.restore_p[i][j] = 1 & (p >> j);
-            board_param.restore_o[i][j] = 1 & (o >> j);
+            board_param.restore_p[i][j] = 1 & (p >> (hw_m1 - j));
+            board_param.restore_o[i][j] = 1 & (o >> (hw_m1 - j));
             eval_param.cnt_p[i] += board_param.restore_p[i][j];
             eval_param.cnt_o[i] += board_param.restore_o[i][j];
         }
@@ -693,6 +693,11 @@ inline double evaluate(const int *board){
         eval_param.nodes1[135] += eval_param.pot_canput_p[board[i]];
         eval_param.nodes1[136] += eval_param.pot_canput_o[board[i]];
     }
+    /*
+    for (i = 0; i < stage1; ++i)
+        cerr << eval_param.nodes1[i] << " ";
+    cerr << endl;
+    */
     for (i = 0; i < stage1; ++i)
         eval_param.nodes1[i] = (eval_param.nodes1[i] - eval_param.mean[i]) / eval_param.std[i];
     /*
@@ -1137,10 +1142,7 @@ int main(){
 
     init();
     cerr << "AI initialized" << endl;
-    prob_init();
-
-    cerr << evaluate(board) << endl;
-    return 0;
+    //prob_init();
     
     while (true){
         outy = -1;
@@ -1197,6 +1199,8 @@ int main(){
             }
             board[i] = board_tmp;
         }
+        //evaluate(board);
+        //return 0;
         search_param.min_max_depth = 2; //min(10, former_depth + search_param.vacant_cnt - former_vacant);            
         search_param.max_depth = search_param.min_max_depth;
         former_vacant = search_param.vacant_cnt;
