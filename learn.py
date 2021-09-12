@@ -310,7 +310,7 @@ def reshape_data_test():
     test_labels = np.array(test_labels)
     test_data = (test_data - mean) / std
 
-data_num = 100
+data_num = 2500
 test_num = 100
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
