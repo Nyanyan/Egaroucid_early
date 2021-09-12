@@ -1232,10 +1232,7 @@ int main(){
                 break;
             }
             final_score = max_score;
-            if (fabs(final_score) < 1000.0)
-                avg_score += final_score;
-            else
-                avg_score += final_score / 1000.0;
+            avg_score += final_score;
             ++avg_div_num;
             former_depth = search_param.max_depth;
             if (canput > 1)
@@ -1246,6 +1243,8 @@ int main(){
             //cerr << "  " << outy << outx << " " << lst[0].priority;
             //cerr << " time " << tim() - search_param.strt << endl;
             if (fabs(max_score) >= 1000.0 || search_param.max_depth >= hw2){
+                avg_score = max_score / 1000.0;
+                avg_div_num = 1;
                 //cerr << "game end" << endl;
                 break;
             }
