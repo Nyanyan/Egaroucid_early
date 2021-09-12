@@ -1259,7 +1259,10 @@ int main(){
                 break;
             }
             final_score = max_score;
-            avg_score += final_score;
+            if (final_score < 1000.0)
+                avg_score += final_score;
+            else
+                avg_score += final_score / 1000.0;
             ++avg_div_num;
             former_depth = search_param.max_depth;
             if (canput > 1)
