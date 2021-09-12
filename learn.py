@@ -13,12 +13,12 @@ from random import random, randint, shuffle
 import subprocess
 
 dict_data = {}
-all_data = []
-all_labels = []
 train_data = []
 train_labels = []
 test_data = []
 test_labels = []
+mean = []
+std = []
 
 
 hw = 8
@@ -274,54 +274,57 @@ def collect_data(s):
         else:
             dict_data[grid] = [score, 1]
 
-def reshape_data():
-    global all_data, all_labels
+def reshape_data_train():
+    global train_data, train_labels, mean, std
+    tmp_data = []
     for grid_str in dict_data.keys():
+        if random() < 0.5:
+            continue
         grid = [float(i) for i in grid_str.split()]
         score = dict_data[grid_str][0] / dict_data[grid_str][1]
-        all_data.append(grid)
-        all_labels.append(score)
-    #all_data = np.array(all_data)
-    #all_labels = np.array(all_labels)
-
-def divide_data(ratio):
-    global train_data, train_labels, test_data, test_labels
-    test_num = int(len(all_data) * ratio)
-    idxes = list(range(len(all_data)))
-    shuffle(idxes)
-    for i in range(test_num):
-        test_data.append(all_data[idxes[i]])
-        test_labels.append(all_labels[idxes[i]])
-    for i in range(test_num, len(all_data)):
-        train_data.append(all_data[idxes[i]])
-        train_labels.append(all_labels[idxes[i]])
+        tmp_data.append([grid, score])
+    shuffle(tmp_data)
+    for i, j in tmp_data:
+        train_data.append(i)
+        train_labels.append(j)
     train_data = np.array(train_data)
     train_labels = np.array(train_labels)
-    test_data = np.array(test_data)
-    test_labels = np.array(test_labels)
     mean = train_data.mean(axis=0)
     std = train_data.std(axis=0)
-    with open('param/mean.txt', 'w') as f:
-        for i in mean:
-            f.write(str(i) + '\n')
-    with open('param/std.txt', 'w') as f:
-        for i in std:
-            f.write(str(i) + '\n')
-    print('mean', mean)
-    print('std', std)
     train_data = (train_data - mean) / std
-    test_data = (test_data - mean) / std
-    print(train_data[0])
 
-data_num = 2500
+def reshape_data_test():
+    global test_data, test_labels
+    tmp_data = []
+    for grid_str in dict_data.keys():
+        if random() < 0.5:
+            continue
+        grid = [float(i) for i in grid_str.split()]
+        score = dict_data[grid_str][0] / dict_data[grid_str][1]
+        tmp_data.append([grid, score])
+    shuffle(tmp_data)
+    for i, j in tmp_data:
+        test_data.append(i)
+        test_labels.append(j)
+    test_data = np.array(test_data)
+    test_labels = np.array(test_labels)
+    test_data = (test_data - mean) / std
+
+data_num = 100
+test_num = 100
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
+shuffle(games)
+dict_data = {}
 for i in trange(data_num):
     collect_data(str(games[i]))
+reshape_data_train()
+dict_data = {}
+for i in trange(data_num, data_num + test_num):
+    collect_data(str(games[i]))
+reshape_data_test()
 my_evaluate.kill()
-reshape_data()
-divide_data(0.1)
 print('train', train_data.shape, train_labels.shape)
 print('test', test_data.shape, test_labels.shape)
 model = Sequential()
@@ -335,6 +338,12 @@ model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
 
+with open('param/mean.txt', 'w') as f:
+    for i in mean:
+        f.write(str(i) + '\n')
+with open('param/std.txt', 'w') as f:
+    for i in std:
+        f.write(str(i) + '\n')
 with open('param/param.txt', 'w') as f:
     for i in (0, 3):
         for item in model.layers[i].weights[1].numpy():
