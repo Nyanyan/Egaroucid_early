@@ -72,7 +72,7 @@ def collect_data(num, use_ratio):
                 idx = calc_idx(i, j, rnd)
                 grid_str += grid[idx]
                 grid_space0 += '1 ' if grid[idx] == '0' else '0 '
-                grid_space0 += '1 ' if grid[idx] == '1' else '0 '
+                grid_space1 += '1 ' if grid[idx] == '1' else '0 '
         my_evaluate.stdin.write(grid_str.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
