@@ -49,7 +49,6 @@ def calc_idx(i, j, rnd):
 def collect_data(num, use_ratio):
     global dict_data
     score = -1000
-    ln = -1
     grids = []
     with open('learn_data/' + digit(num, 7) + '.txt', 'r') as f:
         score = float(f.readline())
@@ -57,8 +56,13 @@ def collect_data(num, use_ratio):
         for _ in range(ln):
             s = f.readline()
             if random() < use_ratio:
-                grids.append(s)
-    for grid in grids:
+                grids.append([1.0, s])
+        ln = int(f.readline())
+        for _ in range(ln):
+            s = f.readline()
+            if random() < use_ratio:
+                grids.append([-1.0, s])
+    for sgn, grid in grids:
         grid_str = ''
         grid_space0 = ''
         grid_space1 = ''
@@ -74,10 +78,10 @@ def collect_data(num, use_ratio):
         additional_data = my_evaluate.stdout.readline().decode().strip()
         in_data = grid_space0 + grid_space1 + additional_data
         if in_data in dict_data:
-            dict_data[in_data][0] += score
+            dict_data[in_data][0] += sgn * score
             dict_data[in_data][1] += 1
         else:
-            dict_data[in_data] = [score, 1]
+            dict_data[in_data] = [sgn * score, 1]
 
 def reshape_data(test_ratio):
     global train_data, train_labels, test_data, test_labels, mean, std

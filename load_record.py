@@ -157,7 +157,7 @@ class reversi:
 
 def collect_data(num, s):
     global dict_data
-    grids = []
+    grids = [[], []]
     rv = reversi()
     idx = 2
     while True:
@@ -171,7 +171,7 @@ def collect_data(num, s):
         for i in range(hw):
             for j in range(hw):
                 grid_str += '0' if rv.grid[i][j] == turn else '1' if rv.grid[i][j] == 1 - turn else '.' # 0 to move
-        grids.append(grid_str)
+        grids[turn].append(grid_str)
         if rv.move(y, x):
             print('error')
             break
@@ -182,13 +182,14 @@ def collect_data(num, s):
     score = rv.nums[0] - rv.nums[1]
     with open('learn_data/' + digit(num, 7) + '.txt', 'w') as f:
         f.write(str(score) + '\n')
-        f.write(str(len(grids)) + '\n')
-        for grid in grids:
-            f.write(grid + '\n')
+        for turn in range(2):
+            f.write(str(len(grids[turn])) + '\n')
+            for grid in grids[turn]:
+                f.write(grid + '\n')
 
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
 dict_data = {}
-for i in trange(100000):
+for i in trange(10000):
     collect_data(i, str(games[i]))
