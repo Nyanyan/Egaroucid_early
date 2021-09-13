@@ -190,5 +190,5 @@ with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
 dict_data = {}
-for i in trange(10000, 100000):
+for i in trange(100000):
     collect_data(i, str(games[i]))
