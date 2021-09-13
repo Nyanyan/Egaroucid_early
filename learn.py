@@ -331,13 +331,15 @@ model = Sequential()
 model.add(Dense(128, input_shape=(137,))) # 0
 model.add(LeakyReLU(alpha=0.01)) # 1
 model.add(Dropout(0.0625)) # 2
-model.add(Dense(64)) # 3
+model.add(Dense(128)) # 3
+model.add(LeakyReLU(alpha=0.01)) # 4
+model.add(Dense(128)) # 3
 model.add(LeakyReLU(alpha=0.01)) # 4
 model.add(Dense(1)) # 5
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
-
+'''
 with open('param/mean.txt', 'w') as f:
     for i in mean:
         f.write(str(i) + '\n')
@@ -352,7 +354,7 @@ with open('param/param.txt', 'w') as f:
         for arr in model.layers[i].weights[0].numpy():
             for item in arr:
                 f.write(str(item) + '\n')
-
+'''
 '''
 for layer_num, layer in enumerate(model.layers):
     print(layer.weights[0].numpy())
@@ -381,12 +383,6 @@ for layer_num, layer in enumerate(model.layers):
             else:
                 f.write(str(layer.weights[1].numpy()[i]) + ',')
 '''
-plt.plot(history.history['loss'], label='train loss')
-plt.plot(history.history['val_loss'], label='val loss')
-plt.xlabel('epoch')
-plt.ylabel('loss')
-plt.legend(loc='best')
-plt.show()
 test_loss, test_mae = model.evaluate(test_data, test_labels)
 print('result', test_loss, test_mae)
 test_num = 10
@@ -394,6 +390,15 @@ test_num = min(test_labels.shape[0], test_num)
 test_predictions = model.predict(test_data[0:test_num]).flatten()
 print([round(i, 2) for i in test_labels[0:test_num]])
 print([round(i, 2) for i in test_predictions[0:test_num]])
+
+plt.plot(history.history['loss'], label='train loss')
+plt.plot(history.history['val_loss'], label='val loss')
+plt.xlabel('epoch')
+plt.ylabel('loss')
+plt.legend(loc='best')
+plt.show()
+'''
 for i in range(5):
     print(list(test_data[i]))
 model.save('param/model.h5')
+'''
