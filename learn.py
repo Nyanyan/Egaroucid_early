@@ -36,15 +36,18 @@ def digit(n, r):
         n = '0' + n
     return n
 
+def join_yx(y, x):
+    return y * hw + x
+
 def calc_idx(i, j, rnd):
     if rnd == 0:
-        return i * hw + j
+        return join_yx(i, j)
     elif rnd == 1:
-        return j * hw + hw - 1 - i
+        return join_yx(j, hw - 1 - i)
     elif rnd == 2:
-        return (hw - 1 - i) * hw + hw - 1 - j
+        return join_yx(hw - 1 - i, hw - 1 - j)
     else:
-        return (hw - 1 - j) * hw + i
+        return join_yx(hw - 1 - j, i)
 
 def collect_data(num, use_ratio):
     global dict_data
@@ -92,7 +95,7 @@ def reshape_data(test_ratio):
     shuffle(tmp_data)
     ln = len(tmp_data)
     test_num = int(ln * test_ratio)
-    print('got', ln, 'test', test_num)
+    print('got', ln)
     for i, j in tmp_data[:test_num]:
         test_data.append(i)
         test_labels.append(j)
@@ -145,7 +148,7 @@ with open('param/param.txt', 'w') as f:
                 f.write(str(item) + '\n')
 '''
 test_loss, test_mae = model.evaluate(test_data, test_labels)
-print('result', test_loss, test_mae)
+print('test_loss', test_loss, 'test_mae', test_mae)
 test_num = 10
 test_num = min(test_labels.shape[0], test_num)
 test_predictions = model.predict(test_data[0:test_num]).flatten()
