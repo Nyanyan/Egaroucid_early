@@ -114,15 +114,17 @@ game_num = 10000
 use_ratio = 1.0
 for i in trange(game_num):
     collect_data(i, use_ratio)
-reshape_data(0.1)
+reshape_data(0.01)
 my_evaluate.kill()
 model = Sequential()
-model.add(Dense(128, input_shape=(137,))) # 0
-model.add(LeakyReLU(alpha=0.01)) # 1
-model.add(Dropout(0.0625)) # 2
-model.add(Dense(64)) # 3
-model.add(LeakyReLU(alpha=0.01)) # 4
-model.add(Dense(1)) # 5
+model.add(Dense(256, input_shape=(137,)))
+model.add(LeakyReLU(alpha=0.01))
+model.add(Dropout(0.0625))
+model.add(Dense(128))
+model.add(LeakyReLU(alpha=0.01))
+model.add(Dense(128))
+model.add(LeakyReLU(alpha=0.01))
+model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
