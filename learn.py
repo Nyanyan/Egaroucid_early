@@ -62,7 +62,17 @@ def collect_data(num, use_ratio):
             s = f.readline()
             if random() < use_ratio:
                 grids.append([-1.0, s])
-    for sgn, grid in grids:
+    for sgn, grid_str in grids:
+        if grid_str in dict_data:
+            dict_data[grid_str][0] += sgn * score
+            dict_data[grid_str][1] += 1
+        else:
+            dict_data[grid_str] = [sgn * score, 1]
+
+def reshape_data(test_ratio):
+    global train_data, train_labels, test_data, test_labels, mean, std
+    tmp_data = []
+    for _, grid_str_no_rotate in zip(trange(len(dict_data.keys())), dict_data.keys()):
         grid_str = ''
         grid_space0 = ''
         grid_space1 = ''
@@ -70,27 +80,14 @@ def collect_data(num, use_ratio):
         for i in range(hw):
             for j in range(hw):
                 idx = calc_idx(i, j, rnd)
-                grid_str += grid[idx]
-                grid_space0 += '1 ' if grid[idx] == '0' else '0 '
-                grid_space1 += '1 ' if grid[idx] == '1' else '0 '
+                grid_str += grid_str_no_rotate[idx]
+                grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
+                grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
         my_evaluate.stdin.write(grid_str.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
-        in_data = grid_space0 + grid_space1 + additional_data
-        if in_data in dict_data:
-            dict_data[in_data][0] += sgn * score
-            dict_data[in_data][1] += 1
-        else:
-            dict_data[in_data] = [sgn * score, 1]
-
-def reshape_data(test_ratio):
-    global train_data, train_labels, test_data, test_labels, mean, std
-    tmp_data = []
-    for in_data_str in dict_data.keys():
-        if random() < 0.5:
-            continue
-        in_data = [float(i) for i in in_data_str.split()]
-        score = dict_data[in_data_str][0] / dict_data[in_data_str][1]
+        in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
+        score = dict_data[grid_str_no_rotate][0] / dict_data[grid_str_no_rotate][1]
         tmp_data.append([in_data, score])
     shuffle(tmp_data)
     ln = len(tmp_data)
@@ -114,11 +111,11 @@ def reshape_data(test_ratio):
     print('test', test_data.shape, test_labels.shape)
 
 game_num = 10000
-use_ratio = 0.1
+use_ratio = 1.0
 for i in trange(game_num):
     collect_data(i, use_ratio)
-my_evaluate.kill()
 reshape_data(0.1)
+my_evaluate.kill()
 model = Sequential()
 model.add(Dense(128, input_shape=(137,))) # 0
 model.add(LeakyReLU(alpha=0.01)) # 1
