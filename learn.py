@@ -75,33 +75,49 @@ def collect_data(num, use_ratio):
 def reshape_data(test_ratio):
     global train_data, train_labels, test_data, test_labels, mean, std
     tmp_data = []
+    print('calculating score & additional data')
     for _, grid_str_no_rotate in zip(trange(len(dict_data.keys())), dict_data.keys()):
-        grid_str = ''
-        grid_space0 = ''
-        grid_space1 = ''
-        rnd = randint(0, 3)
-        for i in range(hw):
-            for j in range(hw):
-                idx = calc_idx(i, j, rnd)
-                grid_str += grid_str_no_rotate[idx]
-                grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
-                grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
-        my_evaluate.stdin.write(grid_str.encode('utf-8'))
+        my_evaluate.stdin.write(grid_str_no_rotate.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
-        in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
         score = dict_data[grid_str_no_rotate][0] / dict_data[grid_str_no_rotate][1]
-        tmp_data.append([in_data, score])
+        tmp_data.append([grid_str_no_rotate, score, additional_data])
     shuffle(tmp_data)
     ln = len(tmp_data)
     test_num = int(ln * test_ratio)
-    print('got', ln)
-    for i, j in tmp_data[:test_num]:
-        test_data.append(i)
-        test_labels.append(j)
-    for i, j in tmp_data[test_num:]:
-        train_data.append(i)
-        train_labels.append(j)
+    print('got', ln, 'x4', ln * 4)
+    print('creating test data & labels')
+    for idx in trange(test_num):
+        grid_str_no_rotate, score, additional_data = tmp_data[idx]
+        for rotation in range(4):
+            grid_str = ''
+            grid_space0 = ''
+            grid_space1 = ''
+            for i in range(hw):
+                for j in range(hw):
+                    idx = calc_idx(i, j, rotation)
+                    grid_str += grid_str_no_rotate[idx]
+                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
+                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
+            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
+            test_data.append(in_data)
+            test_labels.append(score)
+    print('creating train data & labels')
+    for idx in trange(test_num, ln):
+        grid_str_no_rotate, score, additional_data = tmp_data[idx]
+        for rotation in range(4):
+            grid_str = ''
+            grid_space0 = ''
+            grid_space1 = ''
+            for i in range(hw):
+                for j in range(hw):
+                    idx = calc_idx(i, j, rotation)
+                    grid_str += grid_str_no_rotate[idx]
+                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
+                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
+            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
+            train_data.append(in_data)
+            train_labels.append(score)
     train_data = np.array(train_data)
     test_data = np.array(test_data)
     train_labels = np.array(train_labels)
@@ -115,6 +131,7 @@ def reshape_data(test_ratio):
 
 game_num = 10000
 use_ratio = 1.0
+print('loading data from files')
 for i in trange(game_num):
     collect_data(i, use_ratio)
 reshape_data(0.01)
