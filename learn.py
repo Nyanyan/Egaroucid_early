@@ -72,7 +72,7 @@ def collect_data(num, use_ratio):
         else:
             dict_data[grid_str] = [sgn * score, 1]
 
-def reshape_data(test_ratio):
+def reshape_data_train():
     global train_data, train_labels, test_data, test_labels, mean, std
     tmp_data = []
     print('calculating score & additional data')
@@ -84,26 +84,9 @@ def reshape_data(test_ratio):
         tmp_data.append([grid_str_no_rotate, score, additional_data])
     shuffle(tmp_data)
     ln = len(tmp_data)
-    test_num = int(ln * test_ratio)
     print('got', ln, 'x4', ln * 4)
-    print('creating test data & labels')
-    for idx in trange(test_num):
-        grid_str_no_rotate, score, additional_data = tmp_data[idx]
-        for rotation in range(4):
-            grid_str = ''
-            grid_space0 = ''
-            grid_space1 = ''
-            for i in range(hw):
-                for j in range(hw):
-                    idx = calc_idx(i, j, rotation)
-                    grid_str += grid_str_no_rotate[idx]
-                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
-                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
-            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
-            test_data.append(in_data)
-            test_labels.append(score)
     print('creating train data & labels')
-    for idx in trange(test_num, ln):
+    for idx in trange(ln):
         grid_str_no_rotate, score, additional_data = tmp_data[idx]
         for rotation in range(4):
             grid_str = ''
@@ -119,22 +102,60 @@ def reshape_data(test_ratio):
             train_data.append(in_data)
             train_labels.append(score)
     train_data = np.array(train_data)
-    test_data = np.array(test_data)
     train_labels = np.array(train_labels)
-    test_labels = np.array(test_labels)
     mean = train_data.mean(axis=0)
     std = train_data.std(axis=0)
     train_data = (train_data - mean) / std
-    test_data = (test_data - mean) / std
     print('train', train_data.shape, train_labels.shape)
+
+def reshape_data_test():
+    global train_data, train_labels, test_data, test_labels, mean, std
+    tmp_data = []
+    print('calculating score & additional data')
+    for _, grid_str_no_rotate in zip(trange(len(dict_data.keys())), dict_data.keys()):
+        my_evaluate.stdin.write(grid_str_no_rotate.encode('utf-8'))
+        my_evaluate.stdin.flush()
+        additional_data = my_evaluate.stdout.readline().decode().strip()
+        score = dict_data[grid_str_no_rotate][0] / dict_data[grid_str_no_rotate][1]
+        tmp_data.append([grid_str_no_rotate, score, additional_data])
+    shuffle(tmp_data)
+    ln = len(tmp_data)
+    print('got', ln, 'x4', ln * 4)
+    print('creating train data & labels')
+    for idx in trange(ln):
+        grid_str_no_rotate, score, additional_data = tmp_data[idx]
+        for rotation in range(4):
+            grid_str = ''
+            grid_space0 = ''
+            grid_space1 = ''
+            for i in range(hw):
+                for j in range(hw):
+                    idx = calc_idx(i, j, rotation)
+                    grid_str += grid_str_no_rotate[idx]
+                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
+                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
+            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
+            test_data.append(in_data)
+            test_labels.append(score)
+    test_data = np.array(test_data)
+    test_labels = np.array(test_labels)
+    test_data = (test_data - mean) / std
     print('test', test_data.shape, test_labels.shape)
 
-game_num = 100000
-use_ratio = 0.1
+
+game_num = 3000
+use_ratio = 1.0
+test_ratio = 0.2
+test_num = int(game_num * test_ratio)
+train_num = game_num - test_num
 print('loading data from files')
-for i in trange(game_num):
+for i in trange(train_num):
     collect_data(i, use_ratio)
-reshape_data(0.01)
+reshape_data_train()
+dict_data = {}
+for i in trange(train_num, game_num):
+    collect_data(i, use_ratio)
+reshape_data_test()
 my_evaluate.kill()
 model = Sequential()
 model.add(Dense(256, input_shape=(137,)))
@@ -147,7 +168,7 @@ model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(1))
 model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
-history = model.fit(train_data, train_labels, epochs=1000, validation_split=0.2, callbacks=[early_stop])
+history = model.fit(train_data, train_labels, epochs=1000, validation_data=(test_data, test_labels), callbacks=[early_stop])
 '''
 with open('param/mean.txt', 'w') as f:
     for i in mean:
