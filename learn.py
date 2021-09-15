@@ -129,8 +129,8 @@ def reshape_data(test_ratio):
     print('train', train_data.shape, train_labels.shape)
     print('test', test_data.shape, test_labels.shape)
 
-game_num = 10000
-use_ratio = 1.0
+game_num = 100000
+use_ratio = 0.1
 print('loading data from files')
 for i in trange(game_num):
     collect_data(i, use_ratio)
