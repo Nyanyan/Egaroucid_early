@@ -171,7 +171,7 @@ def collect_data(num, s):
         for i in range(hw):
             for j in range(hw):
                 grid_str += '0' if rv.grid[i][j] == turn else '1' if rv.grid[i][j] == 1 - turn else '.' # 0 to move
-        grids[turn].append(grid_str)
+        grids[turn].append([grid_str, str(y), str(x)])
         if rv.move(y, x):
             print('error')
             break
@@ -184,12 +184,12 @@ def collect_data(num, s):
         f.write(str(score) + '\n')
         for turn in range(2):
             f.write(str(len(grids[turn])) + '\n')
-            for grid in grids[turn]:
-                f.write(grid + '\n')
+            for grid, y, x in grids[turn]:
+                f.write(grid + ' ' + y + ' ' + x + '\n')
 
 with open('third_party/xxx.gam', 'rb') as f:
     raw_data = f.read()
 games = [i for i in raw_data.splitlines()]
 dict_data = {}
-for i in trange(10000, 120000):
+for i in trange(1000):
     collect_data(i, str(games[i]))

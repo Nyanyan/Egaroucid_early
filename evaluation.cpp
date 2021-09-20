@@ -812,7 +812,7 @@ inline double canput_eval(const int *board){
     int res = 0;
     for (i = 0; i < board_index_num; ++i)
         res += eval_param.canput[board[i]];
-    cout << res << " ";
+    cout << res << " " << eval_param.avg_canput[search_param.turn] << " ";
     return ((double)res - eval_param.avg_canput[search_param.turn]) / max(1.0, (double)res + eval_param.avg_canput[search_param.turn]);
 }
 
@@ -871,6 +871,7 @@ inline double evaluate(const int *board, const double open){
     double weight = weight_eval(board);
     double confirm = confirm_eval(board);
     double pot_canput = pot_canput_eval(board);
+    cout << search_param.turn << " ";
     //double open = eval_param.open_eval[min(39, open_val)];
     return 0.0;
 }
@@ -1283,11 +1284,13 @@ int main(){
     while (true){
         p = 0;
         o = 0;
-        //string tmp;
+        search_param.turn = 0;
         for (i = 0; i < hw2; ++i){
             cin >> elem;
             p |= (unsigned long long)(elem == '0') << i;
             o |= (unsigned long long)(elem == '1') << i;
+            if (elem != '.')
+                ++search_param.turn;
         }
         //cerr << "o " << tmp << endl;
         for (i = 0; i < board_index_num; ++i){
