@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 from random import random, randint, shuffle
 import subprocess
+import datetime
 
 all_data = []
 
@@ -61,7 +62,7 @@ def collect_data(num, use_ratio):
     score = -1000
     grids = []
     with open('learn_data/' + digit(num, 7) + '.txt', 'r') as f:
-        score = float(f.readline())
+        score = float(f.readline()) / 64.0
         ln = int(f.readline())
         for _ in range(ln):
             s, y, x = f.readline().split()
@@ -133,6 +134,10 @@ def reshape_data_train():
     mean = train_param.mean(axis=0)
     std = train_param.std(axis=0)
     train_param = (train_param - mean) / std
+    print(train_board[0])
+    print(train_param[0])
+    print(train_policies[0])
+    print(train_value[0])
     print('train', train_board.shape, train_param.shape, train_policies.shape, train_value.shape)
 
 def reshape_data_test():
@@ -187,6 +192,10 @@ def reshape_data_test():
     test_policies = np.array(test_policies)
     test_value = np.array(test_value)
     test_param = (test_param - mean) / std
+    print(test_board[0])
+    print(test_param[0])
+    print(test_policies[0])
+    print(test_value[0])
     print('test', test_board.shape, test_param.shape, test_policies.shape, test_value.shape)
 
 def step_decay(epoch):
@@ -195,7 +204,54 @@ def step_decay(epoch):
     if epoch >= 80: x = 0.00025
     return x
 
-n_epochs = 10
+class DisplayCallBack(tf.keras.callbacks.Callback):
+    # コンストラクタ
+    def __init__(self):
+        self.last_loss, self.last_val_loss = None, None
+        self.now_batch, self.now_epoch = None, None
+        self.epochs = None
+
+    # カスタム進捗表示 (表示部本体)
+    def print_progress(self):
+        epoch = self.now_epoch
+        epochs = self.epochs
+        batch_size = self.batch_size
+        # '\r' と end='' を使って改行しないようにする
+        print("\rEpoch %d/%d -- loss: %f - val_loss: %f" % (epoch+1, epochs, self.last_loss, self.last_val_loss), end='')
+
+    # fit開始時
+    def on_train_begin(self, logs={}):
+        print('\n##### Train Start ##### ' + str(datetime.datetime.now()))
+        # パラメータの取得
+        self.epochs = self.params['epochs']
+        # 標準の進捗表示をしないようにする
+        self.params['verbose'] = 0
+
+    # batch完了時 (進捗表示)
+    def on_batch_end(self, batch, logs={}):
+        # 最新情報の更新
+        self.last_loss = logs.get('loss') if logs.get('loss') else 0.0
+
+        # 進捗表示
+        self.print_progress()
+
+
+    # epoch開始時
+    def on_epoch_begin(self, epoch, log={}):
+        self.now_epoch = epoch
+
+    # epoch完了時 (進捗表示)
+    def on_epoch_end(self, epoch, logs={}):
+        # 最新情報の更新
+        self.last_val_loss = logs.get('val_loss') if logs.get('val_loss') else 0.0
+        # 進捗表示
+        self.print_progress()
+
+    # fit完了時
+    def on_train_end(self, logs={}):
+        print('\n##### Train Complete ##### ' + str(datetime.datetime.now()))
+
+n_epochs = 100
 game_num = 100
 use_ratio = 1.0
 test_ratio = 0.2
@@ -246,9 +302,10 @@ model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
 early_stop = EarlyStopping(monitor='loss', patience=20)
-lr_decay = LearningRateScheduler(step_decay)
-print_callback = LambdaCallback(on_epoch_begin=lambda epoch,logs: print('\rTrain', epoch + 1, '/', n_epochs, end=''))
-history = model.fit([train_board, train_param], [train_policies, train_value], batch_size=128, epochs=n_epochs, verbose=0, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop, lr_decay, print_callback])
+#lr_decay = LearningRateScheduler(step_decay)
+#print_callback = LambdaCallback(on_epoch_begin=lambda epoch,loss,val_loss,logs: print('\rTrain', epoch + 1, '/', n_epochs, loss, val_loss, end=''))
+#print_callback = DisplayCallBack()
+history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 '''
 model = Sequential()
 model.add(Dense(256, input_shape=(139,)))
