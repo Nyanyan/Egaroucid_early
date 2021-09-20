@@ -251,8 +251,9 @@ class DisplayCallBack(tf.keras.callbacks.Callback):
     def on_train_end(self, logs={}):
         print('\n##### Train Complete ##### ' + str(datetime.datetime.now()))
 
-n_epochs = 100
-game_num = 100
+n_epochs = 10
+game_num = 10
+n_kernels = 64
 use_ratio = 1.0
 test_ratio = 0.2
 test_num = int(game_num * test_ratio)
@@ -268,40 +269,41 @@ reshape_data_test()
 my_evaluate.kill()
 input_b = Input(shape=(2, hw, hw,))
 input_p = Input(shape=(11,))
-x_b = Conv2D(128, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
+x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
 x_b = BatchNormalization()(x_b)
 x_b = Activation('relu')(x_b)
-for _ in range(2):
+for _ in range(1):
     sc = x_b
-    x_b = Conv2D(128, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
+    x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
     x_b = BatchNormalization()(x_b)
-    x_b = Activation('relu')(x_b)
-    x_b = Conv2D(128, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
-    x_b = BatchNormalization()(x_b)
+    #x_b = Activation('relu')(x_b)
+    #x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
+    #x_b = BatchNormalization()(x_b)
     x_b = Add()([x_b, sc])
     x_b = Activation('relu')(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(64)(input_p)
-#Activation('relu')(x_p)
-x_p = LeakyReLU(alpha=0.01)(x_p)
-x_p = Dense(64)(x_p)
-#Activation('relu')(x_p)
-x_p = LeakyReLU(alpha=0.01)(x_p)
+x_p = Dense(32)(input_p)
+x_p = Activation('tanh')(x_p)
+#x_p = LeakyReLU(alpha=0.01)(x_p)
+#x_p = Dense(32)(x_p)
+#x_p = Activation('tanh')(x_p)
+#x_p = LeakyReLU(alpha=0.01)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
 
 output_p = Dense(hw2, kernel_regularizer=l2(0.0005), activation='softmax', name='policy')(x_all)
-output_v = Dense(1, kernel_regularizer=l2(0.0005), name='value')(x_all)
-#Activation('relu', name='value')(output_v)
+output_v = Dense(1, kernel_regularizer=l2(0.0005))(x_all)
+output_v = Activation('tanh', name='value')(output_v)
+#output_v = Dense(1, kernel_regularizer=l2(0.0005), name='value')(x_all)
 #output_v = LeakyReLU(alpha=0.01, name='value')(output_v)
 
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
-model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
-early_stop = EarlyStopping(monitor='loss', patience=20)
+model.compile(loss=['categorical_crossentropy', 'logcosh'], optimizer='adam', metrics=['mae'])
+early_stop = EarlyStopping(monitor='val_loss', patience=10)
 #lr_decay = LearningRateScheduler(step_decay)
 #print_callback = LambdaCallback(on_epoch_begin=lambda epoch,loss,val_loss,logs: print('\rTrain', epoch + 1, '/', n_epochs, loss, val_loss, end=''))
 #print_callback = DisplayCallBack()
@@ -338,27 +340,36 @@ with open('param/param.txt', 'w') as f:
 '''
 test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
 print('test_loss', test_loss)
-'''
-test_num = 10
-test_num = min(test_value.shape[0], test_num)
-test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]]).flatten()
-print([round(i, 2) for i in test_value[0:test_num]])
-print([round(i, 2) for i in test_predictions[0:test_num]])
-'''
+
 print('key', history.history.keys())
 for key in ['policy_mae', 'val_policy_mae']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
-plt.ylabel('loss')
+plt.ylabel('mae')
 plt.legend(loc='best')
 plt.show()
 
 for key in ['value_mae', 'val_value_mae']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
-plt.ylabel('loss')
+plt.ylabel('mae')
 plt.legend(loc='best')
 plt.show()
+
+test_num = 10
+test_num = min(test_value.shape[0], test_num)
+test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
+ans_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_policies[0:test_num]]
+ans_value = [round(i, 3) for i in test_value[0:test_num]]
+pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
+pred_value = test_predictions[1]
+for i in range(test_num):
+    print('ans_policy', ans_policies[i])
+    print('prd_policy', pred_policies[i])
+    print('ans_value', ans_value[i])
+    print('prd_value', pred_value[i])
+    print('')
+
 '''
 for i in range(5):
     print(list(test_data[i]))
