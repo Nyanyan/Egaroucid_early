@@ -276,7 +276,7 @@ pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
 pred_value = test_predictions[1]
 for i in range(test_num):
     #print('board', [[[ii for ii in jj] for jj in kk] for kk in test_board[i]])
-    #print('param', list(test_param[i]))
+    print('param', list(test_param[i]))
     print('raw_board', test_raw_board[i])
     board_str = ''
     for ii in test_board[i]:

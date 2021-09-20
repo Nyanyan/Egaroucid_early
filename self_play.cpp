@@ -723,15 +723,6 @@ inline predictions predict(const int *board){
             eval_param.input_b[1][i][j] = board_param.restore_o[board[i]][j];
         }
     }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
-            cerr << eval_param.input_b[0][i][j];
-    }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
-            cerr << eval_param.input_b[1][i][j];
-    }
-    cerr << endl;
     for (i = 0; i < n_add_input; ++i)
         eval_param.input_p[i] = 0.0;
     for (i = 0; i < hw; ++i){
@@ -974,13 +965,13 @@ int main(){
     cerr << "initialized" << endl;
     int i, j, board_tmp;
     char elem;
-    unsigned long long p, o;
+    unsigned long long p = 0, o = 0;
     int board[board_index_num];
+    search_param.turn = 0;
     for (i = 0; i < hw2; ++i){
         cin >> elem;
-        if (elem == '.'){
-            ++search_param.vacant_cnt;
-        }else{
+        if (elem != '.'){
+            ++search_param.turn;
             p |= (unsigned long long)(elem == '0') << i;
             o |= (unsigned long long)(elem == '1') << i;
         }
@@ -995,6 +986,7 @@ int main(){
         }
         board[i] = board_tmp;
     }
+    print_board(board);
     predictions res = predict(board);
     double max_pred = 0.0;
     int idx = -1;
