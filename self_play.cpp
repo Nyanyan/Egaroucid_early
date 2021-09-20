@@ -823,6 +823,8 @@ double evaluate(int idx, bool is_player, bool passed){
                 }
             }
             value = evaluate(n_idx, !is_player, false);
+            mcts_param.seen_nodes[idx].w += value;
+            ++mcts_param.seen_nodes[idx].n;
         } else{
             value = evaluate(mcts_param.seen_nodes[idx].children[hw2], is_player, true);
         }
@@ -863,8 +865,13 @@ inline void predict_scores(int (&board)[board_index_num], double (&res)[hw2]){
         evaluate(0, true, false);
     int n_sum = 0;
     for (i = 0; i < hw2; ++i){
-        res[i] = (double)mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
-        n_sum += mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
+        if (mcts_param.seen_nodes[0].children[i] != -1){
+            cerr << i << " " << mcts_param.seen_nodes[0].children[i] << " " << mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n << endl;
+            res[i] = (double)mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
+            n_sum += mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
+        } else{
+            res[i] = 0.0;
+        }
     }
     cerr << n_sum << endl;
     if (n_sum == 0){
