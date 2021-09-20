@@ -191,9 +191,22 @@ struct open_vals{
     int p_cnt, o_cnt;
 };
 
+struct mcts_node{
+    int board[board_index_num];
+    int children[34];
+    bool end;
+    int pass_count;
+};
+
+struct mcts_param{
+    mcts_node seen_nodes[60 * evaluate_count];
+    int used_idx;
+};
+
 board_param board_param;
 eval_param eval_param;
 search_param search_param;
+mcts_param mcts_param;
 
 int xorx=123456789, xory=362436069, xorz=521288629, xorw=88675123;
 inline double myrandom(){
@@ -715,372 +728,37 @@ inline double evaluate(const int *board){
     return res;
 }
 
-inline double end_game(const int *board){
+inline bool end_game(const int *board){
     int res = 0, i, j, p, o;
     for (i = 0; i < hw; ++i){
         res += eval_param.cnt_p[board[i]];
         res -= eval_param.cnt_o[board[i]];
     }
-    res *= 1000;
-    if (search_param.weak_mode)
-        return -(double)res;
-    return (double)res;
+    return res > 0;
 }
 
-inline int move_open(int *board, int (&res)[board_index_num], int coord){
-    int i, j, tmp;
-    unsigned long long rev = 0, neighbor = 0;
-    for (i = 0; i < board_index_num; ++i){
-        res[i] = board_param.reverse[board[i]];
-        if (board_param.put[coord][i] != -1){
-            rev |= board_param.trans[i][board[i]][board_param.put[coord][i]];
-            neighbor |= board_param.neighbor8[i][board[i]][board_param.put[coord][i]];
-        }
+inline void mcts(int idx){
+    double value = 0.0;
+    if (mcts_param.seen_nodes[idx].end){
+        if (!end_game(mcts_param.seen_nodes[idx].board))
+            value = -1.0;
     }
-    for (i = 0; i < hw2; ++i){
-        if (1 & (rev >> i)){
-            for (j = 0; j < 4; ++j){
-                if (board_param.board_rev_translate[i][j][0] == -1)
-                    break;
-                res[board_param.board_rev_translate[i][j][0]] += board_param.rev_bit3[res[board_param.board_rev_translate[i][j][0]]][board_param.board_rev_translate[i][j][1]];
-            }
-        }
-    }
-    int open_val = 0;
-    for (i = 0; i < hw2; ++i){
-        if(1 & (neighbor >> i))
-            open_val += (int)(board_param.pop_digit[board[i >> 3]][i & 0b111] == 0);
-    }
-    return open_val;
-}
+    if (mcts_param.seen_nodes[idx].children[0] == -1){
 
-inline open_vals open_val_forward(int *board, int depth, bool player){
-    open_vals res;
-    if (depth == 0){
-        res.p_open_val = 0.0;
-        res.o_open_val = 0.0;
-        res.p_cnt = 0;
-        res.o_cnt = 0;
-        return res;
-    }
-    --depth;
-    int i, j;
-    int n_board[board_index_num];
-    open_vals tmp;
-    res.p_open_val = -inf;
-    res.o_open_val = inf;
-    double open_val = -inf;
-    bool passed = false;
-    for (const int& cell : search_param.vacant_lst){
-        for (i = 0; i < board_param.put_idx_num[cell]; ++i){
-            if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
-                passed = false;
-                open_val = max(open_val, eval_param.open_eval[move_open(board, n_board, cell)]);
-                tmp = open_val_forward(n_board, depth, !player);
-                if (res.p_open_val < tmp.p_open_val){
-                    res.p_open_val = tmp.p_open_val;
-                    res.p_cnt = tmp.p_cnt;
-                }
-                if (res.o_open_val > tmp.o_open_val){
-                    res.o_open_val = tmp.o_open_val;
-                    res.o_cnt = tmp.o_cnt;
-                }
-            }
-        }
-    }
-    if (passed){
-        res.p_open_val = 0.0;
-        res.o_open_val = 0.0;
-        res.p_cnt = 0;
-        res.o_cnt = 0;
-        return res;
-    }
-    if (player){
-        res.p_open_val += open_val;
-        ++res.p_cnt;
-    } else {
-        res.o_open_val += open_val;
-        ++res.o_cnt;
-    }
-    return res;
-}
+    }else{
 
-int cmp(board_priority p, board_priority q){
-    return p.priority > q.priority;
-}
-
-double nega_alpha_light(int *board, const int depth, double alpha, double beta, const int skip_cnt, double p_open_val, double o_open_val, int p_cnt, int o_cnt){
-    ++search_param.searched_nodes;
-    if (tim() - search_param.strt > search_param.tl)
-        return -inf;
-    if (skip_cnt == 2)
-        return end_game(board);
-    else if (depth == 0)
-        return evaluate(board);
-    bool is_pass = true;
-    int i, j, k;
-    double v = -65000.0, g;
-    int n_board[board_index_num];
-    ++p_cnt;
-    for (const int& cell : search_param.vacant_lst){
-        for (i = 0; i < board_index_num; ++i){
-            if (board_param.put[cell][i] != -1){
-                if (board_param.legal[board[i]][board_param.put[cell][i]]){
-                    is_pass = false;
-                    g = -nega_alpha_light(n_board, depth - 1, -beta, -alpha, 0, o_open_val, p_open_val + eval_param.open_eval[move_open(board, n_board, cell)], o_cnt, p_cnt);
-                    if (beta <= g)
-                        return g;
-                    alpha = max(alpha, g);
-                    v = max(v, g);
-                    break;
-                }
-            }
-        }
     }
-    if (is_pass){
-        for (i = 0; i < board_index_num; ++i)
-            n_board[i] = board_param.reverse[board[i]];
-        return -nega_alpha_light(n_board, depth, -beta, -alpha, skip_cnt + 1, o_open_val, p_open_val, o_cnt, p_cnt - 1);
-    }
-    return v;
-}
-
-double nega_alpha(int *board, const int depth, double alpha, double beta, const int skip_cnt, double p_open_val, double o_open_val, int p_cnt, int o_cnt){
-    if (depth < simple_threshold)
-        return nega_alpha_light(board, depth, alpha, beta, skip_cnt, p_open_val, o_open_val, p_cnt, o_cnt);
-    ++search_param.searched_nodes;
-    if (tim() - search_param.strt > search_param.tl)
-        return -inf;
-    if (skip_cnt == 2)
-        return end_game(board);
-    else if (depth == 0)
-        return evaluate(board);
-    int hash = calc_hash(board);
-    double lb, ub;
-    lb = get_val_hash(search_param.memo_lb, board, hash);
-    ub = get_val_hash(search_param.memo_ub, board, hash);
-    if (lb != -inf){
-        alpha = max(alpha, lb);
-        if (alpha >= beta)
-            return alpha;
-    }
-    if (ub != -inf){
-        beta = min(beta, ub);
-        if (alpha >= beta)
-            return beta;
-    }
-    int i, j, k, canput = 0;
-    double v = -65000.0, g;
-    board_priority lst[30];
-    ++p_cnt;
-    double previous_val;
-    for (const int& cell : search_param.vacant_lst){
-        for (i = 0; i < board_param.put_idx_num[cell]; ++i){
-            if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
-                lst[canput].n_open_val = p_open_val + eval_param.open_eval[move_open(board, lst[canput].b, cell)];
-                previous_val = get_val_hash(search_param.previous_memo, lst[canput].b, calc_hash(lst[canput].b));
-                if (previous_val != -inf){
-                    lst[canput].priority = 1000.0 + previous_val;
-                } else {
-                    lst[canput].priority = lst[canput].n_open_val / p_cnt - o_open_val / max(1, o_cnt);
-                }
-                ++canput;
-                break;
-            }
-        }
-    }
-    if (canput == 0){
-        int n_board[board_index_num];
-        for (i = 0; i < board_index_num; ++i)
-            n_board[i] = board_param.reverse[board[i]];
-        return -nega_alpha(n_board, depth, -beta, -alpha, skip_cnt + 1, o_open_val, p_open_val, o_cnt, p_cnt - 1);
-    }
-    if (canput > 1)
-        sort(lst, lst + canput, cmp);
-    for (i = 0; i < canput; ++i){
-        g = -nega_alpha(lst[i].b, depth - 1, -beta, -alpha, 0, o_open_val, lst[i].n_open_val, o_cnt, p_cnt);
-        if (fabs(g) == inf)
-            return -inf;
-        if (beta < g){
-            register_hash(search_param.memo_lb, board, hash, g);
-            return g;
-        }
-        alpha = max(alpha, g);
-        v = max(v, g);
-    }
-    if (v == alpha)
-        register_hash(search_param.memo_lb, board, hash, v);
-    register_hash(search_param.memo_ub, board, hash, v);
-    return v;
-}
-
-double nega_scout(int *board, int depth, double alpha, double beta, int skip_cnt, double p_open_val, double o_open_val, int p_cnt, int o_cnt){
-    if (tim() - search_param.strt > search_param.tl)
-        return -inf;
-    if (depth < simple_threshold)
-        return nega_alpha_light(board, depth, alpha, beta, skip_cnt, p_open_val, o_open_val, p_cnt, o_cnt);
-    ++search_param.searched_nodes;
-    if (skip_cnt == 2)
-        return end_game(board);
-    if (depth == 0)
-        return evaluate(board);
-    int hash = calc_hash(board);
-    double lb, ub;
-    lb = get_val_hash(search_param.memo_lb, board, hash);
-    ub = get_val_hash(search_param.memo_ub, board, hash);
-    if (lb != -inf){
-        alpha = max(alpha, lb);
-        if (alpha >= beta)
-            return alpha;
-    }
-    if (ub != -inf){
-        beta = min(beta, ub);
-        if (alpha >= beta)
-            return beta;
-    }
-    int i, j, canput = 0;
-    board_priority lst[30];
-    int n_p_cnt = p_cnt + 1, n_depth = depth - 1;
-    double previous_val;
-    for (const int& cell : search_param.vacant_lst){
-        for (i = 0; i < board_param.put_idx_num[cell]; ++i){
-            if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
-                previous_val = get_val_hash(search_param.previous_memo, lst[canput].b, calc_hash(lst[canput].b));
-                if (previous_val != -inf){
-                    lst[canput].priority = 1000.0 + previous_val;
-                    lst[canput].n_open_val = p_open_val + eval_param.open_eval[move_open(board, lst[canput].b, cell)];
-                } else {
-                    lst[canput].priority = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
-                    lst[canput].n_open_val = p_open_val + lst[canput].priority;
-                }
-                ++canput;
-                break;
-            }
-        }
-    }
-    if (canput == 0){
-        int n_board[board_index_num];
-        for (i = 0; i < board_index_num; ++i)
-            n_board[i] = board_param.reverse[board[i]];
-        return -nega_scout(n_board, depth, -beta, -alpha, skip_cnt + 1, o_open_val, p_open_val, o_cnt, p_cnt);
-    }
-    if (canput > 2)
-        sort(lst, lst + canput, cmp);
-    double v, g;
-    g = -nega_scout(lst[0].b, n_depth, -beta, -alpha, 0, o_open_val, lst[0].n_open_val, o_cnt, n_p_cnt);
-    if (fabs(g) == inf)
-        return -inf;
-    if (beta <= g)
-        return g;
-    v = g;
-    alpha = max(alpha, g);
-    for (i = 1; i < canput; ++i){
-        g = -nega_alpha(lst[i].b, n_depth, -alpha - window, -alpha, 0, o_open_val, lst[i].n_open_val, o_cnt, n_p_cnt);
-        if (fabs(g) == inf)
-            return -inf;
-        if (beta <= g)
-            return g;
-        if (alpha < g){
-            alpha = g;
-            g = -nega_scout(lst[i].b, n_depth, -beta, -alpha, 0, o_open_val, lst[i].n_open_val, o_cnt, n_p_cnt);
-            if (beta <= g)
-                return g;
-            alpha = max(alpha, g);
-        }
-        v = max(v, g);
-    }
-    return v;
-}
-
-double nega_scout_heavy(int *board, int depth, double alpha, double beta, int skip_cnt, double p_open_val, double o_open_val, int p_cnt, int o_cnt){
-    if (tim() - search_param.strt > search_param.tl)
-        return -inf;
-    if (depth <= search_param.max_depth - 3)
-        return nega_scout(board, depth, alpha, beta, skip_cnt, p_open_val, o_open_val, p_cnt, o_cnt);
-    ++search_param.searched_nodes;
-    if (skip_cnt == 2)
-        return end_game(board);
-    if (depth == 0)
-        return evaluate(board);
-    int hash = calc_hash(board);
-    double lb, ub;
-    lb = get_val_hash(search_param.memo_lb, board, hash);
-    ub = get_val_hash(search_param.memo_ub, board, hash);
-    if (lb != -inf){
-        alpha = max(alpha, lb);
-        if (alpha >= beta)
-            return alpha;
-    }
-    if (ub != -inf){
-        beta = min(beta, ub);
-        if (alpha >= beta)
-            return beta;
-    }
-    int i, j, canput = 0;
-    board_priority lst[30];
-    int n_p_cnt = p_cnt + 1, n_depth = depth - 1;
-    open_vals tmp_open_vals;
-    double previous_val;
-    for (j = 0; j < search_param.vacant_cnt; ++j){
-        for (i = 0; i < board_param.put_idx_num[search_param.vacant_lst[j]]; ++i){
-            if (board_param.legal[board[board_param.put_idx[search_param.vacant_lst[j]][i]]][board_param.put[search_param.vacant_lst[j]][board_param.put_idx[search_param.vacant_lst[j]][i]]]){
-                lst[canput].n_open_val = p_open_val + eval_param.open_eval[move_open(board, lst[canput].b, search_param.vacant_lst[j])];
-                previous_val = get_val_hash(search_param.previous_memo, lst[canput].b, calc_hash(lst[canput].b));
-                if (previous_val != -inf){
-                    lst[canput].priority = 1000.0 + previous_val;
-                } else {
-                    tmp_open_vals = open_val_forward(lst[canput].b, 1, true);
-                    //cerr << tmp_open_vals.p_cnt << " " << tmp_open_vals.p_open_val << " " << tmp_open_vals.o_cnt << " " << tmp_open_vals.o_open_val << endl;
-                    if (o_cnt + tmp_open_vals.p_cnt)
-                        lst[canput].priority = (lst[canput].n_open_val + tmp_open_vals.o_open_val) / (n_p_cnt + tmp_open_vals.o_cnt) - (o_open_val + tmp_open_vals.p_open_val) / (o_cnt + tmp_open_vals.p_cnt);
-                    else
-                        lst[canput].priority = (lst[canput].n_open_val + tmp_open_vals.o_open_val) / (n_p_cnt + tmp_open_vals.o_cnt);
-                }
-                ++canput;
-                break;
-            }
-        }
-    }
-    if (canput == 0){
-        int n_board[board_index_num];
-        for (i = 0; i < board_index_num; ++i)
-            n_board[i] = board_param.reverse[board[i]];
-        return -nega_scout_heavy(n_board, depth, -beta, -alpha, skip_cnt + 1, o_open_val, p_open_val, o_cnt, p_cnt);
-    }
-    if (canput > 2)
-        sort(lst, lst + canput, cmp);
-    double v, g;
-    g = -nega_scout_heavy(lst[0].b, n_depth, -beta, -alpha, 0, o_open_val, lst[0].n_open_val, o_cnt, n_p_cnt);
-    if (fabs(g) == inf)
-        return -inf;
-    if (beta <= g)
-        return g;
-    v = g;
-    alpha = max(alpha, g);
-    for (i = 1; i < canput; ++i){
-        g = -nega_alpha(lst[i].b, n_depth, -alpha - window, -alpha, 0, o_open_val, lst[i].n_open_val, o_cnt, n_p_cnt);
-        if (fabs(g) == inf)
-            return -inf;
-        if (beta <= g)
-            return g;
-        if (alpha < g){
-            alpha = g;
-            g = -nega_scout_heavy(lst[i].b, n_depth, -beta, -alpha, 0, o_open_val, lst[i].n_open_val, o_cnt, n_p_cnt);
-            if (beta <= g)
-                return g;
-            alpha = max(alpha, g);
-        }
-        v = max(v, g);
-    }
-    return v;
 }
 
 inline void predict_scores(int *board, double (&res)[hw2]){
     int i;
     for (i = 0; i < hw2; ++i)
         res[i] = 0.0;
+    for (i = 0; i < board_index_num; ++i)
+        mcts_param.seen_nodes[0].board[i] = board[i];
+    mcts_param.used_idx = 1;
     for (i = 0; i < evaluate_count; ++i)
-        mcts(root_node);
+        mcts(0);
 }
 
 inline void move(int *board, int (&res)[board_index_num], int coord){
@@ -1129,171 +807,3 @@ int main(){
         swap(board, tmp_board);
     }
 }
-
-/*
-int main(){
-    int outy, outx, i, j, k, canput, former_depth = 7, former_vacant = hw2 - 4;
-    double score, max_score;
-    unsigned long long p, o;
-    int board[board_index_num];
-    int put;
-    vector<board_priority_move> lst;
-    char elem;
-    int action_count;
-    double game_ratio;
-    int ai_player;
-    int board_tmp;
-    int y, x;
-    double final_score;
-    int board_size;
-    string action;
-    double avg_score;
-    int avg_div_num;
-
-    init();
-    cerr << "AI initialized" << endl;
-    
-    while (true){
-        outy = -1;
-        outx = -1;
-        avg_score = 0.0;
-        avg_div_num = 0;
-        search_param.vacant_cnt = 0;
-        search_param.vacant_lst.clear();
-        p = 0;
-        o = 0;
-        canput = 0;
-        search_param.weak_mode = 0;
-        cin >> ai_player;
-        cin >> search_param.tl;
-        if (search_param.tl < 0) {
-            if (search_param.tl == -10) {
-                search_param.tl = -search_param.tl;
-                search_param.weak_mode = 2;
-            } else {
-                search_param.tl = -search_param.tl;
-                search_param.weak_mode = 1;
-            }
-        }
-        //cerr << "AI: " << ai_player << " timeout in " << search_param.tl << "ms" << endl;
-        for (i = 0; i < hw2; ++i){
-            //if (i && !(i & 0b111))
-            //    cerr << endl;
-            cin >> elem;
-            //cerr << elem;
-            if (elem == '.'){
-                //search_param.vacant_lst[search_param.vacant_cnt++] = i;
-                search_param.vacant_lst.push_back(i);
-                ++search_param.vacant_cnt;
-            }else{
-                p |= (unsigned long long)(elem == '0') << i;
-                o |= (unsigned long long)(elem == '1') << i;
-            }
-        }
-        //cerr << endl;
-        if (search_param.vacant_cnt > 1){
-            //sort(search_param.vacant_lst, search_param.vacant_lst + search_param.vacant_cnt, cmp_vacant);
-            sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
-        }
-        if (ai_player == 1)
-            swap(p, o);
-        search_param.strt = tim();
-        for (i = 0; i < board_index_num; ++i){
-            board_tmp = 0;
-            for (j = 0; j < board_param.pattern_space[i]; ++j){
-                if (1 & (p >> board_param.board_translate[i][j]))
-                    board_tmp += board_param.pow3[j];
-                else if (1 & (o >> board_param.board_translate[i][j]))
-                    board_tmp += 2 * board_param.pow3[j];
-            }
-            board[i] = board_tmp;
-        }
-
-        //evaluate(board);
-        //return 0;
-        search_param.min_max_depth = 2; //min(10, former_depth + search_param.vacant_cnt - former_vacant);            
-        search_param.max_depth = search_param.min_max_depth;
-        former_vacant = search_param.vacant_cnt;
-        lst.clear();
-        for (j = 0; j < search_param.vacant_cnt; ++j){
-            for (i = 0; i < board_index_num; ++i){
-                if (board_param.put[search_param.vacant_lst[j]][i] != -1){
-                    if (board_param.legal[board[i]][board_param.put[search_param.vacant_lst[j]][i]]){
-                        ++canput;
-                        board_priority_move tmp;
-                        tmp.open_val = eval_param.open_eval[move_open(board, tmp.b, search_param.vacant_lst[j])];
-                        tmp.priority = tmp.open_val;
-                        tmp.move = search_param.vacant_lst[j];
-                        lst.push_back(tmp);
-                        break;
-                    }
-                }
-            }
-        }
-        if (canput > 1)
-            sort(lst.begin(), lst.end(), cmp_main);
-        outy = -1;
-        outx = -1;
-        search_param.searched_nodes = 0;
-        while (tim() - search_param.strt < search_param.tl){
-            hash_table_init(search_param.previous_memo);
-            //hash_table_copy(search_param.previous_memo, search_param.memo_ub);
-            swap(search_param.previous_memo, search_param.memo_ub);
-            hash_table_init(search_param.memo_lb);
-            //hash_table_init(search_param.memo_ub);
-            search_param.turn = min(63, hw2 - search_param.vacant_cnt + search_param.max_depth);
-            game_ratio = (double)search_param.turn / hw2;
-            score = -nega_scout_heavy(lst[0].b, search_param.max_depth - 1, -65000.0, 65000.0, 0, 0.0, lst[0].open_val, 0, 1);
-            if (fabs(score) == inf){
-                max_score = -inf;
-            } else {
-                max_score = score;
-                lst[0].priority = score;
-                for (i = 1; i < canput; ++i){
-                    score = -nega_alpha(lst[i].b, search_param.max_depth - 1, -max_score - window, -max_score, 0, 0.0, lst[i].open_val, 0, 1);
-                    if (max_score <= score){
-                        max_score = score;
-                        score = -nega_scout_heavy(lst[i].b, search_param.max_depth - 1, -65000.0, -max_score, 0, 0.0, lst[i].open_val, 0, 1);
-                        if (fabs(score) == inf){
-                            max_score = -inf;
-                            break;
-                        }
-                        lst[i].priority = score;
-                        max_score = score;
-                    } else
-                        lst[i].priority = score;
-                }
-            }
-            if (max_score == -inf){
-                //cerr << "depth " << search_param.max_depth << " timeoout" << endl;
-                break;
-            }
-            final_score = max_score;
-            avg_score += final_score;
-            ++avg_div_num;
-            former_depth = search_param.max_depth;
-            if (canput > 1)
-                sort(lst.begin(), lst.end(), cmp_main);
-            outx = lst[0].move % hw;
-            outy = lst[0].move / hw;
-            //cerr << "depth " << search_param.max_depth << " nodes " << search_param.searched_nodes << " nps " << ((unsigned long long)search_param.searched_nodes * 1000 / max(1, tim() - search_param.strt));
-            //cerr << "  " << outy << outx << " " << lst[0].priority;
-            //cerr << " time " << tim() - search_param.strt << endl;
-            if (fabs(max_score) >= 1000.0 || search_param.max_depth >= hw2){
-                avg_score = max_score / 1000.0;
-                avg_div_num = 1;
-                //cerr << "game end" << endl;
-                break;
-            }
-            ++search_param.max_depth;
-        }
-        //cout << (char)(outx + 97) << (outy + 1) << " " << "MSG " << former_depth << " " << final_score << endl;
-        avg_score /= avg_div_num;
-        if (search_param.weak_mode)
-            avg_score = -avg_score;
-        //cerr << (char)(outx + 97) << (outy + 1) << " " << avg_score << " " << tim() - search_param.strt << "ms" << endl;
-        cout << outy << " " << outx << " " << avg_score << endl;
-    }
-    return 0;
-}
-*/
