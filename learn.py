@@ -364,6 +364,8 @@ ans_value = [round(i, 3) for i in test_value[0:test_num]]
 pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
 pred_value = test_predictions[1]
 for i in range(test_num):
+    print('board', test_board[i])
+    print('param', test_param[i])
     print('ans_policy', ans_policies[i])
     print('prd_policy', pred_policies[i])
     print('ans_value', ans_value[i])
