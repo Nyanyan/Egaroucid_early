@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.datasets import boston_housing
 from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input, concatenate, Flatten
-from tensorflow.keras.models import Sequential, Model
+from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
 from keras.layers.advanced_activations import LeakyReLU
@@ -21,6 +21,7 @@ train_param = []
 train_policies = []
 train_value = []
 
+test_raw_board = []
 test_board = []
 test_param = []
 test_policies = []
@@ -121,7 +122,7 @@ def reshape_data_train():
                 grid_space0 += '1 ' if board[idx] == '0' else '0 '
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
         grid_flat = [float(i) for i in (grid_space0 + grid_space1).split()]
-        train_board.append([[[grid_flat[i * hw2 + j * hw + k] for k in range(hw)] for j in range(hw)] for i in range(2)])
+        train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
         train_param.append([float(i) for i in param.split()])
         policies = [0.0 for _ in range(hw2)]
         policies[y * hw + x] = 1.0
@@ -134,14 +135,16 @@ def reshape_data_train():
     mean = train_param.mean(axis=0)
     std = train_param.std(axis=0)
     train_param = (train_param - mean) / std
+    '''
     print(train_board[0])
     print(train_param[0])
     print(train_policies[0])
     print(train_value[0])
+    '''
     print('train', train_board.shape, train_param.shape, train_policies.shape, train_value.shape)
 
 def reshape_data_test():
-    global test_board, test_param, test_policies, test_value
+    global test_board, test_param, test_policies, test_value, test_raw_board
     tmp_data = []
     print('calculating score & additional data')
     for i in trange(len(all_data)):
@@ -180,8 +183,9 @@ def reshape_data_test():
                 idx = i * hw + j
                 grid_space0 += '1 ' if board[idx] == '0' else '0 '
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
+        test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1).split()]
-        test_board.append([[[grid_flat[i * hw2 + j * hw + k] for k in range(hw)] for j in range(hw)] for i in range(2)])
+        test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
         test_param.append([float(i) for i in param.split()])
         policies = [0.0 for _ in range(hw2)]
         policies[y * hw + x] = 1.0
@@ -192,10 +196,12 @@ def reshape_data_test():
     test_policies = np.array(test_policies)
     test_value = np.array(test_value)
     test_param = (test_param - mean) / std
+    '''
     print(test_board[0])
     print(test_param[0])
     print(test_policies[0])
     print(test_value[0])
+    '''
     print('test', test_board.shape, test_param.shape, test_policies.shape, test_value.shape)
 
 def step_decay(epoch):
@@ -204,58 +210,12 @@ def step_decay(epoch):
     if epoch >= 80: x = 0.00025
     return x
 
-class DisplayCallBack(tf.keras.callbacks.Callback):
-    # コンストラクタ
-    def __init__(self):
-        self.last_loss, self.last_val_loss = None, None
-        self.now_batch, self.now_epoch = None, None
-        self.epochs = None
-
-    # カスタム進捗表示 (表示部本体)
-    def print_progress(self):
-        epoch = self.now_epoch
-        epochs = self.epochs
-        batch_size = self.batch_size
-        # '\r' と end='' を使って改行しないようにする
-        print("\rEpoch %d/%d -- loss: %f - val_loss: %f" % (epoch+1, epochs, self.last_loss, self.last_val_loss), end='')
-
-    # fit開始時
-    def on_train_begin(self, logs={}):
-        print('\n##### Train Start ##### ' + str(datetime.datetime.now()))
-        # パラメータの取得
-        self.epochs = self.params['epochs']
-        # 標準の進捗表示をしないようにする
-        self.params['verbose'] = 0
-
-    # batch完了時 (進捗表示)
-    def on_batch_end(self, batch, logs={}):
-        # 最新情報の更新
-        self.last_loss = logs.get('loss') if logs.get('loss') else 0.0
-
-        # 進捗表示
-        self.print_progress()
-
-
-    # epoch開始時
-    def on_epoch_begin(self, epoch, log={}):
-        self.now_epoch = epoch
-
-    # epoch完了時 (進捗表示)
-    def on_epoch_end(self, epoch, logs={}):
-        # 最新情報の更新
-        self.last_val_loss = logs.get('val_loss') if logs.get('val_loss') else 0.0
-        # 進捗表示
-        self.print_progress()
-
-    # fit完了時
-    def on_train_end(self, logs={}):
-        print('\n##### Train Complete ##### ' + str(datetime.datetime.now()))
-
 n_epochs = 10
-game_num = 10
+game_num = 100
 n_kernels = 64
 use_ratio = 1.0
 test_ratio = 0.2
+
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
@@ -267,20 +227,12 @@ for i in trange(train_num, game_num):
     collect_data(i, use_ratio)
 reshape_data_test()
 my_evaluate.kill()
-input_b = Input(shape=(2, hw, hw,))
+'''
+input_b = Input(shape=(hw, hw, 2,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
-x_b = BatchNormalization()(x_b)
+#x_b = BatchNormalization()(x_b)
 x_b = Activation('relu')(x_b)
-for _ in range(1):
-    sc = x_b
-    x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
-    x_b = BatchNormalization()(x_b)
-    #x_b = Activation('relu')(x_b)
-    #x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
-    #x_b = BatchNormalization()(x_b)
-    x_b = Add()([x_b, sc])
-    x_b = Activation('relu')(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
@@ -294,7 +246,8 @@ x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
 
-output_p = Dense(hw2, kernel_regularizer=l2(0.0005), activation='softmax', name='policy')(x_all)
+output_p = Dense(hw2, kernel_regularizer=l2(0.0005))(x_all)
+output_p = Activation('softmax', name='policy')(output_p)
 output_v = Dense(1, kernel_regularizer=l2(0.0005))(x_all)
 output_v = Activation('tanh', name='value')(output_v)
 #output_v = Dense(1, kernel_regularizer=l2(0.0005), name='value')(x_all)
@@ -307,22 +260,37 @@ early_stop = EarlyStopping(monitor='val_loss', patience=10)
 #lr_decay = LearningRateScheduler(step_decay)
 #print_callback = LambdaCallback(on_epoch_begin=lambda epoch,loss,val_loss,logs: print('\rTrain', epoch + 1, '/', n_epochs, loss, val_loss, end=''))
 #print_callback = DisplayCallBack()
+
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
+test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
+print('test_loss', test_loss)
 '''
-model = Sequential()
-model.add(Dense(256, input_shape=(139,)))
-model.add(LeakyReLU(alpha=0.01))
-model.add(Dropout(0.0625))
-model.add(Dense(128))
-model.add(LeakyReLU(alpha=0.01))
-model.add(Dense(128))
-model.add(LeakyReLU(alpha=0.01))
-model.add(Dense(1))
-model.compile(loss='mse', optimizer=Adam(lr=0.001), metrics=['mae'])
-early_stop = EarlyStopping(monitor='val_loss', patience=20)
-history = model.fit(train_data, train_labels, epochs=1000, validation_data=(test_data, test_labels), callbacks=[early_stop])
-'''
-'''
+
+model = load_model('param/model.h5')
+test_num = 10
+test_num = min(test_value.shape[0], test_num)
+test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
+ans_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_policies[0:test_num]]
+ans_value = [round(i, 3) for i in test_value[0:test_num]]
+pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
+pred_value = test_predictions[1]
+for i in range(test_num):
+    #print('board', [[[ii for ii in jj] for jj in kk] for kk in test_board[i]])
+    #print('param', list(test_param[i]))
+    print('raw_board', test_raw_board[i])
+    board_str = ''
+    for ii in test_board[i]:
+        for jj in ii:
+            for kk in jj:
+                board_str += str(int(kk))
+    print('board_str', board_str)
+    print('ans_policy', ans_policies[i])
+    print('prd_policy', pred_policies[i])
+    print('ans_value', ans_value[i])
+    print('prd_value', pred_value[i])
+    print('')
+
+model.save('param/model.h5')
 with open('param/mean.txt', 'w') as f:
     for i in mean:
         f.write(str(i) + '\n')
@@ -330,18 +298,34 @@ with open('param/std.txt', 'w') as f:
     for i in std:
         f.write(str(i) + '\n')
 with open('param/param.txt', 'w') as f:
-    for i in (0, 3):
-        for item in model.layers[i].weights[1].numpy():
-            f.write(str(item) + '\n')
-    for i in (0, 3, 5):
-        for arr in model.layers[i].weights[0].numpy():
-            for item in arr:
-                f.write(str(item) + '\n')
-'''
-test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
-print('test_loss', test_loss)
+    i = 0
+    while True:
+        try:
+            print(i, model.layers[i])
+            j = 0
+            while True:
+                try:
+                    print(model.layers[i].weights[j].shape)
+                    if len(model.layers[i].weights[j].shape) == 4:
+                        for ll in range(model.layers[i].weights[j].shape[3]):
+                            for kk in range(model.layers[i].weights[j].shape[2]):
+                                for jj in range(model.layers[i].weights[j].shape[1]):
+                                    for ii in range(model.layers[i].weights[j].shape[0]):
+                                        f.write(str(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
+                    elif len(model.layers[i].weights[j].shape) == 2:
+                        for ii in range(model.layers[i].weights[j].shape[0]):
+                            for jj in range(model.layers[i].weights[j].shape[1]):
+                                f.write(str(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
+                    elif len(model.layers[i].weights[j].shape) == 1:
+                        for ii in range(model.layers[i].weights[j].shape[0]):
+                            f.write(str(model.layers[i].weights[j].numpy()[ii]) + '\n')
+                    j += 1
+                except:
+                    break
+            i += 1
+        except:
+            break
 
-print('key', history.history.keys())
 for key in ['policy_mae', 'val_policy_mae']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
@@ -355,25 +339,3 @@ plt.xlabel('epoch')
 plt.ylabel('mae')
 plt.legend(loc='best')
 plt.show()
-
-test_num = 10
-test_num = min(test_value.shape[0], test_num)
-test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
-ans_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_policies[0:test_num]]
-ans_value = [round(i, 3) for i in test_value[0:test_num]]
-pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
-pred_value = test_predictions[1]
-for i in range(test_num):
-    print('board', [[[ii for ii in jj] for jj in kk] for kk in test_board[i]])
-    print('param', list(test_param[i]))
-    print('ans_policy', ans_policies[i])
-    print('prd_policy', pred_policies[i])
-    print('ans_value', ans_value[i])
-    print('prd_value', pred_value[i])
-    print('')
-
-'''
-for i in range(5):
-    print(list(test_data[i]))
-model.save('param/model.h5')
-'''
