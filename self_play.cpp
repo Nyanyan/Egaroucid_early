@@ -822,11 +822,22 @@ double evaluate(int idx, bool is_player, bool passed){
                     }
                 }
             }
-            value = evaluate(n_idx, !is_player, false);
+            value = -evaluate(n_idx, !is_player, false);
             mcts_param.seen_nodes[idx].w += value;
             ++mcts_param.seen_nodes[idx].n;
         } else{
-            value = evaluate(mcts_param.seen_nodes[idx].children[hw2], is_player, true);
+            if (passed){
+                result = end_game(mcts_param.seen_nodes[idx].board);
+                if (!is_player)
+                    result = -result;
+                value = min(1.0, max(-1.0, (double)result));
+                mcts_param.seen_nodes[idx].w += value;
+                ++mcts_param.seen_nodes[idx].n;
+                return value;
+            }
+            value = -evaluate(mcts_param.seen_nodes[idx].children[hw2], is_player, true);
+            mcts_param.seen_nodes[idx].w += value;
+            ++mcts_param.seen_nodes[idx].n;
         }
     }
     if (mcts_param.seen_nodes[idx].children_num == 0){
@@ -866,14 +877,12 @@ inline void predict_scores(int (&board)[board_index_num], double (&res)[hw2]){
     int n_sum = 0;
     for (i = 0; i < hw2; ++i){
         if (mcts_param.seen_nodes[0].children[i] != -1){
-            cerr << i << " " << mcts_param.seen_nodes[0].children[i] << " " << mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n << endl;
             res[i] = (double)mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
             n_sum += mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
         } else{
             res[i] = 0.0;
         }
     }
-    cerr << n_sum << endl;
     if (n_sum == 0){
         for (i = 0; i < board_index_num; ++i)
             board[i] = mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].board[i];
@@ -898,6 +907,7 @@ int main(){
     double rnd, sm;
     int i;
     int policy;
+    bool passed = false;
     print_board(board);
     while (1){
         predict_scores(board, scores);
@@ -911,12 +921,20 @@ int main(){
                 break;
             }
         }
-        if (policy == -1)
-            break;
+        if (policy == -1){
+            if (passed)
+                break;
+            passed = true;
+            for (i = 0; i < board_index_num; ++i)
+                board[i] = board_param.reverse[board[i]];
+        } else{
+            passed = false;
+        }
         move(board, tmp_board, policy);
         swap(board, tmp_board);
         print_board(board);
     }
+    print_board(board);
     cerr << "end" << endl;
     return 0;
 }
