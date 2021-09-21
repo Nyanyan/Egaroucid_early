@@ -2,6 +2,7 @@ __pycache__
 ai.out
 a.out
 evaluation.out
+self_play.out
 Procfile
 app.py
 statistics

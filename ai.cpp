@@ -867,6 +867,8 @@ double evaluate(int idx, bool passed){
                 mcts_param.seen_nodes[idx].p[i] = 0.0;
             }
         }
+        for (i = 0; i < hw2; ++i)
+            mcts_param.seen_nodes[idx].p[i] /= p_sum;
         double value = -inf;
         cell = -1;
         for (i = 0; i < hw2; ++i){
@@ -915,6 +917,7 @@ double evaluate(int idx, bool passed){
             value = -evaluate(mcts_param.seen_nodes[idx].children[a_cell], false);
             mcts_param.seen_nodes[idx].w += value;
             ++mcts_param.seen_nodes[idx].n;
+            return value;
         }
     } else{
         if (passed){
@@ -923,6 +926,7 @@ double evaluate(int idx, bool passed){
             value = -evaluate(mcts_param.seen_nodes[idx].children[hw2], true);
             mcts_param.seen_nodes[idx].w += value;
             ++mcts_param.seen_nodes[idx].n;
+            return value;
         }
     }
     return value;
@@ -989,7 +993,7 @@ int main(){
         }
         print_board(board);
         policy = next_action(board);
-        cerr << policy << " " << search_param.win_num << " " << search_param.n_playout << endl;
+        cerr << policy << " " << search_param.win_num << " " << search_param.n_playout << " " << mcts_param.used_idx << endl;
         cout << policy / hw << " " << policy % hw << " " << 100.0 * search_param.win_num / search_param.n_playout << endl;
     }
     return 0;
