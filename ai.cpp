@@ -50,77 +50,6 @@ using namespace std;
 #define conv_size (hw_p1 - kernel_size)
 #define div_pooling (2.0 * conv_size * conv_size)
 
-struct node_t{
-    int k[hw];
-    double v;
-    node_t* p_n_node;
-};
-
-inline int calc_hash(const int *p){
-    int seed = 0;
-    for (int i = 0; i < hw; ++i)
-        seed ^= p[i] << (i / 4);
-    return seed & hash_mask;
-}
-
-inline void hash_table_init(node_t** hash_table){
-    for(int i = 0; i < hash_table_size; ++i)
-        hash_table[i] = NULL;
-}
-
-inline node_t* node_init(const int *key, double val){
-    node_t* p_node = NULL;
-    p_node = (node_t*)malloc(sizeof(node_t));
-    for (int i = 0; i < hw; ++i)
-        p_node->k[i] = key[i];
-    p_node->v = val;
-    p_node->p_n_node = NULL;
-    return p_node;
-}
-
-inline bool compare_key(const int *a, const int *b){
-    for (int i = 0; i < hw; ++i){
-        if (a[i] != b[i])
-            return false;
-    }
-    return true;
-}
-
-inline void register_hash(node_t** hash_table, const int *key, int hash, double val){
-    if(hash_table[hash] == NULL){
-        hash_table[hash] = node_init(key, val);
-    } else {
-        node_t *p_node = p_node = hash_table[hash];
-        node_t *p_pre_node = NULL;
-        p_pre_node = p_node;
-        while(p_node != NULL){
-            if(compare_key(key, p_node->k)){
-                p_node->v = val;
-                return;
-            }
-            p_pre_node = p_node;
-            p_node = p_node->p_n_node;
-        }
-        p_pre_node->p_n_node = node_init(key, val);
-    }
-}
-
-inline double get_val_hash(node_t** hash_table, const int *key, int hash){
-    node_t *p_node = hash_table[hash];
-    while(p_node != NULL){
-        if(compare_key(key, p_node->k))
-            return p_node->v;
-        p_node = p_node->p_n_node;
-    }
-    return -inf;
-}
-
-inline void hash_table_copy(node_t** to_table, node_t** fr_table){
-    for(int i = 0; i < hash_table_size; ++i){
-        
-    }
-}
-
 struct board_param{
     unsigned long long trans[board_index_num][6561][hw];
     unsigned long long neighbor8[board_index_num][6561][hw];
@@ -167,7 +96,7 @@ struct book_elem{
     double rate;
 };
 
-struct HashPair {
+struct hash_pair {
     static size_t m_hash_pair_random;
     template<class T1, class T2>
     size_t operator()(const pair<T1, T2> &p) const {
@@ -180,8 +109,7 @@ struct HashPair {
         return seed;
     }
 };
-size_t HashPair::m_hash_pair_random = (size_t) random_device()();
-
+size_t hash_pair::m_hash_pair_random = (size_t) random_device()();
 
 struct search_param{
     int max_depth;
@@ -195,7 +123,7 @@ struct search_param{
     int win_num;
     int lose_num;
     int n_playout;
-    unordered_map<pair<unsigned long long, unsigned long long>, book_elem, HashPair> book;
+    unordered_map<pair<unsigned long long, unsigned long long>, book_elem, hash_pair> book;
 };
 
 struct board_priority_move{
@@ -1015,7 +943,6 @@ inline int next_action(int *board){
     mcts_param.seen_nodes[0].n = 0;
     mcts_param.seen_nodes[0].children_num = -1;
     mcts_param.used_idx = 1;
-    //print_board(mcts_param.seen_nodes[0].board);
     for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, 1);
     for (i = 0; i < hw2; ++i){
