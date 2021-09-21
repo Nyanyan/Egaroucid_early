@@ -990,7 +990,7 @@ int main(){
         print_board(board);
         policy = next_action(board);
         cerr << policy << " " << search_param.win_num << " " << search_param.n_playout << endl;
-        cout << policy / hw << " " << policy % hw << " " << search_param.win_num / search_param.n_playout << endl;
+        cout << policy / hw << " " << policy % hw << " " << 100.0 * search_param.win_num / search_param.n_playout << endl;
     }
     return 0;
 }

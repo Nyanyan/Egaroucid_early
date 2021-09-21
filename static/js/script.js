@@ -50,9 +50,9 @@ var graph = new Chart(ctx, {
         scales: {
             yAxes: [{
             ticks: {
-                suggestedMax: 64,
-                suggestedMin: -64,
-                stepSize: 8.0,
+                suggestedMax: 100,
+                suggestedMin: -100,
+                stepSize: 20,
                 callback: function(value, index, values){
                     return  value
                 }
@@ -297,7 +297,7 @@ function ai() {
         const received_data = JSON.parse(data.values);
         var r = received_data["r"];
         var c = received_data["c"];
-        var s = Math.min(64.0, Math.max(-64.0, received_data["s"]));
+        var s = received_data["s"];
         update_graph(s);
         if (r < 0 || 8 <= r || c < 0 || 8 <= c) {
             if (r == -1) {
