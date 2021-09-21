@@ -899,7 +899,7 @@ double evaluate(int idx, bool is_player, bool passed){
     return value;
 }
 
-inline void calc_policies(int (&board)[board_index_num], double (&res)[hw2]){
+inline int calc_policies(int (&board)[board_index_num], double (&res)[hw2], int player){
     int i;
     for (i = 0; i < hw2; ++i)
         res[i] = 0.0;
@@ -924,54 +924,123 @@ inline void calc_policies(int (&board)[board_index_num], double (&res)[hw2]){
         for (i = 0; i < board_index_num; ++i)
             board[i] = mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].board[i];
         for (i = 0; i < hw2; ++i){
-            res[i] = (double)mcts_param.seen_nodes[mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].children[i]].n;
-            n_sum += mcts_param.seen_nodes[mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].children[i]].n;
+            if (mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].children[i] != -1){
+                res[i] = (double)mcts_param.seen_nodes[mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].children[i]].n;
+                n_sum += mcts_param.seen_nodes[mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].children[i]].n;
+            } else{
+                res[i] = 0.0;
+            }
         }
         for (i = 0; i < hw2; ++i)
             res[i] /= (double)n_sum;
+        return 1 - player;
     } else{
         for (i = 0; i < hw2; ++i)
             res[i] /= (double)n_sum;
     }
+    return player;
 }
+
+struct history{
+    string board;
+    int policy;
+};
 
 int main(){
     cin >> xorw;
+    int num;
+    cin >> num;
     init();
     cerr << "initialized" << endl;
     //int board[board_index_num] = {0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 0, 27, 216, 27, 0, 0, 0, 0, 0, 0, 0, 0, 54, 108, 54, 0, 0, 0, 0};
-    int board[board_index_num] = {0, 0, 54, 216, 135, 0, 0, 0, 0, 0, 0, 234, 135, 0, 0, 0, 0, 0, 0, 0, 72, 135, 54, 0, 0, 0, 0, 0, 0, 0, 18, 54, 216, 27, 0, 0, 0, 0};
+    int start_board[board_index_num] = {0, 0, 54, 216, 135, 0, 0, 0, 0, 0, 0, 234, 135, 0, 0, 0, 0, 0, 0, 0, 72, 135, 54, 0, 0, 0, 0, 0, 0, 0, 18, 54, 216, 27, 0, 0, 0, 0};
+    int board[board_index_num];
     int tmp_board[board_index_num];
     double scores[hw2];
     double rnd, sm;
-    int i;
+    int i, j, tmp, cnt0, cnt1;
     int policy;
-    bool passed = false;
-    while (1){
-        calc_policies(board, scores);
-        rnd = myrandom();
-        sm = 0.0;
-        policy = -1;
-        for (i = 0; i < hw2; ++i){
-            sm += scores[i];
-            if (rnd < sm){
-                policy = i;
-                break;
+    bool passed;
+    int player;
+    double value;
+    vector<history> hist0, hist1;
+    for (int tim = 0; tim < num; ++tim){
+        hist0 = {};
+        hist1 = {};
+        player = 1;
+        passed = false;
+        for (i = 0; i < board_index_num; ++i)
+            board[i] = start_board[i];
+        while (true){
+            player = calc_policies(board, scores, player);
+            rnd = myrandom();
+            sm = 0.0;
+            policy = -1;
+            for (i = 0; i < hw2; ++i){
+                sm += scores[i];
+                if (rnd < sm){
+                    policy = i;
+                    break;
+                }
             }
-        }
-        if (policy == -1){
-            if (passed)
-                break;
-            passed = true;
-            for (i = 0; i < board_index_num; ++i)
-                board[i] = board_param.reverse[board[i]];
-        } else{
+            if (policy == -1){
+                if (passed)
+                    break;
+                passed = true;
+                for (i = 0; i < board_index_num; ++i)
+                    board[i] = board_param.reverse[board[i]];
+                player = 1 - player;
+                continue;
+            }
             passed = false;
+            history tmp_hist;
+            tmp_hist.board = "";
+            for (i = 0; i < hw; ++i){
+                tmp = board[i];
+                for (j = 0; j < hw; ++j){
+                    if (tmp % 3 == 0){
+                        tmp_hist.board += ".";
+                    } else if (tmp % 3 == 1){
+                        tmp_hist.board += "0";
+                    } else{
+                        tmp_hist.board += "1";
+                    }
+                    tmp /= 3;
+                }
+            }
+            tmp_hist.policy = policy;
+            if (player == 0)
+                hist0.push_back(tmp_hist);
+            else
+                hist1.push_back(tmp_hist);
+            move(board, tmp_board, policy);
+            swap(board, tmp_board);
+            player = 1 - player;
+            //print_board(board);
         }
-        move(board, tmp_board, policy);
-        swap(board, tmp_board);
-        //print_board(board);
+        print_board(board);
+        cnt0 = 0;
+        cnt1 = 0;
+        for (i = 0; i < hw; ++i){
+            cnt0 += eval_param.cnt_p[board[i]];
+            cnt1 += eval_param.cnt_o[board[i]];
+        }
+        cerr << cnt0 << " " << cnt1 << endl;
+        if (player)
+            swap(cnt0, cnt1);
+        value = (double)(cnt0 - cnt1) / 64.0;
+        cout << hist0.size() << endl;
+        cout << value << endl;
+        for (i = 0; i < hist0.size(); ++i){
+            cout << hist0[i].board << endl;
+            cout << hist0[i].policy << endl;
+        }
+        cout << hist1.size() << endl;
+        cout << -value << endl;
+        for (i = 0; i < hist1.size(); ++i){
+            cout << hist1[i].board << endl;
+            cout << hist1[i].policy << endl;
+        }
     }
-    print_board(board);
     return 0;
 }
