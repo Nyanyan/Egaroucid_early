@@ -210,8 +210,8 @@ def step_decay(epoch):
     if epoch >= 80: x = 0.00025
     return x
 
-n_epochs = 2
-game_num = 10000
+n_epochs = 5
+game_num = 1000
 n_kernels = 32
 use_ratio = 1.0
 test_ratio = 0.2

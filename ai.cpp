@@ -962,15 +962,38 @@ inline void predict_scores(int (&board)[board_index_num], double (&res)[hw2]){
 int main(){
     init();
     cerr << "initialized" << endl;
-    int board[board_index_num] = {0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 0, 27, 216, 27, 0, 0, 0, 0, 0, 0, 0, 0, 54, 108, 54, 0, 0, 0, 0};
-    int tmp_board[board_index_num];
-    double scores[hw2];
+    int i, j, board_tmp, ai_player, policy;
+    char elem;
+    unsigned long long p, o;
+    int board[board_index_num];
     double rnd, sm;
-    int i;
-    int policy;
-    bool passed = false;
-    print_board(board);
-    while (1){
+    double scores[hw2];
+    while (true){
+        search_param.turn = 0;
+        p = 0;
+        o = 0;
+        cin >> ai_player;
+        cin >> search_param.tl;
+        for (i = 0; i < hw2; ++i){
+            cin >> elem;
+            if (elem != '.'){
+                ++search_param.turn;
+                p |= (unsigned long long)(elem == '0') << i;
+                o |= (unsigned long long)(elem == '1') << i;
+            }
+        }
+        if (ai_player == 1)
+            swap(p, o);
+        for (i = 0; i < board_index_num; ++i){
+            board_tmp = 0;
+            for (j = 0; j < board_param.pattern_space[i]; ++j){
+                if (1 & (p >> board_param.board_translate[i][j]))
+                    board_tmp += board_param.pow3[j];
+                else if (1 & (o >> board_param.board_translate[i][j]))
+                    board_tmp += 2 * board_param.pow3[j];
+            }
+            board[i] = board_tmp;
+        }
         predict_scores(board, scores);
         rnd = myrandom();
         sm = 0.0;
@@ -982,20 +1005,7 @@ int main(){
                 break;
             }
         }
-        if (policy == -1){
-            if (passed)
-                break;
-            passed = true;
-            for (i = 0; i < board_index_num; ++i)
-                board[i] = board_param.reverse[board[i]];
-        } else{
-            passed = false;
-        }
-        move(board, tmp_board, policy);
-        swap(board, tmp_board);
-        print_board(board);
+        cout << policy / hw << " " << policy % hw << " " << predict(board).value * 64.0 << endl;
     }
-    print_board(board);
-    cerr << "end" << endl;
     return 0;
 }
