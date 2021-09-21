@@ -40,6 +40,7 @@ using namespace std;
 
 #define evaluate_count 100
 #define c_puct 50.0
+#define c_end 0.0
 
 #define kernel_size 3
 #define n_kernels 32
@@ -815,7 +816,7 @@ inline double end_game_evaluate(int idx, int player){
     else if (value * player < 0.0)
         ++search_param.lose_num;
     ++search_param.n_playout;
-    mcts_param.seen_nodes[idx].w += value;
+    mcts_param.seen_nodes[idx].w += c_end * value;
     ++mcts_param.seen_nodes[idx].n;
     return value;
 }

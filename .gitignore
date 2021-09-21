@@ -3,6 +3,7 @@ ai.out
 a.out
 evaluation.out
 self_play.out
+make_board.out
 Procfile
 app.py
 statistics
