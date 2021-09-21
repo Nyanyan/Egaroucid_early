@@ -850,7 +850,7 @@ double evaluate(int idx, bool passed){
                 mcts_param.seen_nodes[mcts_param.used_idx].w = 0.0;
                 mcts_param.seen_nodes[mcts_param.used_idx].n = 0;
                 mcts_param.seen_nodes[mcts_param.used_idx].children_num = -1;
-                value = evaluate(mcts_param.used_idx++, true);
+                value = -evaluate(mcts_param.used_idx++, true);
                 mcts_param.seen_nodes[idx].w += value;
                 ++mcts_param.seen_nodes[idx].n;
                 return value;
@@ -920,7 +920,7 @@ double evaluate(int idx, bool passed){
         if (passed){
             return end_game_evaluate(idx);
         } else{
-            value = evaluate(mcts_param.seen_nodes[idx].children[hw2], true);
+            value = -evaluate(mcts_param.seen_nodes[idx].children[hw2], true);
             mcts_param.seen_nodes[idx].w += value;
             ++mcts_param.seen_nodes[idx].n;
         }
