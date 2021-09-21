@@ -38,7 +38,7 @@ using namespace std;
 #define pattern_elem_num 85293
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
-#define evaluate_count 100
+#define evaluate_count 10000
 #define c_puct 1.0
 
 #define kernel_size 3
