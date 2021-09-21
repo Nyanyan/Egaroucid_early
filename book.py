@@ -74,12 +74,14 @@ def make_board():
         policy = -1
         rate = -100.0
         for i in range(hw2):
-            if data_dict[key][i][1] == 0:
+            if data_dict[key][i][1] < 2:
                 continue
             tmp = data_dict[key][i][0] / data_dict[key][i][1]
             if rate < tmp:
                 rate = tmp
                 policy = i
+        if policy == -1:
+            continue
         data_proc.append([board, policy, rate])
 
 game_num = 11000

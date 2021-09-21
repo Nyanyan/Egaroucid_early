@@ -1052,7 +1052,7 @@ int main(){
         cerr << key.first << " " << key.second << endl;
         if (search_param.book.find(key) != search_param.book.end()){
             cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
-            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 0 << endl;
+            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 100.0 * search_param.book[key].rate << endl;
             continue;
         }
         for (i = 0; i < board_index_num; ++i){
