@@ -923,7 +923,7 @@ double evaluate(int idx, bool is_player, bool passed){
     return value;
 }
 
-inline void predict_scores(int (&board)[board_index_num], double (&res)[hw2]){
+inline void calc_policies(int (&board)[board_index_num], double (&res)[hw2]){
     int i;
     for (i = 0; i < hw2; ++i)
         res[i] = 0.0;
@@ -971,7 +971,7 @@ int main(){
     bool passed = false;
     print_board(board);
     while (1){
-        predict_scores(board, scores);
+        calc_policies(board, scores);
         rnd = myrandom();
         sm = 0.0;
         policy = -1;

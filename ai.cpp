@@ -923,10 +923,8 @@ double evaluate(int idx, bool is_player, bool passed){
     return value;
 }
 
-inline void predict_scores(int (&board)[board_index_num], double (&res)[hw2]){
-    int i;
-    for (i = 0; i < hw2; ++i)
-        res[i] = 0.0;
+inline int next_action(int (&board)[board_index_num]){
+    int i, mx, res;
     for (i = 0; i < board_index_num; ++i)
         mcts_param.seen_nodes[0].board[i] = board[i];
     mcts_param.seen_nodes[0].w = 0.0;
@@ -935,28 +933,16 @@ inline void predict_scores(int (&board)[board_index_num], double (&res)[hw2]){
     mcts_param.used_idx = 1;
     for (i = 0; i < evaluate_count; ++i)
         evaluate(0, true, false);
-    int n_sum = 0;
+    mx = 0;
     for (i = 0; i < hw2; ++i){
         if (mcts_param.seen_nodes[0].children[i] != -1){
-            res[i] = (double)mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
-            n_sum += mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
-        } else{
-            res[i] = 0.0;
+            if (mx < mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n){
+                mx = mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
+                res = i;
+            }
         }
     }
-    if (n_sum == 0){
-        for (i = 0; i < board_index_num; ++i)
-            board[i] = mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].board[i];
-        for (i = 0; i < hw2; ++i){
-            res[i] = (double)mcts_param.seen_nodes[mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].children[i]].n;
-            n_sum += mcts_param.seen_nodes[mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[hw2]].children[i]].n;
-        }
-        for (i = 0; i < hw2; ++i)
-            res[i] /= (double)n_sum;
-    } else{
-        for (i = 0; i < hw2; ++i)
-            res[i] /= (double)n_sum;
-    }
+    return res;
 }
 
 int main(){
@@ -967,7 +953,6 @@ int main(){
     unsigned long long p, o;
     int board[board_index_num];
     double rnd, sm;
-    double scores[hw2];
     while (true){
         search_param.turn = 0;
         p = 0;
@@ -994,17 +979,7 @@ int main(){
             }
             board[i] = board_tmp;
         }
-        predict_scores(board, scores);
-        rnd = myrandom();
-        sm = 0.0;
-        policy = -1;
-        for (i = 0; i < hw2; ++i){
-            sm += scores[i];
-            if (rnd < sm){
-                policy = i;
-                break;
-            }
-        }
+        policy = next_action(board);
         cout << policy / hw << " " << policy % hw << " " << predict(board).value * 64.0 << endl;
     }
     return 0;
