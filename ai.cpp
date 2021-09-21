@@ -881,7 +881,6 @@ inline double end_game_evaluate(int idx, int player){
 }
 
 double evaluate(int idx, bool passed, int player){
-    //print_board(mcts_param.seen_nodes[idx].board);
     double value = 0.0;
     int i, j, cell;
     if (mcts_param.seen_nodes[idx].children_num == -1){
