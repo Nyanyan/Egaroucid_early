@@ -39,7 +39,7 @@ using namespace std;
 #define hash_mask (hash_table_size - 1)
 
 #define evaluate_count 25
-#define c_puct 1.0
+#define c_puct 50.0
 
 #define kernel_size 3
 #define n_kernels 32
@@ -777,7 +777,6 @@ inline predictions predict(const int *board){
     return res;
 }
 
-
 inline void move(int *board, int (&res)[board_index_num], int coord){
     int i, j, tmp;
     unsigned long long rev = 0;
@@ -806,16 +805,19 @@ inline int end_game(const int *board){
     return res;
 }
 
-inline double end_game_evaluate(int idx){
+inline double end_game_evaluate(int idx, int player){
     double value = min(1.0, max(-1.0, (double)end_game(mcts_param.seen_nodes[idx].board)));
-    //search_param.win_num += value;
+    //if (value * player > 0.0)
+    //    ++search_param.win_num;
+    //else if (value * player < 0.0)
+    //    ++search_param.lose_num;
     //++search_param.n_playout;
     mcts_param.seen_nodes[idx].w += value;
     ++mcts_param.seen_nodes[idx].n;
     return value;
 }
 
-double evaluate(int idx, bool passed){
+double evaluate(int idx, bool passed, int player){
     //print_board(mcts_param.seen_nodes[idx].board);
     double value = 0.0;
     int i, j, cell;
@@ -840,7 +842,9 @@ double evaluate(int idx, bool passed){
         value = pred.value;
         ++mcts_param.seen_nodes[idx].n;
         if (mcts_param.seen_nodes[idx].children_num == 0){
-            if (!passed){
+            if (passed){
+                return end_game_evaluate(idx, player);
+            } else{
                 for (i = 0; i < hw2; ++i)
                     mcts_param.seen_nodes[idx].p[i] = 0.0;
                 mcts_param.seen_nodes[idx].children[hw2] = mcts_param.used_idx;
@@ -849,12 +853,10 @@ double evaluate(int idx, bool passed){
                 mcts_param.seen_nodes[mcts_param.used_idx].w = 0.0;
                 mcts_param.seen_nodes[mcts_param.used_idx].n = 0;
                 mcts_param.seen_nodes[mcts_param.used_idx].children_num = -1;
-                value = -evaluate(mcts_param.used_idx++, true);
+                value = -evaluate(mcts_param.used_idx++, true, -player);
                 mcts_param.seen_nodes[idx].w += value;
                 ++mcts_param.seen_nodes[idx].n;
                 return value;
-            } else{
-                return end_game_evaluate(idx);
             }
         }
         double p_sum = 0.0;
@@ -882,7 +884,7 @@ double evaluate(int idx, bool passed){
         mcts_param.seen_nodes[mcts_param.used_idx].w = 0.0;
         mcts_param.seen_nodes[mcts_param.used_idx].n = 0;
         mcts_param.seen_nodes[mcts_param.used_idx].children_num = -1;
-        value = -evaluate(mcts_param.used_idx++, false);
+        value = -evaluate(mcts_param.used_idx++, false, -player);
         mcts_param.seen_nodes[idx].w += value;
         ++mcts_param.seen_nodes[idx].n;
         return value;
@@ -895,7 +897,7 @@ double evaluate(int idx, bool passed){
                 tmp_value = 0.0;
                 if (mcts_param.seen_nodes[mcts_param.seen_nodes[idx].children[cell]].n > 0)
                     tmp_value -= mcts_param.seen_nodes[mcts_param.seen_nodes[idx].children[cell]].w / mcts_param.seen_nodes[mcts_param.seen_nodes[idx].children[cell]].n;
-                tmp_value += c_puct * mcts_param.seen_nodes[idx].p[cell] * sqrt(mcts_param.seen_nodes[idx].n) / (1.0 + (double)mcts_param.seen_nodes[mcts_param.seen_nodes[idx].children[cell]].n);
+                tmp_value += c_puct * mcts_param.seen_nodes[idx].p[cell] * sqrt((double)mcts_param.seen_nodes[idx].n) / (1.0 + (double)mcts_param.seen_nodes[mcts_param.seen_nodes[idx].children[cell]].n);
                 if (value < tmp_value){
                     value = tmp_value;
                     a_cell = cell;
@@ -908,21 +910,21 @@ double evaluate(int idx, bool passed){
             mcts_param.seen_nodes[mcts_param.used_idx].w = 0.0;
             mcts_param.seen_nodes[mcts_param.used_idx].n = 0;
             mcts_param.seen_nodes[mcts_param.used_idx].children_num = -1;
-            value = -evaluate(mcts_param.used_idx++, false);
+            value = -evaluate(mcts_param.used_idx++, false, -player);
             mcts_param.seen_nodes[idx].w += value;
             ++mcts_param.seen_nodes[idx].n;
             return value;
         } else{
-            value = -evaluate(mcts_param.seen_nodes[idx].children[a_cell], false);
+            value = -evaluate(mcts_param.seen_nodes[idx].children[a_cell], false, -player);
             mcts_param.seen_nodes[idx].w += value;
             ++mcts_param.seen_nodes[idx].n;
             return value;
         }
     } else{
         if (passed){
-            return end_game_evaluate(idx);
+            return end_game_evaluate(idx, player);
         } else{
-            value = -evaluate(mcts_param.seen_nodes[idx].children[hw2], true);
+            value = -evaluate(mcts_param.seen_nodes[idx].children[hw2], true, -player);
             mcts_param.seen_nodes[idx].w += value;
             ++mcts_param.seen_nodes[idx].n;
             return value;
@@ -942,7 +944,7 @@ inline int calc_policies(int (&board)[board_index_num], double (&res)[hw2], int 
     mcts_param.seen_nodes[0].children_num = -1;
     mcts_param.used_idx = 1;
     for (i = 0; i < evaluate_count; ++i)
-        evaluate(0, false);
+        evaluate(0, false, 1);
     int n_sum = 0;
     for (i = 0; i < hw2; ++i){
         if (mcts_param.seen_nodes[0].children[i] != -1){
