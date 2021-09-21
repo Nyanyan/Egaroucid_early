@@ -767,15 +767,15 @@ inline predictions predict(const int *board){
     }
     // dense and bias and activate for input_p
     for (i = 0; i < add_dense1; ++i)
-        eval_param.hidden1[hw22 + i] = 0.0;
+        eval_param.hidden1[n_kernels + i] = 0.0;
     for (i = 0; i < n_add_input; ++i){
         for (j = 0; j < add_dense1; ++j){
-            eval_param.hidden1[hw22 + j] += eval_param.input_p[i] * eval_param.dense1[i][j];
+            eval_param.hidden1[n_kernels + j] += eval_param.input_p[i] * eval_param.dense1[i][j];
         }
     }
     for (i = 0; i < add_dense1; ++i){
-        eval_param.hidden1[hw22 + i] += eval_param.bias1[i];
-        eval_param.hidden1[hw22 + i] = tanh(eval_param.hidden1[hw22 + i]);
+        eval_param.hidden1[n_kernels + i] += eval_param.bias1[i];
+        eval_param.hidden1[n_kernels + i] = tanh(eval_param.hidden1[n_kernels + i]);
     }
     // dense and bias and activate for policy output
     for (i = 0; i < hw2; ++i)

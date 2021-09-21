@@ -227,31 +227,24 @@ for i in trange(train_num, game_num):
     collect_data(i, use_ratio)
 reshape_data_test()
 my_evaluate.kill()
-'''
+
 input_b = Input(shape=(hw, hw, 2,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
-#x_b = BatchNormalization()(x_b)
-x_b = Activation('relu')(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
+x_b = Activation('relu')(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(32)(input_p)
 x_p = Activation('tanh')(x_p)
-#x_p = LeakyReLU(alpha=0.01)(x_p)
-#x_p = Dense(32)(x_p)
-#x_p = Activation('tanh')(x_p)
-#x_p = LeakyReLU(alpha=0.01)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
 
-output_p = Dense(hw2, kernel_regularizer=l2(0.0005))(x_all)
+output_p = Dense(hw2)(x_all)
 output_p = Activation('softmax', name='policy')(output_p)
-output_v = Dense(1, kernel_regularizer=l2(0.0005))(x_all)
+output_v = Dense(1)(x_all)
 output_v = Activation('tanh', name='value')(output_v)
-#output_v = Dense(1, kernel_regularizer=l2(0.0005), name='value')(x_all)
-#output_v = LeakyReLU(alpha=0.01, name='value')(output_v)
 
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
@@ -264,9 +257,9 @@ early_stop = EarlyStopping(monitor='val_loss', patience=10)
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
 print('test_loss', test_loss)
-'''
 
-model = load_model('param/model.h5')
+
+#model = load_model('param/model.h5')
 test_num = 10
 test_num = min(test_value.shape[0], test_num)
 test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
