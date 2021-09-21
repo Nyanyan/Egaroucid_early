@@ -42,10 +42,10 @@ using namespace std;
 #define c_puct 1.0
 
 #define kernel_size 3
-#define n_kernels 64
+#define n_kernels 32
 #define n_add_input 11
-#define add_dense1 32
-#define n_concat_hidden 96
+#define add_dense1 16
+#define n_concat_hidden 48
 #define conv_size 6
 #define div_pooling 72.0
 

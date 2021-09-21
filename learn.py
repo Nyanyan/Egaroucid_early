@@ -212,7 +212,7 @@ def step_decay(epoch):
 
 n_epochs = 10
 game_num = 100
-n_kernels = 64
+n_kernels = 32
 use_ratio = 1.0
 test_ratio = 0.2
 
@@ -235,7 +235,7 @@ x_b = GlobalAveragePooling2D()(x_b)
 x_b = Activation('relu')(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(32)(input_p)
+x_p = Dense(16)(input_p)
 x_p = Activation('tanh')(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
