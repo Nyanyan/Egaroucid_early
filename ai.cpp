@@ -915,8 +915,10 @@ double evaluate(int idx, bool passed, int player){
                 mcts_param.seen_nodes[idx].p[i] = 0.0;
             }
         }
-        for (i = 0; i < hw2; ++i)
-            mcts_param.seen_nodes[idx].p[i] /= p_sum;
+        if (p_sum > 0.0){
+            for (i = 0; i < hw2; ++i)
+                mcts_param.seen_nodes[idx].p[i] /= p_sum;
+        }
         // pass
         if (mcts_param.seen_nodes[idx].children_num == 0){
             if (passed){
