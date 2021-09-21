@@ -42,13 +42,13 @@ using namespace std;
 #define c_puct 50.0
 #define c_end 0.0
 
-#define kernel_size 3
+#define kernel_size 4
 #define n_kernels 32
 #define n_add_input 11
 #define add_dense1 16
 #define n_concat_hidden 48
-#define conv_size 6
-#define div_pooling 72.0
+#define conv_size (hw_p1 - kernel_size)
+#define div_pooling (2.0 * conv_size * conv_size)
 
 struct node_t{
     int k[hw];

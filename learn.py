@@ -214,6 +214,7 @@ n_epochs = 6
 game_num = 1000
 game_strt = 110000
 n_kernels = 32
+kernel_size = 4
 use_ratio = 1.0
 test_ratio = 0.2
 
@@ -231,7 +232,7 @@ my_evaluate.kill()
 
 input_b = Input(shape=(hw, hw, 2,))
 input_p = Input(shape=(11,))
-x_b = Conv2D(n_kernels, 3, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
+x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Activation('relu')(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
