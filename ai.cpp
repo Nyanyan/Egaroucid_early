@@ -162,10 +162,28 @@ struct eval_param{
     double bias3;
 };
 
+struct book_elem{
+    int policy;
+    double rate;
+};
+
+struct HashPair {
+    static size_t m_hash_pair_random;
+    template<class T1, class T2>
+    size_t operator()(const pair<T1, T2> &p) const {
+        auto hash1 = hash<T1>{}(p.first);
+        auto hash2 = hash<T2>{}(p.second);
+        size_t seed = 0;
+        seed ^= hash1 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hash2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= m_hash_pair_random + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        return seed;
+    }
+};
+size_t HashPair::m_hash_pair_random = (size_t) random_device()();
+
+
 struct search_param{
-    node_t *memo_lb[hash_table_size];
-    node_t *memo_ub[hash_table_size];
-    node_t *previous_memo[hash_table_size];
     int max_depth;
     int min_max_depth;
     int strt, tl;
@@ -177,6 +195,7 @@ struct search_param{
     int win_num;
     int lose_num;
     int n_playout;
+    unordered_map<pair<unsigned long long, unsigned long long>, book_elem, HashPair> book;
 };
 
 struct board_priority_move{
@@ -538,6 +557,46 @@ void init(){
             exit(1);
         }
         eval_param.std[i] = atof(cbuf);
+    }
+    if ((fp = fopen("param/book.txt", "r")) == NULL){
+        printf("book file not exist");
+        exit(1);
+    }
+    if (!fgets(cbuf, 1024, fp)){
+        printf("book file broken");
+        exit(1);
+    }
+    int book_len = atoi(cbuf);
+    int policy;
+    double rate;
+    unsigned long long up, uo;
+    pair<unsigned long long, unsigned long long> key;
+    for (i = 0; i < book_len; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        up = atoll(cbuf);
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        uo = atoll(cbuf);
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        policy = atoi(cbuf);
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        rate = atof(cbuf);
+        //cerr << up << " " << uo << " " << policy << " " << rate << endl;
+        key.first = up;
+        key.second = uo;
+        search_param.book[key].policy = policy;
+        search_param.book[key].rate = rate;
     }
     int p, o, mobility, canput_num, rev;
     for (i = 0; i < 6561; ++i){
@@ -950,7 +1009,7 @@ inline int next_action(int *board){
         evaluate(0, false, 1);
     for (i = 0; i < hw2; ++i){
         if (mcts_param.seen_nodes[0].children[i] != -1){
-            cerr << i << " " << mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n << endl;
+            //cerr << i << " " << mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n << endl;
             if (mx < mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n){
                 mx = mcts_param.seen_nodes[mcts_param.seen_nodes[0].children[i]].n;
                 res = i;
@@ -968,6 +1027,7 @@ int main(){
     unsigned long long p, o;
     int board[board_index_num];
     double rnd, sm;
+    pair<unsigned long long, unsigned long long> key;
     while (true){
         search_param.turn = 0;
         search_param.win_num = 0;
@@ -987,6 +1047,14 @@ int main(){
         }
         if (ai_player == 1)
             swap(p, o);
+        key.first = p;
+        key.second = o;
+        cerr << key.first << " " << key.second << endl;
+        if (search_param.book.find(key) != search_param.book.end()){
+            cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
+            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 0 << endl;
+            continue;
+        }
         for (i = 0; i < board_index_num; ++i){
             board_tmp = 0;
             for (j = 0; j < board_param.pattern_space[i]; ++j){
@@ -999,7 +1067,7 @@ int main(){
         }
         print_board(board);
         policy = next_action(board);
-        cerr << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
+        cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
         cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
     }
     return 0;

@@ -1,7 +1,7 @@
 from tqdm import trange
 import subprocess
 
-book_num = 10
+book_num = 30
 
 data_dict = {}
 data_proc = []
@@ -91,7 +91,8 @@ print(len(data_dict))
 make_board()
 board_maker.kill()
 print(len(data_proc))
-with open('book.txt', 'w') as f:
+with open('param/book.txt', 'w') as f:
+    f.write(str(len(data_proc)) + '\n')
     for board_str, policy, rate in data_proc:
         for elem in board_str.split():
             f.write(elem + '\n')
