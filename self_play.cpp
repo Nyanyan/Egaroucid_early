@@ -47,7 +47,7 @@ using namespace std;
 #define add_dense1 32
 #define n_concat_hidden 96
 #define conv_size 6
-#define div_pooling 648.0
+#define div_pooling 72.0
 
 struct node_t{
     int k[hw];
@@ -755,8 +755,7 @@ inline predictions predict(const int *board){
                 for (sx = 0; sx < conv_size; ++sx){
                     for (y = 0; y < kernel_size; ++y){
                         for (x = 0; x < kernel_size; ++x){
-                            if (eval_param.input_b[j][sy + y][sx + x])
-                                eval_param.hidden1[i] += eval_param.conv1[i][j][y][x];
+                            eval_param.hidden1[i] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y][sx + x];
                         }
                     }
                 }
