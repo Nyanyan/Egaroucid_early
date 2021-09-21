@@ -210,8 +210,9 @@ def step_decay(epoch):
     if epoch >= 80: x = 0.00025
     return x
 
-n_epochs = 5
+n_epochs = 6
 game_num = 1000
+game_strt = 110000
 n_kernels = 32
 use_ratio = 1.0
 test_ratio = 0.2
@@ -219,11 +220,11 @@ test_ratio = 0.2
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-for i in trange(train_num):
+for i in trange(game_strt, game_strt + train_num):
     collect_data(i, use_ratio)
 reshape_data_train()
 all_data = []
-for i in trange(train_num, game_num):
+for i in trange(game_strt + train_num, game_strt + game_num):
     collect_data(i, use_ratio)
 reshape_data_test()
 my_evaluate.kill()
