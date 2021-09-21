@@ -25,19 +25,19 @@ using namespace std;
 #define hw2_m1 63
 #define hw2_mhw 56
 #define hw2_p1 65
-#define window 0.00001
+
 #define simple_threshold 3
 #define inf 100000.0
-#define param_num 36
 #define board_index_num 38
-#define pattern_num 5
+
 #define char_s 35
 #define char_e 91
 #define num_s 93
 #define num_e 126
-#define pattern_elem_num 85293
+
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
+
 #define evaluate_count 100
 #define c_puct 1.0
 
@@ -140,20 +140,12 @@ struct board_param{
 
 struct eval_param{
     double weight[hw2];
-    double pattern_weight, cnt_weight, canput_weight, weight_weight, confirm_weight, pot_canput_weight, open_weight;
-    double cnt_bias;
-    double weight_sme[param_num];
     double avg_canput[hw2];
     int canput[6561];
     int cnt_p[6561], cnt_o[6561];
     double weight_p[hw][6561], weight_o[hw][6561];
-    int pattern_variation[pattern_num], pattern_space[pattern_num];
-    int pattern_translate[pattern_num][8][10][2];
-    double pattern_each_weight[pattern_num];
-    double pattern[pattern_num][59049];
     int confirm_p[6561], confirm_o[6561];
     int pot_canput_p[6561], pot_canput_o[6561];
-    double open_eval[40];
 
     double mean[n_add_input];
     double std[n_add_input];
@@ -402,8 +394,6 @@ void init(){
         5.62, 5.64, 5.18, 5.18, 4.60, 4.48, 4.06, 3.67, 
         3.39, 3.11, 2.66, 2.30, 1.98, 1.53, 1.78, 0.67
     };
-    int compress_pattern[pattern_elem_num];
-    double patterns[pattern_elem_num];
     for (i = 0; i < hw2; ++i)
         eval_param.avg_canput[i] = avg_canput[i];
     for (i = 0; i < hw2; i++)
@@ -414,18 +404,6 @@ void init(){
     for (i = 0; i < board_index_num; ++i){
         for (j = 0; j < board_param.pattern_space[i]; ++j)
             board_param.board_translate[i][j] = consts[all_idx++];
-    }
-    for (i = 0; i < pattern_num; ++i)
-        eval_param.pattern_space[i] = consts[all_idx++];
-    for (i = 0; i < pattern_num; ++i)
-        eval_param.pattern_variation[i] = consts[all_idx++];
-    for (i = 0; i < pattern_num; ++i){
-        for (j = 0; j < eval_param.pattern_variation[i]; ++j){
-            for (k = 0; k < eval_param.pattern_space[i]; ++k){
-                eval_param.pattern_translate[i][j][k][0] = consts[all_idx] / hw;
-                eval_param.pattern_translate[i][j][k][1] = consts[all_idx++] % hw;
-            }
-        }
     }
     int idx;
     for (i = 0; i < hw2; ++i){
@@ -700,8 +678,6 @@ void init(){
         for (j = 0; j < 10; ++j)
             board_param.digit_pow[i][j] = i * board_param.pow3[j];
     }
-    for (i = 0; i < 40; ++i)
-        eval_param.open_eval[i] = min(1.0, pow(2.0, 2.0 - 0.667 * i) - 1.0);
 }
 
 inline double leaky_relu(double x){
@@ -960,16 +936,17 @@ inline void calc_policies(int (&board)[board_index_num], double (&res)[hw2]){
 }
 
 int main(){
+    cin >> xorw;
     init();
     cerr << "initialized" << endl;
-    int board[board_index_num] = {0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 0, 27, 216, 27, 0, 0, 0, 0, 0, 0, 0, 0, 54, 108, 54, 0, 0, 0, 0};
+    //int board[board_index_num] = {0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 0, 27, 216, 27, 0, 0, 0, 0, 0, 0, 0, 0, 54, 108, 54, 0, 0, 0, 0};
+    int board[board_index_num] = {0, 0, 54, 216, 135, 0, 0, 0, 0, 0, 0, 234, 135, 0, 0, 0, 0, 0, 0, 0, 72, 135, 54, 0, 0, 0, 0, 0, 0, 0, 18, 54, 216, 27, 0, 0, 0, 0};
     int tmp_board[board_index_num];
     double scores[hw2];
     double rnd, sm;
     int i;
     int policy;
     bool passed = false;
-    print_board(board);
     while (1){
         calc_policies(board, scores);
         rnd = myrandom();
@@ -993,9 +970,8 @@ int main(){
         }
         move(board, tmp_board, policy);
         swap(board, tmp_board);
-        print_board(board);
+        //print_board(board);
     }
     print_board(board);
-    cerr << "end" << endl;
     return 0;
 }
