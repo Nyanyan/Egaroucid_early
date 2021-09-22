@@ -33,9 +33,6 @@ std= []
 
 hw = 8
 hw2 = 64
-board_index_num = 38
-dy = [0, 1, 0, -1, 1, 1, -1, -1]
-dx = [1, 0, -1, 0, 1, -1, 1, -1]
 
 my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -316,7 +313,7 @@ with open('param/mean.txt', 'w') as f:
 with open('param/std.txt', 'w') as f:
     for i in std:
         f.write(str(i) + '\n')
-model.save('param/model.h5')
+model.save('param/teacher.h5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)

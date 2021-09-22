@@ -43,9 +43,6 @@ std = np.array(std)
 
 hw = 8
 hw2 = 64
-board_index_num = 38
-dy = [0, 1, 0, -1, 1, 1, -1, -1]
-dx = [1, 0, -1, 0, 1, -1, 1, -1]
 
 my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -272,7 +269,7 @@ for i in trange(game_num):
 reshape_data_test()
 my_evaluate.kill()
 
-model = load_model('param/model.h5')
+model = load_model('param/teacher.h5')
 policy_predictions = model.predict([test_board, test_param])[0]
 true_policy = [np.argmax(i) for i in test_policies]
 avg_policy_error = 0
