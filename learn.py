@@ -246,9 +246,9 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 400
-game_num = 10000
-game_strt = 110000
+n_epochs = 200
+game_num = 5000
+game_strt = 117500
 n_kernels = 64
 kernel_size = 4
 use_ratio = 1.0
@@ -269,17 +269,17 @@ my_evaluate.kill()
 input_b = Input(shape=(hw, hw, 2,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
-x_b = Activation(LeakyReLU(alpha=0.01))(x_b)
+x_b = LeakyReLU(alpha=0.01)(x_b)
 for _ in range(4):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
-    x_b = Activation(LeakyReLU(alpha=0.01))(x_b)
+    x_b = LeakyReLU(alpha=0.01)(x_b)
     x_b = Add()([x_b, sc])
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)
-x_p = Activation(LeakyReLU(alpha=0.01))(x_p)
+x_p = LeakyReLU(alpha=0.01)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
@@ -300,7 +300,6 @@ early_stop = EarlyStopping(monitor='val_loss', patience=10)
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
 print('test_loss', test_loss)
-
 
 #model = load_model('param/model.h5')
 policy_predictions = model.predict([test_board, test_param])[0]
@@ -370,9 +369,7 @@ plt.ylabel('value loss')
 plt.legend(loc='best')
 plt.show()
 
-exit()
-
-model.save('param/model.h5')
+'''
 with open('param/mean.txt', 'w') as f:
     for i in mean:
         f.write(str(i) + '\n')
@@ -407,3 +404,5 @@ with open('param/param.txt', 'w') as f:
             i += 1
         except:
             break
+'''
+model.save('param/model.h5')
