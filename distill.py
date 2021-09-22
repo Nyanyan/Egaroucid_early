@@ -93,7 +93,7 @@ def reshape_data_train():
     global train_board, train_param, train_policies, train_value, mean, std
     tmp_data = []
     print('calculating score & additional data')
-    for _, board in zip(trange(len(all_data)), all_data.keys()):
+    for _, board in zip(trange(len(all_data)), all_data):
         my_evaluate.stdin.write(board.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
@@ -127,7 +127,7 @@ def reshape_data_test():
     global test_board, test_param, test_policies, test_value, test_raw_board
     tmp_data = []
     print('calculating score & additional data')
-    for _, board in zip(trange(len(all_data)), all_data.keys()):
+    for _, board in zip(trange(len(all_data)), all_data):
         my_evaluate.stdin.write(board.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
@@ -153,7 +153,7 @@ def reshape_data_test():
         test_param.append([float(i) for i in param.split()])
     test_board = np.array(test_board)
     test_param = np.array(test_param)
-    test_param = (train_param - mean) / std
+    test_param = (test_param - mean) / std
     test_policies, test_value = teacher.predict([test_board, test_param])
     print('test', test_board.shape, test_param.shape, test_policies.shape, test_value.shape)
 
@@ -171,8 +171,8 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 10
-game_num = 100
+n_epochs = 100
+game_num = 1000
 game_strt = 0
 n_kernels = 64
 kernel_size = 4
@@ -187,7 +187,7 @@ records = sample(list(range(120000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
     collect_data(records[i], use_ratio)
 reshape_data_train()
-all_data = {}
+all_data = set()
 for i in trange(game_strt + train_num, game_strt + game_num):
     collect_data(records[i], use_ratio)
 reshape_data_test()
@@ -197,7 +197,7 @@ input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-for _ in range(0):
+for _ in range(1):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
@@ -263,7 +263,7 @@ test_num = 10
 test_num = min(test_value.shape[0], test_num)
 test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
 ans_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_policies[0:test_num]]
-ans_value = [round(i, 3) for i in test_value[0:test_num]]
+ans_value = [round(i[0], 3) for i in test_value[0:test_num]]
 pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
 pred_value = test_predictions[1]
 for i in range(test_num):
