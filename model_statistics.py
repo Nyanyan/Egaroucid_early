@@ -6,13 +6,11 @@ from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, Lam
 from tensorflow.keras.optimizers import Adam
 from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
-import datetime
 from math import exp
 
 all_data = {}
@@ -293,7 +291,8 @@ plt.plot([0.5 for _ in range(64)], label='0.5')
 plt.xlabel('policy error ratio')
 plt.ylabel('num')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/big/stat_policy_error.png')
+plt.clf()
 
 policy_errors_sum = []
 for i in range(hw2):
@@ -307,7 +306,8 @@ plt.plot([1.0 for _ in range(64)], label='1.0')
 plt.xlabel('policy error sum ratio')
 plt.ylabel('num')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/big/stat_policy_error_sum.png')
+plt.clf()
 
 exit()
 

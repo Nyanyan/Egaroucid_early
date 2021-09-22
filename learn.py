@@ -6,13 +6,11 @@ from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, Lam
 from tensorflow.keras.optimizers import Adam
 from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
-import datetime
 from math import exp
 
 all_data = {}
@@ -248,8 +246,8 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 200
-game_num = 2500
+n_epochs = 10
+game_num = 100
 game_strt = 0
 n_kernels = 64
 kernel_size = 4
@@ -320,14 +318,16 @@ for key in ['policy_loss', 'val_policy_loss']:
 plt.xlabel('epoch')
 plt.ylabel('policy loss')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/big/policy_loss.png')
+plt.clf()
 
 for key in ['value_loss', 'val_value_loss']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
 plt.ylabel('value loss')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/big/value_loss.png')
+plt.clf()
 
 #model = load_model('param/model.h5')
 policy_predictions = model.predict([test_board, test_param])[0]
@@ -346,11 +346,12 @@ for i in range(len(test_board)):
 avg_policy_error /= len(test_board)
 print('avg policy error', avg_policy_error)
 plt.plot(policy_errors, label='policy error')
-plt.plot([0.0 for _ in range(64)], label='policy error')
+plt.plot([0.0 for _ in range(64)], label='0.0')
 plt.xlabel('policy error')
 plt.ylabel('num')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/big/policy_error.png')
+plt.clf()
 
 test_num = 10
 test_num = min(test_value.shape[0], test_num)

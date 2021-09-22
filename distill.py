@@ -6,13 +6,11 @@ from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, Lam
 from tensorflow.keras.optimizers import Adam
 from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
-import datetime
 from math import exp
 
 all_data = set()
@@ -172,12 +170,12 @@ def policy_error(y_true, y_pred):
             return i
 
 n_epochs = 100
-game_num = 1000
+game_num = 600
 game_strt = 0
-n_kernels = 64
+n_kernels = 16
 kernel_size = 4
 use_ratio = 1.0
-test_ratio = 0.2
+test_ratio = 0.4
 leakyrelu_alpha = 0.01
 
 test_num = int(game_num * test_ratio)
@@ -197,7 +195,7 @@ input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-for _ in range(1):
+for _ in range(2):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
@@ -222,20 +220,23 @@ model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metric
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
+model.save('param/model.h5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
 plt.ylabel('policy loss')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/small/policy_loss.png')
+plt.clf()
 
 for key in ['value_loss', 'val_value_loss']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
 plt.ylabel('value loss')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/small/value_loss.png')
+plt.clf()
 
 policy_predictions = model.predict([test_board, test_param])[0]
 true_policy = [np.argmax(i) for i in test_policies]
@@ -250,14 +251,33 @@ for i in range(len(test_board)):
             avg_policy_error += j
             policy_errors[j] += 1
             break
+for i in range(hw2):
+    policy_errors[i] /= len(test_board)
 avg_policy_error /= len(test_board)
 print('avg policy error', avg_policy_error)
 plt.plot(policy_errors, label='policy error')
-plt.plot([0.0 for _ in range(64)], label='policy error')
-plt.xlabel('policy error')
+plt.plot([0.0 for _ in range(64)], label='0.0')
+plt.plot([0.25 for _ in range(64)], label='0.25')
+plt.xlabel('policy error ratio')
 plt.ylabel('num')
 plt.legend(loc='best')
-plt.show()
+plt.savefig('graph/small/policy_error.png')
+plt.clf()
+
+policy_errors_sum = []
+for i in range(hw2):
+    sm = 0
+    for j in range(i + 1):
+        sm += policy_errors[j]
+    policy_errors_sum.append(sm)
+plt.plot(policy_errors_sum, label='policy error sum')
+plt.plot([0.9 for _ in range(64)], label='0.9')
+plt.plot([1.0 for _ in range(64)], label='1.0')
+plt.xlabel('policy error sum ratio')
+plt.ylabel('num')
+plt.legend(loc='best')
+plt.savefig('graph/small/policy_error_sum.png')
+plt.clf()
 
 test_num = 10
 test_num = min(test_value.shape[0], test_num)
