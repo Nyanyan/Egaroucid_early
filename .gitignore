@@ -11,4 +11,5 @@ tmp.py
 third_party
 param/model.h5
 param/teacher.h5
+param/teacher_bak.h5
 learn_data

@@ -246,8 +246,8 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 10
-game_num = 100
+n_epochs = 200
+game_num = 2000
 game_strt = 0
 n_kernels = 64
 kernel_size = 4
@@ -312,6 +312,7 @@ with open('param/std.txt', 'w') as f:
     for i in std:
         f.write(str(i) + '\n')
 model.save('param/teacher.h5')
+model.save('param/teacher_bak.h5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)
