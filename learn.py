@@ -246,11 +246,11 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 10
+n_epochs = 100
 game_num = 2500
 game_strt = 110000
-n_kernels = 32
-kernel_size = 3
+n_kernels = 64
+kernel_size = 4
 use_ratio = 1.0
 test_ratio = 0.2
 
@@ -271,15 +271,12 @@ input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
 x_b = BatchNormalization()(x_b)
 x_b = Activation('relu')(x_b)
-for _ in range(16):
+for _ in range(4):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
     x_b = BatchNormalization()(x_b)
     x_b = Activation('relu')(x_b)
-    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
-    x_b = BatchNormalization()(x_b)
     x_b = Add()([x_b, sc])
-    x_b = Activation('relu')(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
