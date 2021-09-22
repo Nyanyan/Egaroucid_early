@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
-from random import random, randint, shuffle
+from random import random, randint, shuffle, sample
 import subprocess
 import datetime
 from math import exp
@@ -134,13 +134,16 @@ def reshape_data_train():
         board, param, policies, score = tmp_data[ii]
         grid_space0 = ''
         grid_space1 = ''
+        grid_space_vacant = ''
         for i in range(hw):
             for j in range(hw):
                 idx = i * hw + j
                 grid_space0 += '1 ' if board[idx] == '0' else '0 '
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
-        grid_flat = [float(i) for i in (grid_space0 + grid_space1).split()]
-        train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
+                grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
+        test_raw_board.append(board)
+        grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
+        train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
         train_param.append([float(i) for i in param.split()])
         train_policies.append(policies)
         train_value.append(score)
@@ -208,14 +211,16 @@ def reshape_data_test():
         board, param, policies, score = tmp_data[ii]
         grid_space0 = ''
         grid_space1 = ''
+        grid_space_vacant = ''
         for i in range(hw):
             for j in range(hw):
                 idx = i * hw + j
                 grid_space0 += '1 ' if board[idx] == '0' else '0 '
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
+                grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
         test_raw_board.append(board)
-        grid_flat = [float(i) for i in (grid_space0 + grid_space1).split()]
-        test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
+        grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
+        test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
         test_param.append([float(i) for i in param.split()])
         test_policies.append(policies)
         test_value.append(score)
@@ -247,39 +252,43 @@ def policy_error(y_true, y_pred):
             return i
 
 n_epochs = 200
-game_num = 5000
-game_strt = 117500
+game_num = 2500
+game_strt = 0
 n_kernels = 64
 kernel_size = 4
 use_ratio = 1.0
 test_ratio = 0.2
+leakyrelu_alpha = 0.01
 
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
+records = sample(list(range(120000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
-    collect_data(i, use_ratio)
+    collect_data(records[i], use_ratio)
 reshape_data_train()
 all_data = {}
 for i in trange(game_strt + train_num, game_strt + game_num):
-    collect_data(i, use_ratio)
+    collect_data(records[i], use_ratio)
 reshape_data_test()
 my_evaluate.kill()
 
-input_b = Input(shape=(hw, hw, 2,))
+input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
-x_b = LeakyReLU(alpha=0.01)(x_b)
+x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 for _ in range(4):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
-    x_b = LeakyReLU(alpha=0.01)(x_b)
+    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
     x_b = Add()([x_b, sc])
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(16)(input_p)
-x_p = LeakyReLU(alpha=0.01)(x_p)
+x_p = Dense(64)(input_p)
+x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
+x_p = Dense(32)(input_p)
+x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
@@ -298,8 +307,10 @@ early_stop = EarlyStopping(monitor='val_loss', patience=10)
 #print_callback = DisplayCallBack()
 
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
-test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
-print('test_loss', test_loss)
+#test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
+#print('test_loss', test_loss)
+
+model.save('param/model.h5')
 
 #model = load_model('param/model.h5')
 policy_predictions = model.predict([test_board, test_param])[0]
@@ -405,4 +416,3 @@ with open('param/param.txt', 'w') as f:
         except:
             break
 '''
-model.save('param/model.h5')
