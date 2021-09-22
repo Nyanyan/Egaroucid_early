@@ -14,7 +14,7 @@ from random import random, randint, shuffle
 import subprocess
 import datetime
 
-all_data = []
+all_data = {}
 
 train_board = []
 train_param = []
@@ -78,19 +78,32 @@ def collect_data(num, use_ratio):
             x = int(x)
             if random() < use_ratio:
                 grids.append([-score, s, y, x])
-    for sgn, grid_str, y, x in grids:
-        all_data.append([grid_str, sgn * score, y, x])
+    for score, grid_str, y, x in grids:
+        if not grid_str in all_data:
+            all_data[grid_str] = [[0.0, 0] for _ in range(hw2)]
+        all_data[grid_str][y * hw + x][0] += score
+        all_data[grid_str][y * hw + x][1] += 1
 
 def reshape_data_train():
     global train_board, train_param, train_policies, train_value, mean, std
     tmp_data = []
     print('calculating score & additional data')
-    for i in trange(len(all_data)):
-        board, score, y, x = all_data[i]
+    for _, board in zip(trange(len(all_data)), all_data.keys()):
+        score = -1000.0
+        policy = -1
+        for i in range(hw2):
+            if all_data[board][i][1] == 0:
+                continue
+            tmp_score = all_data[board][i][0] / all_data[board][i][1]
+            if tmp_score > score:
+                score = tmp_score
+                policy = i
+        if score == -1000.0:
+            continue
         my_evaluate.stdin.write(board.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
-        tmp_data.append([board, additional_data, y, x, score])
+        tmp_data.append([board, additional_data, policy, score])
     shuffle(tmp_data)
     ln = len(tmp_data)
     print('got', ln)
@@ -113,7 +126,7 @@ def reshape_data_train():
             train_labels.append(score)
     '''
     for ii in trange(ln):
-        board, param, y, x, score = tmp_data[ii]
+        board, param, policy, score = tmp_data[ii]
         grid_space0 = ''
         grid_space1 = ''
         for i in range(hw):
@@ -125,7 +138,7 @@ def reshape_data_train():
         train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
         train_param.append([float(i) for i in param.split()])
         policies = [0.0 for _ in range(hw2)]
-        policies[y * hw + x] = 1.0
+        policies[policy] = 1.0
         train_policies.append(policies)
         train_value.append(score)
     train_board = np.array(train_board)
@@ -147,16 +160,26 @@ def reshape_data_test():
     global test_board, test_param, test_policies, test_value, test_raw_board
     tmp_data = []
     print('calculating score & additional data')
-    for i in trange(len(all_data)):
-        board, score, y, x = all_data[i]
+    for _, board in zip(trange(len(all_data)), all_data.keys()):
+        score = -1000.0
+        policy = -1
+        for i in range(hw2):
+            if all_data[board][i][1] == 0:
+                continue
+            tmp_score = all_data[board][i][0] / all_data[board][i][1]
+            if tmp_score > score:
+                score = tmp_score
+                policy = i
+        if score == -1000.0:
+            continue
         my_evaluate.stdin.write(board.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
-        tmp_data.append([board, additional_data, y, x, score])
+        tmp_data.append([board, additional_data, policy, score])
     shuffle(tmp_data)
     ln = len(tmp_data)
     print('got', ln)
-    print('creating train data & labels')
+    print('creating test data & labels')
     '''
     for idx in trange(ln):
         grid_str_no_rotate, score, additional_data = tmp_data[idx]
@@ -175,7 +198,7 @@ def reshape_data_test():
             train_labels.append(score)
     '''
     for ii in trange(ln):
-        board, param, y, x, score = tmp_data[ii]
+        board, param, policy, score = tmp_data[ii]
         grid_space0 = ''
         grid_space1 = ''
         for i in range(hw):
@@ -188,7 +211,7 @@ def reshape_data_test():
         test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
         test_param.append([float(i) for i in param.split()])
         policies = [0.0 for _ in range(hw2)]
-        policies[y * hw + x] = 1.0
+        policies[policy] = 1.0
         test_policies.append(policies)
         test_value.append(score)
     test_board = np.array(test_board)
@@ -210,11 +233,14 @@ def step_decay(epoch):
     if epoch >= 80: x = 0.00025
     return x
 
-n_epochs = 6
+def my_loss_value(y_true, y_pred):
+    return 4000.0 * (y_true - y_pred) ** 2
+
+n_epochs = 10
 game_num = 1000
 game_strt = 110000
 n_kernels = 32
-kernel_size = 4
+kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.2
 
@@ -224,7 +250,7 @@ print('loading data from files')
 for i in trange(game_strt, game_strt + train_num):
     collect_data(i, use_ratio)
 reshape_data_train()
-all_data = []
+all_data = {}
 for i in trange(game_strt + train_num, game_strt + game_num):
     collect_data(i, use_ratio)
 reshape_data_test()
@@ -233,8 +259,18 @@ my_evaluate.kill()
 input_b = Input(shape=(hw, hw, 2,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
+x_b = BatchNormalization()(x_b)
+x_b = Activation(LeakyReLU(alpha=0.01))(x_b)
+for _ in range(1):
+    sc = x_b
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
+    x_b = BatchNormalization()(x_b)
+    x_b = Activation(LeakyReLU(alpha=0.01))(x_b)
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
+    x_b = BatchNormalization()(x_b)
+    x_b = Add()([x_b, sc])
+    x_b = Activation(LeakyReLU(alpha=0.01))(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
-x_b = Activation('relu')(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)
@@ -250,7 +286,7 @@ output_v = Activation('tanh', name='value')(output_v)
 
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
-model.compile(loss=['categorical_crossentropy', 'logcosh'], optimizer='adam', metrics=['mae'])
+model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 #lr_decay = LearningRateScheduler(step_decay)
 #print_callback = LambdaCallback(on_epoch_begin=lambda epoch,loss,val_loss,logs: print('\rTrain', epoch + 1, '/', n_epochs, loss, val_loss, end=''))
@@ -283,9 +319,18 @@ for i in range(test_num):
     '''
     print('ans_policy', ans_policies[i])
     print('prd_policy', pred_policies[i])
+    policies = [[ii, test_predictions[0][i][ii]] for ii in range(hw2)]
+    policies.sort(key=lambda x:x[1], reverse=True)
+    #print(policies)
+    for j in range(hw2):
+        if policies[j][0] == ans_policies[i][0]:
+            print('prd_policy_index', j)
+            break
     print('ans_value', ans_value[i])
-    print('prd_value', pred_value[i])
+    print('prd_value', pred_value[i][0])
     print('')
+
+exit()
 
 model.save('param/model.h5')
 with open('param/mean.txt', 'w') as f:
@@ -308,14 +353,14 @@ with open('param/param.txt', 'w') as f:
                             for kk in range(model.layers[i].weights[j].shape[2]):
                                 for jj in range(model.layers[i].weights[j].shape[1]):
                                     for ii in range(model.layers[i].weights[j].shape[0]):
-                                        f.write(str(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
+                                        f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
                     elif len(model.layers[i].weights[j].shape) == 2:
                         for ii in range(model.layers[i].weights[j].shape[0]):
                             for jj in range(model.layers[i].weights[j].shape[1]):
-                                f.write(str(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
+                                f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
                     elif len(model.layers[i].weights[j].shape) == 1:
                         for ii in range(model.layers[i].weights[j].shape[0]):
-                            f.write(str(model.layers[i].weights[j].numpy()[ii]) + '\n')
+                            f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
                     j += 1
                 except:
                     break
@@ -323,16 +368,16 @@ with open('param/param.txt', 'w') as f:
         except:
             break
 
-for key in ['policy_mae', 'val_policy_mae']:
+for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
-plt.ylabel('mae')
+plt.ylabel('policy loss')
 plt.legend(loc='best')
 plt.show()
 
-for key in ['value_mae', 'val_value_mae']:
+for key in ['value_loss', 'val_value_loss']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
-plt.ylabel('mae')
+plt.ylabel('value loss')
 plt.legend(loc='best')
 plt.show()

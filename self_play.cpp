@@ -46,7 +46,7 @@ using namespace std;
 #define n_kernels 32
 #define n_add_input 11
 #define add_dense1 16
-#define n_concat_hidden 48
+#define n_concat_hidden (n_kernels + add_dense1)
 #define conv_size (hw_p1 - kernel_size)
 #define div_pooling (2.0 * conv_size * conv_size)
 
@@ -724,7 +724,7 @@ inline predictions predict(const int *board){
         eval_param.input_p[i] -= eval_param.mean[i];
         eval_param.input_p[i] /= eval_param.std[i];
     }
-    // conv and global-average-pooling and activation for input_b
+    // conv and global-average-pooling and relu for input_b
     for (i = 0; i < n_kernels; ++i){
         eval_param.hidden1[i] = 0.0;
         for (j = 0; j < 2; ++j){
@@ -741,7 +741,7 @@ inline predictions predict(const int *board){
         eval_param.hidden1[i] /= div_pooling;
         eval_param.hidden1[i] = relu(eval_param.hidden1[i]);
     }
-    // dense and bias and activate for input_p
+    // dense and bias and tanh for input_p
     for (i = 0; i < add_dense1; ++i)
         eval_param.hidden1[n_kernels + i] = 0.0;
     for (i = 0; i < n_add_input; ++i){
@@ -753,7 +753,7 @@ inline predictions predict(const int *board){
         eval_param.hidden1[n_kernels + i] += eval_param.bias1[i];
         eval_param.hidden1[n_kernels + i] = tanh(eval_param.hidden1[n_kernels + i]);
     }
-    // dense and bias and activate for policy output
+    // dense and bias and softmax for policy output
     for (i = 0; i < hw2; ++i)
         res.policies[i] = 0.0;
     for (i = 0; i < n_concat_hidden; ++i){
@@ -769,17 +769,12 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < hw2; ++i)
         res.policies[i] /= policy_sum;
-    // dense and bias and activate for value output
-    for (i = 0; i < n_concat_hidden; ++i){
+    // dense and bias and tanh for value output
+    res.value = 0.0;
+    for (i = 0; i < n_concat_hidden; ++i)
         res.value += eval_param.hidden1[i] * eval_param.dense3[i];
-    }
     res.value = tanh(res.value + eval_param.bias3);
     // return
-    /*
-    for (i = 0; i < hw2; ++i)
-        res.policies[i] = myrandom();
-    res.value = myrandom();
-    */
     return res;
 }
 
