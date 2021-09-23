@@ -16,12 +16,14 @@ from math import exp
 all_data = set()
 
 train_board = []
+train_teach_board = []
 train_param = []
 train_policies = []
 train_value = []
 
 test_raw_board = []
 test_board = []
+test_teach_board = []
 test_param = []
 test_policies = []
 test_value = []
@@ -88,7 +90,7 @@ def collect_data(num, use_ratio):
                 all_data.add(s)
 
 def reshape_data_train():
-    global train_board, train_param, train_policies, train_value, mean, std
+    global train_board, train_teach_board, train_param, train_policies, train_value, mean, std
     tmp_data = []
     print('calculating score & additional data')
     for _, board in zip(trange(len(all_data)), all_data):
@@ -114,15 +116,18 @@ def reshape_data_train():
         test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
+        #grid_flat = [float(i) for i in (grid_space0 + grid_space1).split()]
+        #train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
         train_param.append([float(i) for i in param.split()])
     train_board = np.array(train_board)
+    #train_teach_board = np.array(train_teach_board)
     train_param = np.array(train_param)
     train_param = (train_param - mean) / std
     train_policies, train_value = teacher.predict([train_board, train_param])
     print('train', train_board.shape, train_param.shape, train_policies.shape, train_value.shape)
 
 def reshape_data_test():
-    global test_board, test_param, test_policies, test_value, test_raw_board
+    global test_board, test_teach_board, test_param, test_policies, test_value, test_raw_board
     tmp_data = []
     print('calculating score & additional data')
     for _, board in zip(trange(len(all_data)), all_data):
@@ -148,8 +153,11 @@ def reshape_data_test():
         test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
+        #grid_flat = [float(i) for i in (grid_space0 + grid_space1).split()]
+        #test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(2)] for j in range(hw)] for i in range(hw)])
         test_param.append([float(i) for i in param.split()])
     test_board = np.array(test_board)
+    #test_teach_board = np.array(test_teach_board)
     test_param = np.array(test_param)
     test_param = (test_param - mean) / std
     test_policies, test_value = teacher.predict([test_board, test_param])
@@ -173,7 +181,7 @@ n_epochs = 500
 game_num = 800
 game_strt = 0
 n_kernels = 16
-kernel_size = 4
+kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.5
 leakyrelu_alpha = 0.01
@@ -271,34 +279,3 @@ for i in range(test_num):
     print('ans_value', ans_value[i])
     print('prd_value', pred_value[i][0])
     print('')
-
-'''
-with open('param/param.txt', 'w') as f:
-    i = 0
-    while True:
-        try:
-            print(i, model.layers[i])
-            j = 0
-            while True:
-                try:
-                    print(model.layers[i].weights[j].shape)
-                    if len(model.layers[i].weights[j].shape) == 4:
-                        for ll in range(model.layers[i].weights[j].shape[3]):
-                            for kk in range(model.layers[i].weights[j].shape[2]):
-                                for jj in range(model.layers[i].weights[j].shape[1]):
-                                    for ii in range(model.layers[i].weights[j].shape[0]):
-                                        f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
-                    elif len(model.layers[i].weights[j].shape) == 2:
-                        for ii in range(model.layers[i].weights[j].shape[0]):
-                            for jj in range(model.layers[i].weights[j].shape[1]):
-                                f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
-                    elif len(model.layers[i].weights[j].shape) == 1:
-                        for ii in range(model.layers[i].weights[j].shape[0]):
-                            f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
-                    j += 1
-                except:
-                    break
-            i += 1
-        except:
-            break
-'''
