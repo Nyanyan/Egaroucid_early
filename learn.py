@@ -247,7 +247,7 @@ def policy_error(y_true, y_pred):
             return i
 
 n_epochs = 200
-game_num = 2000
+game_num = 2500
 game_strt = 0
 n_kernels = 64
 kernel_size = 4
@@ -272,7 +272,7 @@ input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-for _ in range(4):
+for _ in range(6):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
@@ -312,7 +312,7 @@ with open('param/std.txt', 'w') as f:
     for i in std:
         f.write(str(i) + '\n')
 model.save('param/teacher.h5')
-model.save('param/teacher_bak.h5')
+#model.save('param/teacher_bak.h5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)

@@ -12,6 +12,12 @@ from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
+import sys
+
+argv = sys.argv
+if len(argv) != 3:
+    print('arg err')
+    exit()
 
 all_data = {}
 
@@ -20,6 +26,9 @@ test_board = []
 test_param = []
 test_policies = []
 test_value = []
+
+model_mode = False
+teacher = None
 
 mean = []
 with open('param/mean.txt', 'r') as f:
@@ -90,85 +99,8 @@ def collect_data(num, use_ratio):
         all_data[grid_str][y * hw + x][0] += score
         all_data[grid_str][y * hw + x][1] += 1
 
-def reshape_data_train():
-    global train_board, train_param, train_policies, train_value, mean, std
-    tmp_data = []
-    print('calculating score & additional data')
-    for _, board in zip(trange(len(all_data)), all_data.keys()):
-        policies = [0.0 for _ in range(hw2)]
-        score_sum = 0.0
-        score = 0.0
-        score_div = 0
-        for i in range(hw2):
-            if all_data[board][i][1] == 0:
-                continue
-            tmp_score = all_data[board][i][0] / all_data[board][i][1]
-            score += all_data[board][i][0]
-            score_div += all_data[board][i][1]
-            policies[i] = exp(tmp_score)
-            score_sum += policies[i]
-        for i in range(hw2):
-            policies[i] /= score_sum
-        score /= score_div
-        my_evaluate.stdin.write(board.encode('utf-8'))
-        my_evaluate.stdin.flush()
-        additional_data = my_evaluate.stdout.readline().decode().strip()
-        tmp_data.append([board, additional_data, policies, score])
-    shuffle(tmp_data)
-    ln = len(tmp_data)
-    print('got', ln)
-    print('creating train data & labels')
-    '''
-    for idx in trange(ln):
-        grid_str_no_rotate, score, additional_data = tmp_data[idx]
-        for rotation in range(4):
-            grid_str = ''
-            grid_space0 = ''
-            grid_space1 = ''
-            for i in range(hw):
-                for j in range(hw):
-                    idx = calc_idx(i, j, rotation)
-                    grid_str += grid_str_no_rotate[idx]
-                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
-                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
-            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
-            train_data.append(in_data)
-            train_labels.append(score)
-    '''
-    for ii in trange(ln):
-        board, param, policies, score = tmp_data[ii]
-        grid_space0 = ''
-        grid_space1 = ''
-        grid_space_vacant = ''
-        for i in range(hw):
-            for j in range(hw):
-                idx = i * hw + j
-                grid_space0 += '1 ' if board[idx] == '0' else '0 '
-                grid_space1 += '1 ' if board[idx] == '1' else '0 '
-                grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
-        test_raw_board.append(board)
-        grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
-        train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
-        train_param.append([float(i) for i in param.split()])
-        train_policies.append(policies)
-        train_value.append(score)
-    train_board = np.array(train_board)
-    train_param = np.array(train_param)
-    train_policies = np.array(train_policies)
-    train_value = np.array(train_value)
-    mean = train_param.mean(axis=0)
-    std = train_param.std(axis=0)
-    train_param = (train_param - mean) / std
-    '''
-    print(train_board[0])
-    print(train_param[0])
-    print(train_policies[0])
-    print(train_value[0])
-    '''
-    print('train', train_board.shape, train_param.shape, train_policies.shape, train_value.shape)
-
 def reshape_data_test():
-    global test_board, test_param, test_policies, test_value, test_raw_board
+    global test_board, test_param, test_policies, test_value, test_raw_board, model_mode
     tmp_data = []
     print('calculating score & additional data')
     for _, board in zip(trange(len(all_data)), all_data.keys()):
@@ -234,12 +166,9 @@ def reshape_data_test():
     test_policies = np.array(test_policies)
     test_value = np.array(test_value)
     test_param = (test_param - mean) / std
-    '''
-    print(test_board[0])
-    print(test_param[0])
-    print(test_policies[0])
-    print(test_value[0])
-    '''
+    if model_mode:
+        print('model mode')
+        test_policies, test_value = teacher.predict([test_board, test_param])
     print('test', test_board.shape, test_param.shape, test_policies.shape, test_value.shape)
 
 def step_decay(epoch):
@@ -256,9 +185,23 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-game_num = 1000
+game_num = 500
 game_strt = 0
 use_ratio = 1.0
+see_rank = 5
+model = None
+if argv[1] == 'big':
+    model = load_model('param/teacher.h5')
+    dirc = 'big'
+else:
+    model = load_model('param/model.h5')
+    dirc = 'small'
+if argv[2] == 'record':
+    model_mode = False
+else:
+    model_mode = True
+    teacher = load_model('param/teacher.h5')
+print('dirc', dirc, 'mode', model_mode)
 
 print('loading data from files')
 records = sample(list(range(120000)), game_num)
@@ -267,46 +210,51 @@ for i in trange(game_num):
 reshape_data_test()
 my_evaluate.kill()
 
-model = load_model('param/teacher.h5')
 policy_predictions = model.predict([test_board, test_param])[0]
-true_policy = [np.argmax(i) for i in test_policies]
-avg_policy_error = 0
-policy_errors = [0 for _ in range(64)]
+true_policies = [sorted([[j, test_policies[i][j]] for j in range(hw2)], key=lambda x:x[1], reverse=True) for i in range(len(test_policies))]
+avg_policy_error = [0 for _ in range(hw2)]
+policy_errors = [[0 for _ in range(hw2)] for _ in range(hw2)]
 for i in range(len(test_board)):
     policies = [[ii, policy_predictions[i][ii]] for ii in range(hw2)]
     policies.sort(key=lambda x:x[1], reverse=True)
     #print(policies)
-    for j in range(hw2):
-        if policies[j][0] == true_policy[i]:
-            avg_policy_error += j
-            policy_errors[j] += 1
-            break
+    for rank in range(see_rank):
+        for j in range(hw2):
+            if policies[j][0] == true_policies[i][rank][0]:
+                avg_policy_error[rank] += abs(rank - j)
+                policy_errors[rank][abs(rank - j)] += 1
+                break
 for i in range(hw2):
-    policy_errors[i] /= len(test_board)
-avg_policy_error /= len(test_board)
-print('avg policy error', avg_policy_error)
-plt.plot(policy_errors, label='policy error')
+    for j in range(hw2):
+        policy_errors[i][j] /= len(test_board)
+    avg_policy_error[i] /= len(test_board)
+print('avg policy error', tuple([round(i, 2) for i in avg_policy_error[0:see_rank]]))
+for i in range(see_rank):
+    plt.plot(policy_errors[i], label='policy error' + str(i))
 plt.plot([0.0 for _ in range(64)], label='0.0')
-plt.plot([0.5 for _ in range(64)], label='0.5')
+plt.plot([0.25 for _ in range(64)], label='0.25')
 plt.xlabel('policy error ratio')
 plt.ylabel('num')
 plt.legend(loc='best')
-plt.savefig('graph/big/stat_policy_error.png')
+plt.savefig('graph/' + dirc + '/stat_policy_error.png')
 plt.clf()
 
 policy_errors_sum = []
-for i in range(hw2):
-    sm = 0
-    for j in range(i + 1):
-        sm += policy_errors[j]
-    policy_errors_sum.append(sm)
-plt.plot(policy_errors_sum, label='policy error sum')
-plt.plot([0.5 for _ in range(64)], label='0.5')
+for rank in range(see_rank):
+    policy_errors_sum.append([])
+    for i in range(hw2):
+        sm = 0
+        for j in range(i + 1):
+            sm += policy_errors[rank][j]
+        policy_errors_sum[rank].append(sm)
+for i in range(see_rank):
+    plt.plot(policy_errors_sum[i], label='policy error sum' + str(i))
+plt.plot([0.9 for _ in range(64)], label='0.9')
 plt.plot([1.0 for _ in range(64)], label='1.0')
 plt.xlabel('policy error sum ratio')
 plt.ylabel('num')
 plt.legend(loc='best')
-plt.savefig('graph/big/stat_policy_error_sum.png')
+plt.savefig('graph/' + dirc + '/stat_policy_error_sum.png')
 plt.clf()
 
 exit()
