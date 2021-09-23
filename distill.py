@@ -6,6 +6,7 @@ from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, Lam
 from tensorflow.keras.optimizers import Adam
 from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
+from tensorflow.python.keras.utils.vis_utils import plot_model
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
@@ -180,7 +181,7 @@ def policy_error(y_true, y_pred):
 n_epochs = 500
 game_num = 800
 game_strt = 0
-n_kernels = 16
+n_kernels = 8
 kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.5
@@ -201,19 +202,21 @@ my_evaluate.kill()
 
 input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
-x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
+x_b = Conv2D(n_kernels, kernel_size, padding='same')(input_b)
+#x_b = BatchNormalization()(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-for _ in range(4):
+for _ in range(2):
     sc = x_b
-    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
-    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    x_b = Conv2D(n_kernels, kernel_size, padding='same')(x_b)
+    #x_b = BatchNormalization()(x_b)
     x_b = Add()([x_b, sc])
+    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(32)(input_p)
+x_p = Dense(16)(input_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
-x_p = Dense(16)(x_p)
+x_p = Dense(32)(x_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
@@ -227,6 +230,7 @@ output_v = Activation('tanh', name='value')(output_v)
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
+#plot_model(model, show_shapes=True, show_layer_names=False)
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])

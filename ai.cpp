@@ -45,14 +45,16 @@ using namespace std;
 #define n_board_input 3
 #define n_add_input 11
 #define kernel_size 3
-#define n_kernels 16
-#define n_residual 4
-#define n_dense1 32
-#define n_dense2 16
+#define n_kernels 8
+#define n_residual 2
+#define n_dense1 16
+#define n_dense2 32
 #define n_joined (n_kernels + n_dense2)
 #define conv_size (hw_p1 - kernel_size)
+#define conv_start (-(kernel_size / 2))
 #define div_pooling (hw2)
 #define conv_padding ((hw - conv_size) / 2)
+#define epsilon 0.001
 
 struct board_param{
     unsigned long long trans[board_index_num][6561][hw];
@@ -86,7 +88,11 @@ struct eval_param{
     double input_b[n_board_input][hw][hw];
     double input_p[n_add_input];
     double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
+    double conv1_bias[n_kernels];
+    double normalization1[4][n_kernels];
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
+    double conv_residual_bias[n_residual][n_kernels];
+    double normalization_residual[n_residual][4][n_kernels];
     double hidden_conv1[n_kernels][hw][hw];
     double hidden_conv2[n_kernels][hw][hw];
     double hidden_joined[n_joined];
@@ -430,6 +436,24 @@ void init(){
             }
         }
     }
+    for (i = 0; i < n_kernels; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("param file broken");
+            exit(1);
+        }
+        eval_param.conv1_bias[i] = atof(cbuf);
+    }
+    /*
+    for (i = 0; i < 4; ++i){
+        for (j = 0; j < n_kernels; ++j){
+            if (!fgets(cbuf, 1024, fp)){
+                printf("param file broken");
+                exit(1);
+            }
+            eval_param.normalization1[i][j] = atof(cbuf);
+        }
+    }
+    */
     int residual_i;
     for (residual_i = 0; residual_i < n_residual; ++residual_i){
         for (i = 0; i < n_kernels; ++i){
@@ -444,6 +468,26 @@ void init(){
                     }
                 }
             }
+        }
+        /*
+        for (i = 0; i < 4; ++i){
+            for (j = 0; j < n_kernels; ++j){
+                if (!fgets(cbuf, 1024, fp)){
+                    printf("param file broken");
+                    exit(1);
+                }
+                eval_param.normalization_residual[residual_i][i][j] = atof(cbuf);
+            }
+        }
+        */
+    }
+    for (residual_i = 0; residual_i < n_residual; ++residual_i){
+        for (i = 0; i < n_kernels; ++i){
+            if (!fgets(cbuf, 1024, fp)){
+                printf("param file broken");
+                exit(1);
+            }
+            eval_param.conv_residual_bias[residual_i][i] = atof(cbuf);
         }
     }
     for (i = 0; i < n_add_input; ++i){
@@ -578,7 +622,7 @@ void init(){
         for (j = 0; j < hw; ++j){
             board_param.restore_p[i][j] = 1 & (p >> (hw_m1 - j));
             board_param.restore_o[i][j] = 1 & (o >> (hw_m1 - j));
-            board_param.restore_vacant[i][j] = 1 & (((~o) | (~p)) >> (hw_m1 - j));
+            board_param.restore_vacant[i][j] = 1 & ((~(p | o)) >> (hw_m1 - j));
             eval_param.cnt_p[i] += board_param.restore_p[i][j];
             eval_param.cnt_o[i] += board_param.restore_o[i][j];
         }
@@ -715,13 +759,7 @@ void init(){
 }
 
 inline double leaky_relu(double x){
-    if (x >= 0.0)
-        return x;
-    return 0.01 * x;
-}
-
-inline double relu(double x){
-    return max(0.0, x);
+    return max(x, 0.01 * x);
 }
 
 inline predictions predict(const int *board){
@@ -758,47 +796,57 @@ inline predictions predict(const int *board){
         eval_param.input_p[i] -= eval_param.mean[i];
         eval_param.input_p[i] /= eval_param.std[i];
     }
-    // first conv and leaky-relu for input_b
+    // conv and normalization and leaky-relu for input_b
     for (i = 0; i < n_kernels; ++i){
-        for (sy = 0; sy < hw; ++sy){
-            for (sx = 0; sx < hw; ++sx)
-                eval_param.hidden_conv1[i][sy][sx] = 0.0;
+        for (y = 0; y < hw; ++y){
+            for (x = 0; x < hw; ++x)
+                eval_param.hidden_conv1[i][y][x] = eval_param.conv1_bias[i];
         }
         for (j = 0; j < n_board_input; ++j){
-            for (sy = 0; sy < conv_size; ++sy){
-                for (sx = 0; sx < conv_size; ++sx){
+            for (sy = 0; sy < hw; ++sy){
+                for (sx = 0; sx < hw; ++sx){
                     for (y = 0; y < kernel_size; ++y){
-                        for (x = 0; x < kernel_size; ++x)
-                            eval_param.hidden_conv1[i][conv_padding + sy][conv_padding + sx] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y][sx + x];
+                        for (x = 0; x < kernel_size; ++x){
+                            if (sy + y + conv_start < 0 || sy + y + conv_start >= hw || sx + x + conv_start < 0 || sx + x + conv_start >= hw)
+                                continue;
+                            eval_param.hidden_conv1[i][sx][sy] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y + conv_start][sx + x + conv_start];
+                        }
                     }
                 }
             }
         }
-        for (sy = 0; sy < conv_size; ++sy){
-            for (sx = 0; sx < conv_size; ++sx)
-                eval_param.hidden_conv1[i][conv_padding + sy][conv_padding + sx] = leaky_relu(eval_param.hidden_conv1[i][conv_padding + sy][conv_padding + sx]);
+        for (y = 0; y < hw; ++y){
+            for (x = 0; x < hw; ++x){
+                //eval_param.hidden_conv1[i][y][x] = eval_param.normalization1[0][i] * (eval_param.hidden_conv1[i][y][x] - eval_param.normalization1[2][i]) / sqrt(eval_param.normalization1[3][i] + epsilon) + eval_param.normalization1[1][i];
+                eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x]);
+            }
         }
     }
-    // residual-error for input_b
+    // residual-error-block for input_b
     for (residual_i = 0; residual_i < n_residual; ++residual_i){
         for (i = 0; i < n_kernels; ++i){
-            for (sy = 0; sy < hw; ++sy){
-                for (sx = 0; sx < hw; ++sx)
-                    eval_param.hidden_conv2[i][sy][sx] = 0.0;
+            for (y = 0; y < hw; ++y){
+                for (x = 0; x < hw; ++x)
+                    eval_param.hidden_conv2[i][y][x] = eval_param.conv_residual_bias[residual_i][i];
             }
             for (j = 0; j < n_kernels; ++j){
-                for (sy = 0; sy < conv_size; ++sy){
-                    for (sx = 0; sx < conv_size; ++sx){
+                for (sy = 0; sy < hw; ++sy){
+                    for (sx = 0; sx < hw; ++sx){
                         for (y = 0; y < kernel_size; ++y){
-                            for (x = 0; x < kernel_size; ++x)
-                                eval_param.hidden_conv2[i][conv_padding + sy][conv_padding + sx] += eval_param.conv_residual[residual_i][i][j][y][x] * eval_param.hidden_conv1[j][sy + y][sx + x];
+                            for (x = 0; x < kernel_size; ++x){
+                                if (sy + y + conv_start < 0 || sy + y + conv_start >= hw || sx + x + conv_start < 0 || sx + x + conv_start >= hw)
+                                    continue;
+                                eval_param.hidden_conv2[i][sx][sy] += eval_param.conv_residual[residual_i][i][j][y][x] * eval_param.hidden_conv1[j][sy + y + conv_start][sx + x + conv_start];
+                            }
                         }
                     }
                 }
             }
             for (y = 0; y < hw; ++y){
-                for (x = 0; x < hw; ++x)
-                    eval_param.hidden_conv1[i][y][x] += leaky_relu(eval_param.hidden_conv2[i][y][x]);
+                for (x = 0; x < hw; ++x){
+                    //eval_param.hidden_conv1[i][y][x] = eval_param.normalization_residual[residual_i][0][i] * (eval_param.hidden_conv1[i][y][x] - eval_param.normalization_residual[residual_i][2][i]) / sqrt(eval_param.normalization_residual[residual_i][3][i] + epsilon) + eval_param.normalization_residual[residual_i][1][i];
+                    eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x] + eval_param.hidden_conv2[i][y][x]);
+                }
             }
         }
     }
@@ -816,7 +864,7 @@ inline predictions predict(const int *board){
         eval_param.hidden_dense1[i] = 0.0;
     for (i = 0; i < n_add_input; ++i){
         for (j = 0; j < n_dense1; ++j)
-            eval_param.hidden_dense1[j] += eval_param.input_p[i] * eval_param.dense1[i][j];
+            eval_param.hidden_dense1[j] += eval_param.dense1[i][j] * eval_param.input_p[i];
     }
     for (i = 0; i < n_dense1; ++i)
         eval_param.hidden_dense1[i] = leaky_relu(eval_param.hidden_dense1[i] + eval_param.bias1[i]);
@@ -833,9 +881,8 @@ inline predictions predict(const int *board){
     for (i = 0; i < hw2; ++i)
         res.policies[i] = 0.0;
     for (i = 0; i < n_joined; ++i){
-        for (j = 0; j < hw2; ++j){
+        for (j = 0; j < hw2; ++j)
             res.policies[j] += eval_param.hidden_joined[i] * eval_param.dense3[i][j];
-        }
     }
     double policy_sum = 0.0;
     for (i = 0; i < hw2; ++i){
@@ -1073,7 +1120,7 @@ int main(){
         key.first = p;
         key.second = o;
         cerr << key.first << " " << key.second << endl;
-        if (search_param.book.find(key) != search_param.book.end()){
+        if (false && search_param.book.find(key) != search_param.book.end()){
             cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
             cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 100.0 * search_param.book[key].rate << endl;
             continue;
@@ -1099,7 +1146,6 @@ int main(){
             }
         }
         cerr << mx_idx << " " << mx << " " << tmp.value << endl;
-        cerr << tmp.value << endl;
         return 0;
         policy = next_action(board);
         cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;

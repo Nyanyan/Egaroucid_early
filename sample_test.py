@@ -144,14 +144,28 @@ reshape_data_test()
 my_evaluate.kill()
 
 model = load_model('param/model.h5')
+conv_out = Model(inputs=model.input, outputs=model.get_layer('conv2d_1').output)
+pooling_out = Model(inputs=model.input, outputs=model.get_layer('global_average_pooling2d').output)
 
-test_num = 10
+test_num = 1
 test_num = min(test_board.shape[0], test_num)
 test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
+conv_outs = conv_out.predict([test_board[0:test_num], test_param[0:test_num]])
+pooling_outs = pooling_out.predict([test_board[0:test_num], test_param[0:test_num]])
 pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
 pred_value = test_predictions[1]
 for i in range(test_num):
-    print('raw_board', test_raw_board[i])
-    print('prd_policy', pred_policies[i])
-    print('prd_value', pred_value[i][0])
+    print(test_raw_board[i])
+
+    print(test_param[i])
+    print('')
+    for line in [[i[0] for i in j] for j in conv_outs[i]]:
+        print(line)
+    print('')
+    print(pooling_outs[i])
+    print('')
+    
+    print(pred_policies[i])
+    print(pred_value[i][0])
+    print('')
     print('')

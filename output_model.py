@@ -29,14 +29,14 @@ with open('param/param.txt', 'w') as f:
                             for kk in range(model.layers[i].weights[j].shape[2]):
                                 for jj in range(model.layers[i].weights[j].shape[1]):
                                     for ii in range(model.layers[i].weights[j].shape[0]):
-                                        f.write('{:.16f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
+                                        f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
                     elif len(model.layers[i].weights[j].shape) == 2:
                         for ii in range(model.layers[i].weights[j].shape[0]):
                             for jj in range(model.layers[i].weights[j].shape[1]):
-                                f.write('{:.16f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
+                                f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
                     elif len(model.layers[i].weights[j].shape) == 1:
                         for ii in range(model.layers[i].weights[j].shape[0]):
-                            f.write('{:.16f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
+                            f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
                     j += 1
                 except:
                     break
