@@ -178,8 +178,8 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 10
-game_num = 80
+n_epochs = 1000
+game_num = 800
 game_strt = 0
 n_kernels = 16
 kernel_size = 3
@@ -212,6 +212,8 @@ for _ in range(2):
     x_b = Add()([x_b, sc])
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
+x_b = Dense(16)(x_b)
+x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)

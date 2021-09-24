@@ -47,6 +47,7 @@ using namespace std;
 #define kernel_size 3
 #define n_kernels 16
 #define n_residual 2
+#define n_dense0 16
 #define n_dense1 16
 #define n_dense2 32
 #define n_joined (n_kernels + n_dense2)
@@ -93,6 +94,9 @@ struct eval_param{
     //double conv_residual_bias[n_residual][n_kernels];
     double hidden_conv1[n_kernels][hw][hw];
     double hidden_conv2[n_kernels][hw][hw];
+    double hidden_gap0[n_kernels];
+    double dense0[n_kernels][n_dense0];
+    double bias0[n_kernels];
     double hidden_joined[n_joined];
     double dense1[n_add_input][n_dense1];
     double bias1[n_dense1];
@@ -466,6 +470,22 @@ void init(){
         }
         eval_param.bias1[i] = atof(cbuf);
     }
+    for (i = 0; i < n_kernels; ++i){
+        for (j = 0; j < n_dense0; ++j){
+            if (!fgets(cbuf, 1024, fp)){
+                printf("param file broken");
+                exit(1);
+            }
+            eval_param.dense0[i][j] = atof(cbuf);
+        }
+    }
+    for (i = 0; i < n_dense0; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("param file broken");
+            exit(1);
+        }
+        eval_param.bias0[i] = atof(cbuf);
+    }
     for (i = 0; i < n_dense1; ++i){
         for (j = 0; j < n_dense2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -810,13 +830,22 @@ inline predictions predict(const int *board){
     }
     // global-average-pooling for input_b
     for (i = 0; i < n_kernels; ++i){
-        eval_param.hidden_joined[i] = 0.0;
+        eval_param.hidden_gap0[i] = 0.0;
         for (y = 0; y < hw; ++y){
             for (x = 0; x < hw; ++x)
-                eval_param.hidden_joined[i] += eval_param.hidden_conv1[i][y][x];
+                eval_param.hidden_gap0[i] += eval_param.hidden_conv1[i][y][x];
         }
-        eval_param.hidden_joined[i] /= div_pooling;
+        eval_param.hidden_gap0[i] /= div_pooling;
     }
+    // dense0 and bias and leaky-relu for input_b
+    for (i = 0; i < n_dense0; ++i)
+        eval_param.hidden_dense1[i] = 0.0;
+    for (i = 0; i < n_kernels; ++i){
+        for (j = 0; j < n_dense0; ++j)
+            eval_param.hidden_joined[j] += eval_param.dense0[i][j] * eval_param.hidden_gap0[i];
+    }
+    for (i = 0; i < n_dense0; ++i)
+        eval_param.hidden_joined[i] = leaky_relu(eval_param.hidden_joined[i] + eval_param.bias0[i]);
     // dense1 and bias and leaky-relu for input_p
     for (i = 0; i < n_dense1; ++i)
         eval_param.hidden_dense1[i] = 0.0;

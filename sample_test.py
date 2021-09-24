@@ -166,9 +166,10 @@ for i in range(test_num):
         print(line)
     print('')
     '''
+    '''
     print(pooling_outs[i])
     print('')
-
+    '''
     print(pred_policies[i])
     print(pred_value[i][0])
     print('')
