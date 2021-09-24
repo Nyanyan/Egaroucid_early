@@ -1031,7 +1031,6 @@ double evaluate(int idx, bool passed, int player){
 }
 
 inline int next_action(int *board){
-    int strt = tim();
     int i, cell, mx = 0, res = -1;
     mcts_param.used_idx = 1;
     for (i = 0; i < board_index_num; ++i)
@@ -1070,10 +1069,11 @@ inline int next_action(int *board){
     }
     for (i = 0; i < hw2; ++i)
         mcts_param.nodes[0].p[i] /= p_sum;
+    int strt = tim();
     for (i = 0; i < evaluate_count; ++i){
+        evaluate(0, false, 1);
         if (tim() - strt > search_param.tl)
             break;
-        evaluate(0, false, 1);
     }
     for (i = 0; i < hw2; ++i){
         if (mcts_param.nodes[0].children[i] != -1){
@@ -1148,7 +1148,7 @@ int main(){
         return 0;
         */
         policy = next_action(board);
-        cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
+        cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << " " << search_param.n_playout << "  " << mcts_param.used_idx << endl;
         //cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
         cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
     }

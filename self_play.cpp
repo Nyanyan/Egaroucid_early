@@ -164,11 +164,12 @@ struct mcts_node{
     double p[hw2];
     double w;
     int n;
-    int children_num;
+    bool pass;
+    bool expanded;
 };
 
 struct mcts_param{
-    mcts_node nodes[60 * 10 * evaluate_count];
+    mcts_node nodes[65 * evaluate_count];
     int used_idx;
 };
 
@@ -177,9 +178,14 @@ struct predictions{
     double value;
 };
 
+struct history{
+    string board;
+    int policy;
+};
+
 struct self_play_param{
-    int random_step = 10;
-    double random_rate = 0.05;
+    int random_step;
+    double random_rate;
 };
 
 board_param board_param;
@@ -942,43 +948,27 @@ inline double end_game_evaluate(int idx, int player){
 double evaluate(int idx, bool passed, int player){
     double value = 0.0;
     int i, j, cell;
-    if (mcts_param.nodes[idx].children_num == -1){
+    if (!mcts_param.nodes[idx].expanded){
         // when children not expanded
         // expand children
-        mcts_param.nodes[idx].children_num = 0;
+        mcts_param.nodes[idx].expanded = true;
+        bool legal[hw2];
+        mcts_param.nodes[idx].pass = true;
         for (cell = 0; cell < hw2; ++cell){
             mcts_param.nodes[idx].children[cell] = -1;
+            legal[cell] = false;
             for (i = 0; i < board_index_num; ++i){
                 if (board_param.put[cell][i] != -1){
                     if (board_param.legal[mcts_param.nodes[idx].board[i]][board_param.put[cell][i]]){
-                        mcts_param.nodes[idx].children[cell] = mcts_param.used_idx;
-                        mcts_param.nodes[mcts_param.used_idx].w = 0.0;
-                        mcts_param.nodes[mcts_param.used_idx].n = 0;
-                        mcts_param.nodes[mcts_param.used_idx].children_num = -1;
-                        move(mcts_param.nodes[idx].board, mcts_param.nodes[mcts_param.used_idx++].board, cell);
-                        ++mcts_param.nodes[idx].children_num;
-                        //cerr << mcts_param.used_idx << " ";
+                        mcts_param.nodes[idx].pass = false;
+                        legal[cell] = true;
                         break;
                     }
                 }
             }
         }
-        // pass
-        if (mcts_param.nodes[idx].children_num == 0){
-            if (passed){
-                return end_game_evaluate(idx, player);
-            } else{
-                for (i = 0; i < hw2; ++i)
-                    mcts_param.nodes[idx].p[i] = 0.0;
-                mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
-                for (i = 0; i < board_index_num; ++i)
-                    mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
-                mcts_param.nodes[mcts_param.used_idx].w = 0.0;
-                mcts_param.nodes[mcts_param.used_idx].n = 0;
-                mcts_param.nodes[mcts_param.used_idx++].children_num = -1;
-                //cerr << mcts_param.used_idx << " ";
-            }
-        } else{
+        mcts_param.nodes[idx].children[hw2] = -1;
+        if (!mcts_param.nodes[idx].pass){
             //predict and create policy array
             predictions pred = predict(mcts_param.nodes[idx].board);
             mcts_param.nodes[idx].w += pred.value;
@@ -986,7 +976,7 @@ double evaluate(int idx, bool passed, int player){
             ++mcts_param.nodes[idx].n;
             double p_sum = 0.0;
             for (i = 0; i < hw2; ++i){
-                if (mcts_param.nodes[idx].children[i] != -1){
+                if (legal[i]){
                     mcts_param.nodes[idx].p[i] = exp(max(-32.0, min(10.0, pred.policies[i])));
                     p_sum += mcts_param.nodes[idx].p[i];
                 } else{
@@ -997,7 +987,7 @@ double evaluate(int idx, bool passed, int player){
                 mcts_param.nodes[idx].p[i] /= p_sum;
         }
     }
-    if (mcts_param.nodes[idx].children_num){
+    if (!mcts_param.nodes[idx].pass){
         // children already expanded
         // select next move
         int a_cell = -1;
@@ -1017,6 +1007,14 @@ double evaluate(int idx, bool passed, int player){
                 }
             }
         }
+        if (mcts_param.nodes[idx].children[a_cell] == -1){
+            mcts_param.nodes[idx].children[a_cell] = mcts_param.used_idx;
+            mcts_param.nodes[mcts_param.used_idx].w = 0.0;
+            mcts_param.nodes[mcts_param.used_idx].n = 0;
+            mcts_param.nodes[mcts_param.used_idx].pass = true;
+            mcts_param.nodes[mcts_param.used_idx].expanded = false;
+            move(mcts_param.nodes[idx].board, mcts_param.nodes[mcts_param.used_idx++].board, a_cell);
+        }
         value = -evaluate(mcts_param.nodes[idx].children[a_cell], false, -player);
         mcts_param.nodes[idx].w += value;
         ++mcts_param.nodes[idx].n;
@@ -1025,6 +1023,16 @@ double evaluate(int idx, bool passed, int player){
         if (passed){
             return end_game_evaluate(idx, player);
         } else{
+            if (mcts_param.nodes[idx].children[hw2] == -1){
+                mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
+                mcts_param.nodes[mcts_param.used_idx].w = 0.0;
+                mcts_param.nodes[mcts_param.used_idx].n = 0;
+                mcts_param.nodes[mcts_param.used_idx].pass = true;
+                mcts_param.nodes[mcts_param.used_idx].expanded = false;
+                for (i = 0; i < board_index_num; ++i)
+                    mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
+                ++mcts_param.used_idx;
+            }
             value = -evaluate(mcts_param.nodes[idx].children[hw2], true, -player);
             mcts_param.nodes[idx].w += value;
             ++mcts_param.nodes[idx].n;
@@ -1040,47 +1048,44 @@ inline int next_action(int *board){
         mcts_param.nodes[0].board[i] = board[i];
     mcts_param.nodes[0].w = 0.0;
     mcts_param.nodes[0].n = 0;
-    mcts_param.nodes[0].children_num = 0;
+    mcts_param.nodes[0].pass = true;
+    mcts_param.nodes[0].expanded = true;
     // expand children
+    bool legal[hw2];
     for (cell = 0; cell < hw2; ++cell){
         mcts_param.nodes[0].children[cell] = -1;
+        legal[cell] = false;
         for (i = 0; i < board_index_num; ++i){
             if (board_param.put[cell][i] != -1){
                 if (board_param.legal[board[i]][board_param.put[cell][i]]){
-                    mcts_param.nodes[0].children[cell] = mcts_param.used_idx;
-                    mcts_param.nodes[mcts_param.used_idx].w = 0.0;
-                    mcts_param.nodes[mcts_param.used_idx].n = 0;
-                    mcts_param.nodes[mcts_param.used_idx].children_num = -1;
-                    move(board, mcts_param.nodes[mcts_param.used_idx++].board, cell);
-                    ++mcts_param.nodes[0].children_num;
+                    mcts_param.nodes[0].pass = false;
+                    legal[cell] = true;
                     break;
                 }
             }
         }
     }
-    if (mcts_param.nodes[0].children_num == 0)
-        return -1;
     //predict and create policy array
     predictions pred = predict(board);
     mcts_param.nodes[0].w += pred.value;
     ++mcts_param.nodes[0].n;
     double p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
-        if (mcts_param.nodes[0].children[i] != -1){
+        if (legal[i]){
             mcts_param.nodes[0].p[i] = exp(max(-32.0, min(10.0, pred.policies[i])));
             p_sum += mcts_param.nodes[0].p[i];
         } else{
             mcts_param.nodes[0].p[i] = 0.0;
         }
     }
-    if (p_sum > 0.0){
-        for (i = 0; i < hw2; ++i)
-            mcts_param.nodes[0].p[i] /= p_sum;
-    }
-    for (i = 0; i < evaluate_count; ++i)
+    for (i = 0; i < hw2; ++i)
+        mcts_param.nodes[0].p[i] /= p_sum;
+    int strt = tim();
+    for (i = 0; i < evaluate_count; ++i){
         evaluate(0, false, 1);
+    }
     double policies[hw2];
-    double p_sum = 0.0;
+    p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         if (mcts_param.nodes[0].children[i] != -1){
             policies[i] = (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
@@ -1103,16 +1108,13 @@ inline int next_action(int *board){
     return res;
 }
 
-struct history{
-    string board;
-    int policy;
-};
-
 int main(){
     cin >> xorw;
     int num;
     cin >> num;
     init();
+    self_play_param.random_step = 5;
+    self_play_param.random_rate = 0.05;
     //cerr << "initialized" << endl;
     //int board[board_index_num] = {0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 0, 27, 216, 27, 0, 0, 0, 0, 0, 0, 0, 0, 54, 108, 54, 0, 0, 0, 0};
     int start_board[board_index_num] = {0, 0, 54, 216, 135, 0, 0, 0, 0, 0, 0, 234, 135, 0, 0, 0, 0, 0, 0, 0, 72, 135, 54, 0, 0, 0, 0, 0, 0, 0, 18, 54, 216, 27, 0, 0, 0, 0};
