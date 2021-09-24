@@ -178,10 +178,10 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 500
-game_num = 800
+n_epochs = 10
+game_num = 80
 game_strt = 0
-n_kernels = 8
+n_kernels = 16
 kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.5
@@ -202,12 +202,12 @@ my_evaluate.kill()
 
 input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
-x_b = Conv2D(n_kernels, kernel_size, padding='same')(input_b)
+x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
 #x_b = BatchNormalization()(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 for _ in range(2):
     sc = x_b
-    x_b = Conv2D(n_kernels, kernel_size, padding='same')(x_b)
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
     #x_b = BatchNormalization()(x_b)
     x_b = Add()([x_b, sc])
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
