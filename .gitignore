@@ -4,6 +4,7 @@ a.out
 evaluation.out
 self_play.out
 make_board.out
+early_stage.out
 Procfile
 app.py
 statistics
