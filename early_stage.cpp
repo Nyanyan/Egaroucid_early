@@ -13,6 +13,7 @@
 #include <string>
 #include <unordered_map>
 #include <random>
+#include <set>
 
 using namespace std;
 
@@ -37,9 +38,9 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 100
+#define evaluate_count 5
 #define c_puct 50.0
-#define c_end 1.0
+#define c_end 0.0
 
 #define n_board_input 3
 #define n_add_input 11
@@ -88,7 +89,9 @@ struct eval_param{
     double input_b[n_board_input][hw][hw];
     double input_p[n_add_input];
     double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
+    //double conv1_bias[n_kernels];
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
+    //double conv_residual_bias[n_residual][n_kernels];
     double hidden_conv1[n_kernels][hw][hw];
     double hidden_conv2[n_kernels][hw][hw];
     double hidden_gap0[n_kernels];
@@ -178,10 +181,16 @@ struct predictions{
     double value;
 };
 
+struct self_play_param{
+    int random_step = 10;
+    double random_rate = 0.05;
+};
+
 board_param board_param;
 eval_param eval_param;
 search_param search_param;
 mcts_param mcts_param;
+self_play_param self_play_param;
 
 int xorx=123456789, xory=362436069, xorz=521288629, xorw=88675123;
 inline double myrandom(){
@@ -1061,6 +1070,7 @@ inline int next_action(int *board){
     // expand children
     bool legal_places[hw2];
     mcts_param.seen_nodes[0].children_num = 0;
+    bool canmove = false;
     for (cell = 0; cell < hw2; ++cell){
         mcts_param.seen_nodes[0].children[cell] = -1;
         legal_places[cell] = false;
@@ -1068,12 +1078,15 @@ inline int next_action(int *board){
             if (board_param.put[cell][i] != -1){
                 if (board_param.legal[board[i]][board_param.put[cell][i]]){
                     legal_places[cell] = true;
+                    canmove = true;
                     ++mcts_param.seen_nodes[0].children_num;
                     break;
                 }
             }
         }
     }
+    if (!canmove)
+        return -1;
     //predict and create policy array
     predictions pred = predict(board);
     mcts_param.seen_nodes[0].w += pred.value;
@@ -1106,71 +1119,73 @@ inline int next_action(int *board){
     return res;
 }
 
+struct history{
+    string board;
+    int policy;
+};
+
+set<string> seen_boards;
+
+void dfs(int *board, int depth, bool passed){
+    if (depth >= 6)
+        return;
+    int stone_count = 0;
+    int i, j, idx, tmp;
+    string grid_str;
+    for (i = 0; i < hw; ++i){
+        tmp = board[i];
+        for (j = 0; j < hw; ++j){
+            if (tmp % 3 == 0){
+                grid_str += ".";
+            }else if (tmp % 3 == 1){
+                grid_str += "0";
+            }else{
+                grid_str += "1";
+            }
+            tmp /= 3;
+        }
+    }
+    if (seen_boards.count(grid_str))
+        return;
+    int legal_places[hw2];
+    int n_legal_move = 0;
+    int cell;
+    for (cell = 0; cell < hw2; ++cell){
+        legal_places[cell] = false;
+        for (i = 0; i < board_index_num; ++i){
+            if (board_param.put[cell][i] != -1){
+                if (board_param.legal[board[i]][board_param.put[cell][i]]){
+                    legal_places[n_legal_move++] = cell;
+                    break;
+                }
+            }
+        }
+    }
+    int n_board[board_index_num];
+    if (n_legal_move == 0 && !passed){
+        for (i = 0; i < board_index_num; ++i)
+            n_board[i] = board_param.reverse[board[i]];
+        dfs(n_board, depth + 1, true);
+    }
+    for (i = 0; i < n_legal_move; ++i){
+        move(board, n_board, legal_places[i]);
+        dfs(n_board, depth + 1, false);
+    }
+    seen_boards.insert(grid_str);
+    //if (depth < 4)
+    //    cerr << seen_boards.size() << " ";
+}
+
 int main(){
     init();
-    cerr << "initialized" << endl;
-    int i, j, board_tmp, ai_player, policy;
-    char elem;
-    unsigned long long p, o;
-    int board[board_index_num];
-    double rnd, sm;
-    pair<unsigned long long, unsigned long long> key;
-    while (true){
-        search_param.turn = 0;
-        search_param.win_num = 0;
-        search_param.lose_num = 0;
-        search_param.n_playout = 0;
-        p = 0;
-        o = 0;
-        cin >> ai_player;
-        cin >> search_param.tl;
-        for (i = 0; i < hw2; ++i){
-            cin >> elem;
-            if (elem != '.'){
-                ++search_param.turn;
-                p |= (unsigned long long)(elem == '0') << i;
-                o |= (unsigned long long)(elem == '1') << i;
-            }
-        }
-        if (ai_player == 1)
-            swap(p, o);
-        key.first = p;
-        key.second = o;
-        cerr << key.first << " " << key.second << endl;
-        if (search_param.book.find(key) != search_param.book.end()){
-            cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
-            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 100.0 * search_param.book[key].rate << endl;
-            continue;
-        }
-        for (i = 0; i < board_index_num; ++i){
-            board_tmp = 0;
-            for (j = 0; j < board_param.pattern_space[i]; ++j){
-                if (1 & (p >> board_param.board_translate[i][j]))
-                    board_tmp += board_param.pow3[j];
-                else if (1 & (o >> board_param.board_translate[i][j]))
-                    board_tmp += 2 * board_param.pow3[j];
-            }
-            board[i] = board_tmp;
-            cerr << board_tmp << ", ";
-        }
-        /*
-        print_board(board);
-        predictions tmp = predict(board);
-        double mx = -1000.0;
-        int mx_idx = -1;
-        for (i = 0; i < hw2; ++i){
-            if (mx < tmp.policies[i]){
-                mx = tmp.policies[i];
-                mx_idx = i;
-            }
-        }
-        cerr << mx_idx << " " << mx << " " << tmp.value << endl;
-        return 0;
-        */
-        policy = next_action(board);
-        cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
-        //cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
-        cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
+    int board[board_index_num] = {0, 0, 54, 216, 135, 0, 0, 0, 0, 0, 0, 234, 135, 0, 0, 0, 0, 0, 0, 0, 72, 135, 54, 0, 0, 0, 0, 0, 0, 0, 18, 54, 216, 27, 0, 0, 0, 0};
+    dfs(board, 0, false);
+    //cerr << "done" << endl;
+    int size = seen_boards.size();
+    cout << size << endl;
+    //return 0;
+    for (auto itr = seen_boards.begin(); itr != seen_boards.end(); ++itr){
+        cout << *itr << endl;
     }
     return 0;
 }

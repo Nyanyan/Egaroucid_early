@@ -25,7 +25,6 @@ using namespace std;
 #define hw2_mhw 56
 #define hw2_p1 65
 
-#define simple_threshold 3
 #define inf 100000.0
 #define board_index_num 38
 
@@ -37,7 +36,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 100
+#define evaluate_count 5
 #define c_puct 50.0
 #define c_end 1.0
 
@@ -418,9 +417,18 @@ void init(){
     */
     FILE *fp;
     char cbuf[1024];
-    if ((fp = fopen("param/param.txt", "r")) == NULL){
-        printf("param file not exist");
-        exit(1);
+    int mode;
+    cin >> mode;
+    if (mode == 0){
+        if ((fp = fopen("param/param.txt", "r")) == NULL){
+            printf("param file not exist");
+            exit(1);
+        }
+    } else{
+        if ((fp = fopen("param/param_new.txt", "r")) == NULL){
+            printf("param file not exist");
+            exit(1);
+        }
     }
     for (i = 0; i < n_kernels; ++i){
         for (j = 0; j < n_board_input; ++j){
@@ -527,9 +535,16 @@ void init(){
         exit(1);
     }
     eval_param.bias4 = atof(cbuf);
-    if ((fp = fopen("param/mean.txt", "r")) == NULL){
-        printf("mean file not exist");
-        exit(1);
+    if (mode == 0){
+        if ((fp = fopen("param/mean.txt", "r")) == NULL){
+            printf("mean file not exist");
+            exit(1);
+        }
+    } else{
+        if ((fp = fopen("param/mean_new.txt", "r")) == NULL){
+            printf("mean file not exist");
+            exit(1);
+        }
     }
     for (i = 0; i < n_add_input; ++i){
         if (!fgets(cbuf, 1024, fp)){
@@ -538,9 +553,16 @@ void init(){
         }
         eval_param.mean[i] = atof(cbuf);
     }
-    if ((fp = fopen("param/std.txt", "r")) == NULL){
-        printf("std file not exist");
-        exit(1);
+    if (mode == 0){
+        if ((fp = fopen("param/std.txt", "r")) == NULL){
+            printf("std file not exist");
+            exit(1);
+        }
+    } else{
+        if ((fp = fopen("param/std_new.txt", "r")) == NULL){
+            printf("std file not exist");
+            exit(1);
+        }
     }
     for (i = 0; i < n_add_input; ++i){
         if (!fgets(cbuf, 1024, fp)){
@@ -549,6 +571,7 @@ void init(){
         }
         eval_param.std[i] = atof(cbuf);
     }
+    /*
     if ((fp = fopen("param/book.txt", "r")) == NULL){
         printf("book file not exist");
         exit(1);
@@ -589,6 +612,7 @@ void init(){
         search_param.book[key].policy = policy;
         search_param.book[key].rate = rate;
     }
+    */
     int p, o, mobility, canput_num, rev;
     for (i = 0; i < 6561; ++i){
         board_param.reverse[i] = board_reverse(i);
@@ -1123,7 +1147,7 @@ int main(){
         p = 0;
         o = 0;
         cin >> ai_player;
-        cin >> search_param.tl;
+        //cin >> search_param.tl;
         for (i = 0; i < hw2; ++i){
             cin >> elem;
             if (elem != '.'){
@@ -1136,12 +1160,14 @@ int main(){
             swap(p, o);
         key.first = p;
         key.second = o;
-        cerr << key.first << " " << key.second << endl;
+        //cerr << key.first << " " << key.second << endl;
+        /*
         if (search_param.book.find(key) != search_param.book.end()){
             cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
             cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 100.0 * search_param.book[key].rate << endl;
             continue;
         }
+        */
         for (i = 0; i < board_index_num; ++i){
             board_tmp = 0;
             for (j = 0; j < board_param.pattern_space[i]; ++j){
@@ -1151,7 +1177,6 @@ int main(){
                     board_tmp += 2 * board_param.pow3[j];
             }
             board[i] = board_tmp;
-            cerr << board_tmp << ", ";
         }
         /*
         print_board(board);
@@ -1168,9 +1193,10 @@ int main(){
         return 0;
         */
         policy = next_action(board);
-        cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
+        //cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
         //cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
-        cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
+        //cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
+        cout << policy / hw << " " << policy % hw << endl;
     }
     return 0;
 }
