@@ -36,6 +36,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
+#define evaluate_count 100
 #define c_puct 50.0
 #define c_end 1.0
 
@@ -1069,8 +1070,11 @@ inline int next_action(int *board){
         for (i = 0; i < hw2; ++i)
             mcts_param.nodes[0].p[i] /= p_sum;
     }
-    while (tim() - strt < search_param.tl)
+    for (i = 0; i < evaluate_count; ++i){
+        if (tim() - strt < search_param.tl)
+            break;
         evaluate(0, false, 1);
+    }
     for (i = 0; i < hw2; ++i){
         if (mcts_param.nodes[0].children[i] != -1){
             //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
