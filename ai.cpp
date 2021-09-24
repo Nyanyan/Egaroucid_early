@@ -3,9 +3,8 @@
 #pragma GCC optimize("unroll-loops")
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,popcnt,abm,mmx")
 
-// Reversi AI C++ version 5
-// previous 11th rate 30.44
-// use Negascout
+// Reversi AI C++ version 6
+// use deep reinforcement learning
 
 #include <iostream>
 #include <algorithm>
@@ -873,7 +872,7 @@ inline predictions predict(const int *board){
     }
     double policy_sum = 0.0;
     for (i = 0; i < hw2; ++i){
-        res.policies[i] = exp(res.policies[i] + eval_param.bias3[i]);
+        res.policies[i] = exp(max(-32.0, min(10.0, res.policies[i] + eval_param.bias3[i])));
         policy_sum += res.policies[i];
     }
     for (i = 0; i < hw2; ++i)
@@ -931,6 +930,7 @@ double evaluate(int idx, bool passed, int player){
     double value = 0.0;
     int i, j, cell;
     if (mcts_param.seen_nodes[idx].children_num == -1){
+        // when children not expanded
         // expand children
         bool legal_places[hw2];
         mcts_param.seen_nodes[idx].children_num = 0;
@@ -1055,12 +1055,44 @@ double evaluate(int idx, bool passed, int player){
 }
 
 inline int next_action(int *board){
-    int i, mx = 0, res = -1;
+    int i, cell, mx = 0, res = -1;
     for (i = 0; i < board_index_num; ++i)
         mcts_param.seen_nodes[0].board[i] = board[i];
     mcts_param.seen_nodes[0].w = 0.0;
     mcts_param.seen_nodes[0].n = 0;
-    mcts_param.seen_nodes[0].children_num = -1;
+    // expand children
+    bool legal_places[hw2];
+    mcts_param.seen_nodes[0].children_num = 0;
+    for (cell = 0; cell < hw2; ++cell){
+        mcts_param.seen_nodes[0].children[cell] = -1;
+        legal_places[cell] = false;
+        for (i = 0; i < board_index_num; ++i){
+            if (board_param.put[cell][i] != -1){
+                if (board_param.legal[board[i]][board_param.put[cell][i]]){
+                    legal_places[cell] = true;
+                    ++mcts_param.seen_nodes[0].children_num;
+                    break;
+                }
+            }
+        }
+    }
+    //predict and create policy array
+    predictions pred = predict(board);
+    mcts_param.seen_nodes[0].w += pred.value;
+    ++mcts_param.seen_nodes[0].n;
+    double p_sum = 0.0;
+    for (i = 0; i < hw2; ++i){
+        if (legal_places[i]){
+            mcts_param.seen_nodes[0].p[i] = exp(pred.policies[i]);
+            p_sum += mcts_param.seen_nodes[0].p[i];
+        } else{
+            mcts_param.seen_nodes[0].p[i] = 0.0;
+        }
+    }
+    if (p_sum > 0.0){
+        for (i = 0; i < hw2; ++i)
+            mcts_param.seen_nodes[0].p[i] /= p_sum;
+    }
     mcts_param.used_idx = 1;
     for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, 1);
@@ -1107,7 +1139,7 @@ int main(){
         key.first = p;
         key.second = o;
         cerr << key.first << " " << key.second << endl;
-        if (false && search_param.book.find(key) != search_param.book.end()){
+        if (search_param.book.find(key) != search_param.book.end()){
             cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
             cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 100.0 * search_param.book[key].rate << endl;
             continue;
@@ -1122,6 +1154,7 @@ int main(){
             }
             board[i] = board_tmp;
         }
+        /*
         print_board(board);
         predictions tmp = predict(board);
         double mx = -1000.0;
@@ -1134,6 +1167,7 @@ int main(){
         }
         cerr << mx_idx << " " << mx << " " << tmp.value << endl;
         return 0;
+        */
         policy = next_action(board);
         cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
         cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
