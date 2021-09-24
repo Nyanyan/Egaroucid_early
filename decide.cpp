@@ -55,6 +55,12 @@ using namespace std;
 #define conv_padding ((hw - conv_size) / 2)
 #define epsilon 0.001
 
+#define n_div 1000000
+#define tanh_min -5.0
+#define tanh_max 5.0
+#define exp_min -20.0
+#define exp_max 20.0
+
 struct board_param{
     unsigned long long trans[board_index_num][6561][hw];
     unsigned long long neighbor8[board_index_num][6561][hw];
@@ -103,6 +109,8 @@ struct eval_param{
     double bias3[hw2];
     double dense4[n_joined];
     double bias4;
+    double tanh_arr[n_div];
+    double exp_arr[n_div];
 };
 
 struct book_elem{
@@ -204,6 +212,14 @@ inline int myrandom_int(){
 
 inline int tim(){
     return static_cast<int>(chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now().time_since_epoch()).count());
+}
+
+inline int map_liner(double x, double mn, double mx){
+    return max(0, min(n_div - 1, (int)((x - mn) / (mx - mn) * n_div)));
+}
+
+inline double rev_map_liner(int x, double mn, double mx){
+    return (double)x / (double)n_div * (mx - mn) + mn;
 }
 
 void print_board_line(int tmp){
@@ -758,6 +774,10 @@ void init(){
         for (j = 0; j < 10; ++j)
             board_param.digit_pow[i][j] = i * board_param.pow3[j];
     }
+    for (i = 0; i < n_div; ++i){
+        eval_param.tanh_arr[i] = tanh(rev_map_liner(i, tanh_min, tanh_max));
+        eval_param.exp_arr[i] = exp(rev_map_liner(i, exp_min, exp_max));
+    }
 }
 
 inline double leaky_relu(double x){
@@ -914,10 +934,11 @@ inline predictions predict(const int *board){
     res.value = 0.0;
     for (i = 0; i < n_joined; ++i)
         res.value += eval_param.hidden_joined[i] * eval_param.dense4[i];
-    res.value = tanh(res.value + eval_param.bias4);
+    res.value = eval_param.tanh_arr[map_liner(res.value + eval_param.bias4, tanh_min, tanh_max)];
     // return
     return res;
 }
+
 
 inline void move(int *board, int (&res)[board_index_num], int coord){
     int i, j, tmp;
@@ -991,7 +1012,7 @@ double evaluate(int idx, bool passed, int player){
             double p_sum = 0.0;
             for (i = 0; i < hw2; ++i){
                 if (legal[i]){
-                    mcts_param.nodes[idx].p[i] = exp(max(-32.0, min(10.0, pred.policies[i])));
+                    mcts_param.nodes[idx].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
                     p_sum += mcts_param.nodes[idx].p[i];
                 } else{
                     mcts_param.nodes[idx].p[i] = 0.0;
@@ -1086,7 +1107,7 @@ inline int next_action(int *board){
     double p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         if (legal[i]){
-            mcts_param.nodes[0].p[i] = exp(max(-32.0, min(10.0, pred.policies[i])));
+            mcts_param.nodes[0].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
             p_sum += mcts_param.nodes[0].p[i];
         } else{
             mcts_param.nodes[0].p[i] = 0.0;

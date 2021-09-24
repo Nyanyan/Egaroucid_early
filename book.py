@@ -84,7 +84,7 @@ def make_board():
             continue
         data_proc.append([board, policy, rate])
 
-game_num = 120000
+game_num = 4378
 game_strt = 0
 print('loading data from files')
 for i in trange(game_strt, game_strt + game_num):

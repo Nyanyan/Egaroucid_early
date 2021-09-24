@@ -159,19 +159,18 @@ def collect_data(num, s):
     global dict_data
     grids = [[], []]
     rv = reversi()
-    idx = 2
+    idx = 0
     while True:
         if rv.check_pass() and rv.check_pass():
             break
-        turn = 0 if s[idx] == '+' else 1
-        x = ord(s[idx + 1]) - ord('a')
-        y = int(s[idx + 2]) - 1
-        idx += 3
+        x = ord(s[idx]) - ord('a')
+        y = int(s[idx + 1]) - 1
+        idx += 2
         grid_str = ''
         for i in range(hw):
             for j in range(hw):
-                grid_str += '0' if rv.grid[i][j] == turn else '1' if rv.grid[i][j] == 1 - turn else '.' # 0 to move
-        grids[turn].append([grid_str, str(y), str(x)])
+                grid_str += '0' if rv.grid[i][j] == rv.player else '1' if rv.grid[i][j] == 1 - rv.player else '.' # 0 to move
+        grids[rv.player].append([grid_str, str(y), str(x)])
         if rv.move(y, x):
             print('error')
             break
@@ -187,9 +186,15 @@ def collect_data(num, s):
             for grid, y, x in grids[turn]:
                 f.write(grid + ' ' + y + ' ' + x + '\n')
 
-with open('third_party/xxx.gam', 'rb') as f:
-    raw_data = f.read()
-games = [i for i in raw_data.splitlines()]
+
+games = []
+for year in reversed(range(2018, 2020)):
+    raw_data = ''
+    with open('third_party/records/' + str(year) + '.csv', 'r', encoding='utf-8-sig') as f:
+        raw_data = f.read()
+    games.extend([i for i in raw_data.splitlines()])
 dict_data = {}
-for i in trange(10000):
-    collect_data(i, str(games[i]))
+for i in trange(len(games)):
+    if len(games[i]) == 0:
+        continue
+    collect_data(i, games[i])

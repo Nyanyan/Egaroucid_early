@@ -1080,7 +1080,7 @@ inline int next_action(int *board){
     double p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         if (legal[i]){
-            mcts_param.nodes[0].p[i] = exp(max(-32.0, min(10.0, pred.policies[i])));
+            mcts_param.nodes[0].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
             p_sum += mcts_param.nodes[0].p[i];
         } else{
             mcts_param.nodes[0].p[i] = 0.0;
