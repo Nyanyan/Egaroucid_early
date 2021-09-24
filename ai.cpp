@@ -39,7 +39,7 @@ using namespace std;
 
 #define evaluate_count 100
 #define c_puct 50.0
-#define c_end 0.0
+#define c_end 1.0
 
 #define n_board_input 3
 #define n_add_input 11
@@ -88,9 +88,7 @@ struct eval_param{
     double input_b[n_board_input][hw][hw];
     double input_p[n_add_input];
     double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
-    //double conv1_bias[n_kernels];
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
-    //double conv_residual_bias[n_residual][n_kernels];
     double hidden_conv1[n_kernels][hw][hw];
     double hidden_conv2[n_kernels][hw][hw];
     double hidden_gap0[n_kernels];
@@ -1170,7 +1168,8 @@ int main(){
         */
         policy = next_action(board);
         cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
-        cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
+        //cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
+        cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
     }
     return 0;
 }

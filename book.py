@@ -1,7 +1,7 @@
 from tqdm import trange
 import subprocess
 
-book_num = 30
+book_num = 10
 
 data_dict = {}
 data_proc = []
@@ -40,7 +40,7 @@ def collect_data(num):
     grids = []
     with open('learn_data/' + digit(num, 7) + '.txt', 'r') as f:
         score = float(f.readline()) / 64.0
-        result = 1 if score > 0 else 0 if score == 0 else -1
+        result = 1 if score > 0 else 0 # if score == 0 else -1
         all_ln = int(f.readline())
         ln = min(book_num // 2, all_ln)
         for _ in range(ln):
@@ -84,7 +84,7 @@ def make_board():
             continue
         data_proc.append([board, policy, rate])
 
-game_num = 11000
+game_num = 120000
 game_strt = 0
 print('loading data from files')
 for i in trange(game_strt, game_strt + game_num):
