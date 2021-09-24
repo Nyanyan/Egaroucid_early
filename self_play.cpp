@@ -1146,7 +1146,7 @@ int main(){
     double ratio, ratio_sum;
     vector<history> hist0, hist1;
     for (int tim = 0; tim < num; ++tim){
-        cerr << tim << endl;
+        cerr << tim;
         hist0 = {};
         hist1 = {};
         player = 1;
@@ -1162,7 +1162,7 @@ int main(){
                 }
             }
         }
-        cerr << "random: " << random_step << endl;
+        //cerr << "random: " << random_step << endl;
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
         for (steps = 0; steps < random_step; ++steps){

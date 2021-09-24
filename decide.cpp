@@ -1146,7 +1146,7 @@ int main(){
         search_param.n_playout = 0;
         p = 0;
         o = 0;
-        cin >> ai_player;
+        //cin >> ai_player;
         //cin >> search_param.tl;
         for (i = 0; i < hw2; ++i){
             cin >> elem;

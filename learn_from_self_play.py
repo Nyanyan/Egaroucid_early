@@ -15,9 +15,10 @@ import subprocess
 from math import exp
 from os import rename
 
-num_self_play_in_one_time_train = 10
-num_self_play_in_one_time_test = 1
-n_epochs = 1000
+num_self_play_in_one_time_train = 100
+num_self_play_in_one_time_test = 50
+num_of_decide = 100
+n_epochs = 50
 
 hw = 8
 hw2 = 64
@@ -39,6 +40,8 @@ test_value = []
 
 mean = []
 std = []
+
+early_stages = []
 
 def self_play(num_self_play_in_one_time):
     global all_data
@@ -96,8 +99,8 @@ def reshape_data_train():
     train_param = np.array(train_param)
     train_policies = np.array(train_policies)
     train_value = np.array(train_value)
-    mean = np.mean(train_param)
-    std = np.std(train_param)
+    mean = train_param.mean(axis=0)
+    std = train_param.std(axis=0)
     train_param = (train_param - mean) / std
     print('train', train_board.shape, train_param.shape, train_policies.shape, train_value.shape)
 
@@ -229,7 +232,7 @@ class reversi:
                     res = False
                     self.grid[y][x] = 2
         if res:
-            print('Pass!')
+            #print('Pass!')
             self.player = 1 - self.player
         return res
 
@@ -246,8 +249,6 @@ class reversi:
             print('')
 
     def end(self):
-        if min(self.nums) == 0:
-            return True
         res = True
         for y in range(hw):
             for x in range(hw):
@@ -264,23 +265,26 @@ class reversi:
             print('Draw!', self.nums[0], '-', self.nums[1])
 
 def decide(num):
-    ais = [subprocess.Popen('./ai.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
+    ais = [subprocess.Popen('./decide.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
     ais[0].stdin.write('0\n'.encode('utf-8')) # best
     ais[1].stdin.write('1\n'.encode('utf-8')) # 
     best_win = 0
-    for game_idx in range(num):
+    for game_idx in trange(num):
         rv = reversi()
         player2ai = [0, 1] if game_idx % 2 == 0 else [1, 0]
+        rnd = randint(0, len(early_stages) - 1)
+        for y in range(hw):
+            for x in range(hw):
+                rv.grid[y][x] = early_stages[rnd][y][x]
         while True:
             if rv.check_pass() and rv.check_pass():
                 break
-            rv.output()
             stdin = ''
             for y in range(hw):
                 for x in range(hw):
-                    stdin += str(rv.grid[y][x]) + ' '
-                stdin += '\n'
-            # print(stdin)
+                    stdin += '0' if rv.grid[y][x] == rv.player else '1' if rv.grid[y][x] == 1 - rv.player else '.'
+            stdin += '\n'
+            #print(stdin)
             ais[player2ai[rv.player]].stdin.write(stdin.encode('utf-8'))
             ais[player2ai[rv.player]].stdin.flush()
             y, x = [int(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
@@ -288,98 +292,114 @@ def decide(num):
             if rv.end():
                 break
         rv.check_pass()
-        rv.output()
-        rv.judge()
+        #rv.output()
+        if rv.nums[player2ai[0]] > rv.nums[player2ai[1]]:
+            best_win += 1
+        elif rv.nums[player2ai[0]] < rv.nums[player2ai[1]]:
+            best_win -= 1
     for i in range(2):
         ais[i].kill()
+    print('score of best player', best_win)
     if best_win > 0:
         return 0
     else:
         return 1
 
+def get_early_stages():
+    global early_stages
+    all_data = None
+    with open('param/early_stage.txt', 'r') as f:
+        all_data = f.read().splitlines()
+    for grid_str in all_data[1:]:
+        n_stones = 0
+        for elem in grid_str:
+            n_stones += elem != '.'
+        if n_stones == 10:
+            grid = [[-1 for _ in range(hw)] for _ in range(hw)]
+            for y in range(hw):
+                for x in range(hw):
+                    grid[y][x] = 0 if grid_str[y * hw + x] == '0' else 1 if grid_str[y * hw + x] == '1' else -1
+            early_stages.append(grid)
+    print('len early stages', len(early_stages))
+
+get_early_stages()
 
 
+for _ in range(10):
+    
+    all_data = []
+    train_board = []
+    train_param = []
+    train_policies = []
+    train_value = []
+    print('loading train data')
+    self_play(num_self_play_in_one_time_train)
+    reshape_data_train()
+    all_data = []
+    test_raw_board = []
+    test_board = []
+    test_param = []
+    test_policies = []
+    test_value = []
+    print('loading test data')
+    self_play(num_self_play_in_one_time_test)
+    reshape_data_test()
 
-all_data = []
-train_board = []
-train_param = []
-train_policies = []
-train_value = []
-print('loading train data')
-self_play(num_self_play_in_one_time_train)
-reshape_data_train()
+    print('start learning')
+    model = load_model('param/best.h5')
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
+    early_stop = EarlyStopping(monitor='val_loss', patience=10)
+    history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 
-all_data = []
-test_raw_board = []
-test_board = []
-test_param = []
-test_policies = []
-test_value = []
-print('loading test data')
-self_play(num_self_play_in_one_time_test)
-reshape_data_test()
-
-print('start learning')
-model = load_model('param/best.h5')
-model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
-early_stop = EarlyStopping(monitor='val_loss', patience=20)
-history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
-
-model.save('param/model.h5')
-with open('param/mean_new.txt', 'w') as f:
-    for i in mean:
-        f.write(str(i) + '\n')
-with open('param/std_new.txt', 'w') as f:
-    for i in std:
-        f.write(str(i) + '\n')
-with open('param/param_new.txt', 'w') as f:
-    i = 0
-    while True:
-        try:
-            print(i, model.layers[i])
-            j = 0
-            while True:
-                try:
-                    print(model.layers[i].weights[j].shape)
-                    if len(model.layers[i].weights[j].shape) == 4:
-                        for ll in range(model.layers[i].weights[j].shape[3]):
-                            for kk in range(model.layers[i].weights[j].shape[2]):
+    print('saving')
+    #model.save('param/model.h5')
+    with open('param/mean_new.txt', 'w') as f:
+        for i in range(mean.shape[0]):
+            f.write(str(mean[i]) + '\n')
+    with open('param/std_new.txt', 'w') as f:
+        for i in range(std.shape[0]):
+            f.write(str(std[i]) + '\n')
+    with open('param/param_new.txt', 'w') as f:
+        i = 0
+        while True:
+            try:
+                print(i, model.layers[i])
+                j = 0
+                while True:
+                    try:
+                        print(model.layers[i].weights[j].shape)
+                        if len(model.layers[i].weights[j].shape) == 4:
+                            for ll in range(model.layers[i].weights[j].shape[3]):
+                                for kk in range(model.layers[i].weights[j].shape[2]):
+                                    for jj in range(model.layers[i].weights[j].shape[1]):
+                                        for ii in range(model.layers[i].weights[j].shape[0]):
+                                            f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
+                        elif len(model.layers[i].weights[j].shape) == 2:
+                            for ii in range(model.layers[i].weights[j].shape[0]):
                                 for jj in range(model.layers[i].weights[j].shape[1]):
-                                    for ii in range(model.layers[i].weights[j].shape[0]):
-                                        f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
-                    elif len(model.layers[i].weights[j].shape) == 2:
-                        for ii in range(model.layers[i].weights[j].shape[0]):
-                            for jj in range(model.layers[i].weights[j].shape[1]):
-                                f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
-                    elif len(model.layers[i].weights[j].shape) == 1:
-                        for ii in range(model.layers[i].weights[j].shape[0]):
-                            f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
-                    j += 1
-                except:
-                    break
-            i += 1
-        except:
-            break
-
-decision = decide()
-if decision == 0:
-    print('best won')
-elif decision == 1:
-    print('new won')
-    model.save('param/best.h5')
-    new_params = ''
-    with open('param/param_new.txt', 'r') as f:
-        new_params = f.read()
-    with open('param/param.txt', 'w') as f:
-        f.write(new_params)
-    with open('param/mean.txt', 'w') as f:
-        for i in mean:
-            f.write(str(i) + '\n')
-    with open('param/std.txt', 'w') as f:
-        for i in std:
-            f.write(str(i) + '\n')
-else:
-    print('error')
-    exit(1)
+                                    f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
+                        elif len(model.layers[i].weights[j].shape) == 1:
+                            for ii in range(model.layers[i].weights[j].shape[0]):
+                                f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
+                        j += 1
+                    except:
+                        break
+                i += 1
+            except:
+                break
+    
+    print('decision')
+    decision = decide(num_of_decide)
+    if decision == 0:
+        print('best won')
+    elif decision == 1:
+        print('new won')
+        model.save('param/best.h5')
+        for file in ['param', 'mean', 'std']:
+            new_params = ''
+            with open('param/' + file + '_new.txt', 'r') as f:
+                new_params = f.read()
+            with open('param/' + file + '.txt', 'w') as f:
+                f.write(new_params)
 
 my_evaluate.kill()
