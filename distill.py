@@ -190,7 +190,7 @@ leakyrelu_alpha = 0.01
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-records = sample(list(range(120000)), game_num)
+records = sample(list(range(65000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
     collect_data(records[i], use_ratio)
 reshape_data_train()

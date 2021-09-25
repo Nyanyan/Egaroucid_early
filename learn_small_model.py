@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.datasets import boston_housing
-from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input, concatenate, Flatten
+from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input, concatenate, Flatten, Dropout
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
@@ -127,6 +127,7 @@ def reshape_data_train():
     '''
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
+        stone_num = 0
         grid_space0 = ''
         grid_space1 = ''
         grid_space_vacant = ''
@@ -136,6 +137,9 @@ def reshape_data_train():
                 grid_space0 += '1 ' if board[idx] == '0' else '0 '
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
+                stone_num += board[idx] != '.'
+        if stone_num < 10:
+            continue
         test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
@@ -204,6 +208,7 @@ def reshape_data_test():
     '''
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
+        stone_num = 0
         grid_space0 = ''
         grid_space1 = ''
         grid_space_vacant = ''
@@ -213,6 +218,9 @@ def reshape_data_test():
                 grid_space0 += '1 ' if board[idx] == '0' else '0 '
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
+                stone_num += board[idx] != '.'
+        if stone_num < 10:
+            continue
         test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
@@ -247,12 +255,12 @@ def policy_error(y_true, y_pred):
             return i
 
 def weighted_mse(y_true, y_pred):
-    return 10.0 * ((y_true - y_pred) ** 2)
+    return 30.0 * ((y_true - y_pred) ** 2)
 
 n_epochs = 1000
-game_num = 4500
+game_num = 10000
 game_strt = 0
-n_kernels = 16
+n_kernels = 64
 kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.2
@@ -261,7 +269,7 @@ leakyrelu_alpha = 0.01
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-records = sample(list(range(4700)), game_num)
+records = sample(list(range(65000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
     collect_data(records[i], use_ratio)
 reshape_data_train()
@@ -274,33 +282,42 @@ my_evaluate.kill()
 input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
-#x_b = BatchNormalization()(x_b)
+x_b = BatchNormalization()(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 for _ in range(2):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
-    #x_b = BatchNormalization()(x_b)
+    x_b = BatchNormalization()(x_b)
+    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
+    x_b = BatchNormalization()(x_b)
     x_b = Add()([x_b, sc])
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
+'''
 x_b = Dense(32)(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+x_p = Dropout(0.0625)(x_p)
 x_b = Dense(32)(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+'''
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Dense(32)(x_p)
+x_p = Dropout(0.0625)(x_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
-x_all = Dense(64)(x_all)
-x_all = LeakyReLU(alpha=leakyrelu_alpha)(x_all)
 
 output_p = Dense(hw2)(x_all)
 output_p = Activation('softmax', name='policy')(output_p)
+'''
+x_all = Dense(16)(x_all)
+x_all = LeakyReLU(alpha=leakyrelu_alpha)(x_all)
+'''
 output_v = Dense(1)(x_all)
 output_v = Activation('tanh', name='value')(output_v)
 

@@ -185,6 +185,9 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
+def weighted_mse(y_true, y_pred):
+    return 30.0 * ((y_true - y_pred) ** 2)
+
 game_num = 500
 game_strt = 0
 use_ratio = 1.0
@@ -194,7 +197,7 @@ if argv[1] == 'big':
     model = load_model('param/teacher.h5')
     dirc = 'big'
 else:
-    model = load_model('param/model.h5')
+    model = load_model('param/model.h5', custom_objects={'weighted_mse': weighted_mse})
     dirc = 'small'
 if argv[2] == 'record':
     model_mode = False

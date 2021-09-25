@@ -1,6 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.datasets import boston_housing
-from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input, concatenate, Flatten
+from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input, concatenate, Flatten, Dropout
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
@@ -246,11 +246,14 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
-n_epochs = 200
-game_num = 2500
+def weighted_mse(y_true, y_pred):
+    return 30.0 * ((y_true - y_pred) ** 2)
+
+n_epochs = 1000
+game_num = 10000
 game_strt = 0
 n_kernels = 64
-kernel_size = 4
+kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.2
 leakyrelu_alpha = 0.01
@@ -258,7 +261,7 @@ leakyrelu_alpha = 0.01
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-records = sample(list(range(4700)), game_num)
+records = sample(list(range(65000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
     collect_data(records[i], use_ratio)
 reshape_data_train()
@@ -270,19 +273,32 @@ my_evaluate.kill()
 
 input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
-x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(input_b)
+x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
+x_b = BatchNormalization()(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-for _ in range(6):
+for _ in range(2):
     sc = x_b
-    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False, kernel_initializer='he_normal', kernel_regularizer=l2(0.0005))(x_b)
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
+    x_b = BatchNormalization()(x_b)
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
+    x_b = BatchNormalization()(x_b)
     x_b = Add()([x_b, sc])
+    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
+'''
+x_b = Dense(32)(x_b)
+x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+x_p = Dropout(0.0625)(x_p)
+x_b = Dense(32)(x_b)
+x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+'''
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(64)(input_p)
+x_p = Dense(16)(input_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
-x_p = Dense(32)(input_p)
+x_p = Dense(32)(x_p)
+x_p = Dropout(0.0625)(x_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
@@ -290,29 +306,27 @@ x_all = concatenate([x_b.output, x_p.output])
 
 output_p = Dense(hw2)(x_all)
 output_p = Activation('softmax', name='policy')(output_p)
+'''
+x_all = Dense(16)(x_all)
+x_all = LeakyReLU(alpha=leakyrelu_alpha)(x_all)
+'''
 output_v = Dense(1)(x_all)
 output_v = Activation('tanh', name='value')(output_v)
 
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
-model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
-early_stop = EarlyStopping(monitor='val_loss', patience=10)
-#lr_decay = LearningRateScheduler(step_decay)
-#print_callback = LambdaCallback(on_epoch_begin=lambda epoch,loss,val_loss,logs: print('\rTrain', epoch + 1, '/', n_epochs, loss, val_loss, end=''))
-#print_callback = DisplayCallBack()
+model.compile(loss=['categorical_crossentropy', weighted_mse], optimizer='adam', metrics=['mae'])
+#plot_model(model, show_shapes=True, show_layer_names=False)
+early_stop = EarlyStopping(monitor='val_loss', patience=20)
 
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
-#test_loss = model.evaluate([test_board, test_param], [test_policies, test_value])
-#print('test_loss', test_loss)
-
 with open('param/mean.txt', 'w') as f:
     for i in mean:
         f.write(str(i) + '\n')
 with open('param/std.txt', 'w') as f:
     for i in std:
         f.write(str(i) + '\n')
-model.save('param/teacher.h5')
-#model.save('param/teacher_bak.h5')
+model.save('param/big_model.h5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)
@@ -328,30 +342,6 @@ plt.xlabel('epoch')
 plt.ylabel('value loss')
 plt.legend(loc='best')
 plt.savefig('graph/big/value_loss.png')
-plt.clf()
-
-#model = load_model('param/model.h5')
-policy_predictions = model.predict([test_board, test_param])[0]
-true_policy = [np.argmax(i) for i in test_policies]
-avg_policy_error = 0
-policy_errors = [0 for _ in range(64)]
-for i in range(len(test_board)):
-    policies = [[ii, policy_predictions[i][ii]] for ii in range(hw2)]
-    policies.sort(key=lambda x:x[1], reverse=True)
-    #print(policies)
-    for j in range(hw2):
-        if policies[j][0] == true_policy[i]:
-            avg_policy_error += j
-            policy_errors[j] += 1
-            break
-avg_policy_error /= len(test_board)
-print('avg policy error', avg_policy_error)
-plt.plot(policy_errors, label='policy error')
-plt.plot([0.0 for _ in range(64)], label='0.0')
-plt.xlabel('policy error')
-plt.ylabel('num')
-plt.legend(loc='best')
-plt.savefig('graph/big/policy_error.png')
 plt.clf()
 
 test_num = 10
@@ -385,34 +375,3 @@ for i in range(test_num):
     print('ans_value', ans_value[i])
     print('prd_value', pred_value[i][0])
     print('')
-
-'''
-with open('param/param.txt', 'w') as f:
-    i = 0
-    while True:
-        try:
-            print(i, model.layers[i])
-            j = 0
-            while True:
-                try:
-                    print(model.layers[i].weights[j].shape)
-                    if len(model.layers[i].weights[j].shape) == 4:
-                        for ll in range(model.layers[i].weights[j].shape[3]):
-                            for kk in range(model.layers[i].weights[j].shape[2]):
-                                for jj in range(model.layers[i].weights[j].shape[1]):
-                                    for ii in range(model.layers[i].weights[j].shape[0]):
-                                        f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
-                    elif len(model.layers[i].weights[j].shape) == 2:
-                        for ii in range(model.layers[i].weights[j].shape[0]):
-                            for jj in range(model.layers[i].weights[j].shape[1]):
-                                f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
-                    elif len(model.layers[i].weights[j].shape) == 1:
-                        for ii in range(model.layers[i].weights[j].shape[0]):
-                            f.write('{:.10f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
-                    j += 1
-                except:
-                    break
-            i += 1
-        except:
-            break
-'''

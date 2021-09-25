@@ -161,6 +161,8 @@ def collect_data(num, s):
     rv = reversi()
     idx = 0
     while True:
+        if idx >= len(s):
+            return
         if rv.check_pass() and rv.check_pass():
             break
         x = ord(s[idx]) - ord('a')
@@ -188,7 +190,7 @@ def collect_data(num, s):
 
 
 games = []
-for year in reversed(range(2018, 2020)):
+for year in reversed(range(2000, 2019 + 1)):
     raw_data = ''
     with open('third_party/records/' + str(year) + '.csv', 'r', encoding='utf-8-sig') as f:
         raw_data = f.read()
