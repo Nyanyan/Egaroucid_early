@@ -246,9 +246,11 @@ def policy_error(y_true, y_pred):
         if y_pred_policy[i][1] == first_policy:
             return i
 
+def weighted_mse(y_true, y_pred):
+    return 10.0 * ((y_true - y_pred) ** 2)
 
 n_epochs = 1000
-game_num = 2000
+game_num = 4500
 game_strt = 0
 n_kernels = 16
 kernel_size = 3
@@ -281,7 +283,9 @@ for _ in range(2):
     x_b = Add()([x_b, sc])
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
-x_b = Dense(16)(x_b)
+x_b = Dense(32)(x_b)
+x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+x_b = Dense(32)(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
@@ -292,16 +296,17 @@ x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
+x_all = Dense(64)(x_all)
+x_all = LeakyReLU(alpha=leakyrelu_alpha)(x_all)
 
 output_p = Dense(hw2)(x_all)
 output_p = Activation('softmax', name='policy')(output_p)
-x_all = Dense(16)(x_all)
 output_v = Dense(1)(x_all)
 output_v = Activation('tanh', name='value')(output_v)
 
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
-model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
+model.compile(loss=['categorical_crossentropy', weighted_mse], optimizer='adam', metrics=['mae'])
 #plot_model(model, show_shapes=True, show_layer_names=False)
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 
