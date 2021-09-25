@@ -45,10 +45,10 @@ using namespace std;
 #define kernel_size 3
 #define n_kernels 16
 #define n_residual 2
-#define n_dense0 16
+//#define n_dense0 16
 #define n_dense1 16
-#define n_dense2 32
-#define n_joined (n_kernels + n_dense2)
+//#define n_dense2 32
+#define n_joined (n_kernels + n_dense1)
 #define conv_size (hw_p1 - kernel_size)
 #define conv_start (-(kernel_size / 2))
 #define div_pooling (hw2)
@@ -95,15 +95,15 @@ struct eval_param{
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
     double hidden_conv1[n_kernels][hw][hw];
     double hidden_conv2[n_kernels][hw][hw];
-    double hidden_gap0[n_kernels];
-    double dense0[n_kernels][n_dense0];
-    double bias0[n_kernels];
+    //double hidden_gap0[n_kernels];
+    //double dense0[n_kernels][n_dense0];
+    //double bias0[n_kernels];
     double hidden_joined[n_joined];
     double dense1[n_add_input][n_dense1];
     double bias1[n_dense1];
-    double hidden_dense1[n_dense1];
-    double dense2[n_dense1][n_dense2];
-    double bias2[n_dense2];
+    //double hidden_dense1[n_dense1];
+    //double dense2[n_dense1][n_dense2];
+    //double bias2[n_dense2];
     double dense3[n_joined][hw2];
     double bias3[hw2];
     double dense4[n_joined];
@@ -482,6 +482,7 @@ void init(){
         }
         eval_param.bias1[i] = atof(cbuf);
     }
+    /*
     for (i = 0; i < n_kernels; ++i){
         for (j = 0; j < n_dense0; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -514,6 +515,7 @@ void init(){
         }
         eval_param.bias2[i] = atof(cbuf);
     }
+    */
     for (i = 0; i < n_joined; ++i){
         for (j = 0; j < hw2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -850,6 +852,16 @@ inline predictions predict(const int *board){
             }
         }
     }
+    // global-average-pooling for input_b **use joined**
+    for (i = 0; i < n_kernels; ++i){
+        eval_param.hidden_joined[i] = 0.0;
+        for (y = 0; y < hw; ++y){
+            for (x = 0; x < hw; ++x)
+                eval_param.hidden_joined[i] += eval_param.hidden_conv1[i][y][x];
+        }
+        eval_param.hidden_joined[i] /= div_pooling;
+    }
+    /*
     // global-average-pooling for input_b
     for (i = 0; i < n_kernels; ++i){
         eval_param.hidden_gap0[i] = 0.0;
@@ -859,15 +871,27 @@ inline predictions predict(const int *board){
         }
         eval_param.hidden_gap0[i] /= div_pooling;
     }
+    
     // dense0 and bias and leaky-relu for input_b
     for (i = 0; i < n_dense0; ++i)
-        eval_param.hidden_dense1[i] = 0.0;
+        eval_param.hidden_joined[i] = 0.0;
     for (i = 0; i < n_kernels; ++i){
         for (j = 0; j < n_dense0; ++j)
             eval_param.hidden_joined[j] += eval_param.dense0[i][j] * eval_param.hidden_gap0[i];
     }
     for (i = 0; i < n_dense0; ++i)
         eval_param.hidden_joined[i] = leaky_relu(eval_param.hidden_joined[i] + eval_param.bias0[i]);
+    */
+    // dense1 and bias and leaky-relu for input_p **use joined**
+    for (i = 0; i < n_dense1; ++i)
+        eval_param.hidden_joined[n_kernels + i] = 0.0;
+    for (i = 0; i < n_add_input; ++i){
+        for (j = 0; j < n_dense1; ++j)
+            eval_param.hidden_joined[n_kernels + j] += eval_param.dense1[i][j] * eval_param.input_p[i];
+    }
+    for (i = 0; i < n_dense1; ++i)
+        eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias1[i]);
+    /*
     // dense1 and bias and leaky-relu for input_p
     for (i = 0; i < n_dense1; ++i)
         eval_param.hidden_dense1[i] = 0.0;
@@ -886,6 +910,7 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < n_dense2; ++i)
         eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias2[i]);
+    */
     // dense and bias and softmax for policy output *don't need softmax because use softmax later
     for (i = 0; i < hw2; ++i)
         res.policies[i] = 0.0;
@@ -1138,8 +1163,8 @@ int main(){
         key.second = o;
         cerr << key.first << " " << key.second << endl;
         if (search_param.book.find(key) != search_param.book.end()){
-            cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
-            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 100.0 * search_param.book[key].rate << endl;
+            cerr << "BOOK " << search_param.book[key].policy << " " << search_param.book[key].rate << endl;
+            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << search_param.book[key].rate << endl;
             continue;
         }
         for (i = 0; i < board_index_num; ++i){

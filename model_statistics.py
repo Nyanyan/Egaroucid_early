@@ -207,7 +207,7 @@ else:
 print('dirc', dirc, 'mode', model_mode)
 
 print('loading data from files')
-records = sample(list(range(4700)), game_num)
+records = sample(list(range(65000)), game_num)
 for i in trange(game_num):
     collect_data(records[i], use_ratio)
 reshape_data_test()

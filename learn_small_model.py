@@ -13,7 +13,7 @@ from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
 
-all_data = {}
+all_data = []
 
 train_board = []
 train_param = []
@@ -59,7 +59,8 @@ def collect_data(num, use_ratio):
     score = -1000
     grids = []
     with open('learn_data/' + digit(num, 7) + '.txt', 'r') as f:
-        score = float(f.readline()) / 64.0
+        point = float(f.readline())
+        score = 1.0 if point > 0.0 else -1.0 if point < 0.0 else 0.0
         ln = int(f.readline())
         for _ in range(ln):
             s, y, x = f.readline().split()
@@ -75,31 +76,16 @@ def collect_data(num, use_ratio):
             if random() < use_ratio:
                 grids.append([-score, s, y, x])
     for score, grid_str, y, x in grids:
-        if not grid_str in all_data:
-            all_data[grid_str] = [[0.0, 0] for _ in range(hw2)]
-        all_data[grid_str][y * hw + x][0] += score
-        all_data[grid_str][y * hw + x][1] += 1
+        all_data.append([grid_str, y * hw + x, score])
 
 def reshape_data_train():
     global train_board, train_param, train_policies, train_value, mean, std
     tmp_data = []
     print('calculating score & additional data')
-    for _, board in zip(trange(len(all_data)), all_data.keys()):
+    for itr in trange(len(all_data)):
+        board, policy, score = all_data[itr]
         policies = [0.0 for _ in range(hw2)]
-        score_sum = 0.0
-        score = 0.0
-        score_div = 0
-        for i in range(hw2):
-            if all_data[board][i][1] == 0:
-                continue
-            tmp_score = all_data[board][i][0] / all_data[board][i][1]
-            score += all_data[board][i][0]
-            score_div += all_data[board][i][1]
-            policies[i] = exp(tmp_score)
-            score_sum += policies[i]
-        for i in range(hw2):
-            policies[i] /= score_sum
-        score /= score_div
+        policies[policy] = 1.0
         my_evaluate.stdin.write(board.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
@@ -165,22 +151,10 @@ def reshape_data_test():
     global test_board, test_param, test_policies, test_value, test_raw_board
     tmp_data = []
     print('calculating score & additional data')
-    for _, board in zip(trange(len(all_data)), all_data.keys()):
+    for itr in trange(len(all_data)):
+        board, policy, score = all_data[itr]
         policies = [0.0 for _ in range(hw2)]
-        score_sum = 0.0
-        score = 0.0
-        score_div = 0
-        for i in range(hw2):
-            if all_data[board][i][1] == 0:
-                continue
-            tmp_score = all_data[board][i][0] / all_data[board][i][1]
-            score += all_data[board][i][0]
-            score_div += all_data[board][i][1]
-            policies[i] = exp(tmp_score)
-            score_sum += policies[i]
-        for i in range(hw2):
-            policies[i] /= score_sum
-        score /= score_div
+        policies[policy] = 1.0
         my_evaluate.stdin.write(board.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
@@ -255,12 +229,12 @@ def policy_error(y_true, y_pred):
             return i
 
 def weighted_mse(y_true, y_pred):
-    return 30.0 * ((y_true - y_pred) ** 2)
+    return 10.0 * ((y_true - y_pred) ** 2)
 
 n_epochs = 1000
-game_num = 10000
+game_num = 5000
 game_strt = 0
-n_kernels = 64
+n_kernels = 16
 kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.2
@@ -273,7 +247,7 @@ records = sample(list(range(65000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
     collect_data(records[i], use_ratio)
 reshape_data_train()
-all_data = {}
+all_data = []
 for i in trange(game_strt + train_num, game_strt + game_num):
     collect_data(records[i], use_ratio)
 reshape_data_test()
@@ -282,15 +256,11 @@ my_evaluate.kill()
 input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
-x_b = BatchNormalization()(x_b)
+#x_b = BatchNormalization()(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 for _ in range(2):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
-    x_b = BatchNormalization()(x_b)
-    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
-    x_b = BatchNormalization()(x_b)
     x_b = Add()([x_b, sc])
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
@@ -305,9 +275,9 @@ x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
-x_p = Dense(32)(x_p)
-x_p = Dropout(0.0625)(x_p)
-x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
+#x_p = Dense(32)(x_p)
+#x_p = Dropout(0.0625)(x_p)
+#x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
@@ -323,7 +293,7 @@ output_v = Activation('tanh', name='value')(output_v)
 
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
-model.compile(loss=['categorical_crossentropy', weighted_mse], optimizer='adam', metrics=['mae'])
+model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
 #plot_model(model, show_shapes=True, show_layer_names=False)
 early_stop = EarlyStopping(monitor='val_loss', patience=20)
 
