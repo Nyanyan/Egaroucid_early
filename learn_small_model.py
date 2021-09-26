@@ -124,7 +124,7 @@ def reshape_data_train():
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
                 stone_num += board[idx] != '.'
-        if stone_num < 10 or stone_num > 52:
+        if stone_num < 10 or stone_num > 50:
             continue
         test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
