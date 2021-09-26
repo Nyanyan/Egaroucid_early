@@ -29,7 +29,7 @@ using namespace std;
 #define inf 100000.0
 #define board_index_num 38
 
-#define complete_stones 14
+#define complete_stones 12
 #define simple_threshold 3
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
@@ -548,24 +548,6 @@ void init(){
         }
         eval_param.bias1[i] = atof(cbuf);
     }
-    /*
-    for (i = 0; i < n_kernels; ++i){
-        for (j = 0; j < n_dense0; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense0[i][j] = atof(cbuf);
-        }
-    }
-    for (i = 0; i < n_dense0; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias0[i] = atof(cbuf);
-    }
-    */
     for (i = 0; i < n_dense1; ++i){
         for (j = 0; j < n_dense2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -1082,7 +1064,7 @@ double evaluate(int idx, bool passed, int player){
                 if (mcts_param.nodes[idx].children[cell] != -1)
                     tmp_value = mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
                 else
-                    tmp_value = 0.0;
+                    tmp_value = 10.0;
                 tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
                 if (value < tmp_value){
                     value = tmp_value;

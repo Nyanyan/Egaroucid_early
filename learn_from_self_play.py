@@ -287,7 +287,7 @@ def decide(num):
             #print(stdin)
             ais[player2ai[rv.player]].stdin.write(stdin.encode('utf-8'))
             ais[player2ai[rv.player]].stdin.flush()
-            y, x = [int(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
+            y, x, _ = [int(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
             rv.move(y, x)
             if rv.end():
                 break

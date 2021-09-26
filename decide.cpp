@@ -3,7 +3,8 @@
 #pragma GCC optimize("unroll-loops")
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,popcnt,abm,mmx")
 
-// Reversi AI C++ version 6
+// Egaroucid2
+// Othello AI C++ version 6
 // use deep reinforcement learning
 
 #include <iostream>
@@ -17,26 +18,23 @@
 using namespace std;
 
 #define hw 8
-#define hw_m1 7
-#define hw_p1 9
-#define hw2 64
-#define hw22 128
-#define hw2_m1 63
-#define hw2_mhw 56
-#define hw2_p1 65
+#define hw_m1 (hw - 1)
+#define hw_p1 (hw + 1)
+#define hw2 (hw * hw)
+#define hw22 (hw2 * 2)
+#define hw2_m1 (hw2 - 1)
+#define hw2_mhw (hw2 - hw)
+#define hw2_p1 (hw2 + 1)
 
 #define inf 100000.0
 #define board_index_num 38
 
-#define char_s 35
-#define char_e 91
-#define num_s 93
-#define num_e 126
-
+#define complete_stones 12
+#define simple_threshold 3
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 5
+#define evaluate_count 10
 #define c_puct 50.0
 #define c_end 1.0
 
@@ -44,16 +42,14 @@ using namespace std;
 #define n_add_input 11
 #define kernel_size 3
 #define n_kernels 16
-#define n_residual 2
-#define n_dense0 16
+#define n_residual 3
 #define n_dense1 16
-#define n_dense2 32
+#define n_dense2 16
 #define n_joined (n_kernels + n_dense2)
 #define conv_size (hw_p1 - kernel_size)
-#define conv_start (-(kernel_size / 2))
+#define conv_padding (kernel_size / 2)
 #define div_pooling (hw2)
-#define conv_padding ((hw - conv_size) / 2)
-#define epsilon 0.001
+#define conv_padding2 (conv_padding * 2)
 
 #define n_div 1000000
 #define tanh_min -5.0
@@ -87,18 +83,16 @@ struct eval_param{
     double weight_p[hw][6561], weight_o[hw][6561];
     int confirm_p[6561], confirm_o[6561];
     int pot_canput_p[6561], pot_canput_o[6561];
+    double open_eval[40];
 
     double mean[n_add_input];
     double std[n_add_input];
-    double input_b[n_board_input][hw][hw];
+    double input_b[n_board_input][hw + conv_padding2][hw + conv_padding2];
     double input_p[n_add_input];
     double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
-    double hidden_conv1[n_kernels][hw][hw];
-    double hidden_conv2[n_kernels][hw][hw];
-    double hidden_gap0[n_kernels];
-    double dense0[n_kernels][n_dense0];
-    double bias0[n_kernels];
+    double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
+    double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
     double hidden_joined[n_joined];
     double dense1[n_add_input][n_dense1];
     double bias1[n_dense1];
@@ -118,6 +112,77 @@ struct book_elem{
     double rate;
 };
 
+struct node_t{
+    int k[hw];
+    double v;
+    node_t* p_n_node;
+};
+
+inline int calc_hash(const int *p){
+    int seed = 0;
+    for (int i = 0; i < hw; ++i)
+        seed ^= p[i] << (i / 4);
+    return seed & hash_mask;
+}
+
+inline void hash_table_init(node_t** hash_table){
+    for(int i = 0; i < hash_table_size; ++i)
+        hash_table[i] = NULL;
+}
+
+inline node_t* node_init(const int *key, double val){
+    node_t* p_node = NULL;
+    p_node = (node_t*)malloc(sizeof(node_t));
+    for (int i = 0; i < hw; ++i)
+        p_node->k[i] = key[i];
+    p_node->v = val;
+    p_node->p_n_node = NULL;
+    return p_node;
+}
+
+inline bool compare_key(const int *a, const int *b){
+    for (int i = 0; i < hw; ++i){
+        if (a[i] != b[i])
+            return false;
+    }
+    return true;
+}
+
+inline void register_hash(node_t** hash_table, const int *key, int hash, double val){
+    if(hash_table[hash] == NULL){
+        hash_table[hash] = node_init(key, val);
+    } else {
+        node_t *p_node = p_node = hash_table[hash];
+        node_t *p_pre_node = NULL;
+        p_pre_node = p_node;
+        while(p_node != NULL){
+            if(compare_key(key, p_node->k)){
+                p_node->v = val;
+                return;
+            }
+            p_pre_node = p_node;
+            p_node = p_node->p_n_node;
+        }
+        p_pre_node->p_n_node = node_init(key, val);
+    }
+}
+
+inline double get_val_hash(node_t** hash_table, const int *key, int hash){
+    node_t *p_node = hash_table[hash];
+    while(p_node != NULL){
+        if(compare_key(key, p_node->k))
+            return p_node->v;
+        p_node = p_node->p_n_node;
+    }
+    return -inf;
+}
+
+inline void hash_table_copy(node_t** to_table, node_t** fr_table){
+    for(int i = 0; i < hash_table_size; ++i){
+        
+    }
+}
+
 struct hash_pair {
     static size_t m_hash_pair_random;
     template<class T1, class T2>
@@ -134,14 +199,14 @@ struct hash_pair {
 size_t hash_pair::m_hash_pair_random = (size_t) random_device()();
 
 struct search_param{
+    node_t *memo_lb[hash_table_size];
+    node_t *memo_ub[hash_table_size];
     int max_depth;
-    int min_max_depth;
     int strt, tl;
     int turn;
     int searched_nodes;
     vector<int> vacant_lst;
     int vacant_cnt;
-    int weak_mode;
     int win_num;
     int lose_num;
     int n_playout;
@@ -177,7 +242,7 @@ struct mcts_node{
 };
 
 struct mcts_param{
-    mcts_node nodes[60 * 10 * evaluate_count];
+    mcts_node nodes[65 * evaluate_count];
     int used_idx;
 };
 
@@ -364,8 +429,8 @@ void init(){
         55, 54, 53, 52, 63, 55, 47, 39, 62, 54, 46, 38, 56, 57, 58, 59, 48, 49, 50, 51, 56, 48, 40, 32, 57, 49, 41, 33, 0, 9, 18, 27, 36, 45, 54, 63, 7, 14, 21, 28, 35, 42, 49, 56, 0, 1, 2, 3, 4, 5, 6, 7, 7, 15, 23, 31, 39, 47, 55, 63, 63, 62, 61, 60, 59, 58, 57, 56, 56, 48, 40, 32, 24, 26, 8, 0
     };
     const string super_compress_pattern = "";
-    const double compress_vals[char_e - char_s + 1] = 
-        {-0.99191575, -0.955417, -0.925217, -0.87192775, -0.8353087499999999, -0.79376225, -0.7521912222222222, -0.7211734999999999, -0.6842236666666666, -0.6495354444444446, -0.6066062333333334, -0.5705911935483873, -0.5333852142857143, -0.4977529599999999, -0.4617034339622642, -0.4280493521126759, -0.3930658846153848, -0.3562839680851063, -0.32210842748091595, -0.28638591366906474, -0.25082044382022484, -0.2177653593073593, -0.18336263157894744, -0.14849799452054788, -0.11322629255319143, -0.07861064571428576, -0.044194587947882745, -0.009447826356589157, 0.0, 0.02449980906148867, 0.058887281355932165, 0.09310184199134201, 0.1286132636103152, 0.16182661875000015, 0.19795722314049594, 0.23227418264840172, 0.267653596153846, 0.30229703875969, 0.33605759829059817, 0.3711898414634147, 0.40819006249999995, 0.44264849206349216, 0.4775844999999999, 0.5102675952380951, 0.54893288, 0.5832057878787877, 0.6154508, 0.6539295789473684, 0.6925377777777778, 0.734762625, 0.7674997500000001, 0.7988967777777778, 0.83530875, 0.87192775, 0.9324133333333333, 0.9774676666666666, 0.999644};
+    //const double compress_vals[char_e - char_s + 1] = 
+    //    {-0.99191575, -0.955417, -0.925217, -0.87192775, -0.8353087499999999, -0.79376225, -0.7521912222222222, -0.7211734999999999, -0.6842236666666666, -0.6495354444444446, -0.6066062333333334, -0.5705911935483873, -0.5333852142857143, -0.4977529599999999, -0.4617034339622642, -0.4280493521126759, -0.3930658846153848, -0.3562839680851063, -0.32210842748091595, -0.28638591366906474, -0.25082044382022484, -0.2177653593073593, -0.18336263157894744, -0.14849799452054788, -0.11322629255319143, -0.07861064571428576, -0.044194587947882745, -0.009447826356589157, 0.0, 0.02449980906148867, 0.058887281355932165, 0.09310184199134201, 0.1286132636103152, 0.16182661875000015, 0.19795722314049594, 0.23227418264840172, 0.267653596153846, 0.30229703875969, 0.33605759829059817, 0.3711898414634147, 0.40819006249999995, 0.44264849206349216, 0.4775844999999999, 0.5102675952380951, 0.54893288, 0.5832057878787877, 0.6154508, 0.6539295789473684, 0.6925377777777778, 0.734762625, 0.7674997500000001, 0.7988967777777778, 0.83530875, 0.87192775, 0.9324133333333333, 0.9774676666666666, 0.999644};
     const double avg_canput[hw2] = {
         0.00, 0.00, 0.00, 0.00, 4.00, 3.00, 4.00, 2.00,
         9.00, 5.00, 6.00, 6.00, 5.00, 8.38, 5.69, 9.13,
@@ -491,22 +556,6 @@ void init(){
             exit(1);
         }
         eval_param.bias1[i] = atof(cbuf);
-    }
-    for (i = 0; i < n_kernels; ++i){
-        for (j = 0; j < n_dense0; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense0[i][j] = atof(cbuf);
-        }
-    }
-    for (i = 0; i < n_dense0; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias0[i] = atof(cbuf);
     }
     for (i = 0; i < n_dense1; ++i){
         for (j = 0; j < n_dense2; ++j){
@@ -774,6 +823,8 @@ void init(){
         for (j = 0; j < 10; ++j)
             board_param.digit_pow[i][j] = i * board_param.pow3[j];
     }
+    for (i = 0; i < 40; ++i)
+        eval_param.open_eval[i] = min(1.0, pow(2.0, 2.0 - 0.667 * i) - 1.0);
     for (i = 0; i < n_div; ++i){
         eval_param.tanh_arr[i] = tanh(rev_map_liner(i, tanh_min, tanh_max));
         eval_param.exp_arr[i] = exp(rev_map_liner(i, exp_min, exp_max));
@@ -787,35 +838,32 @@ inline double leaky_relu(double x){
 inline predictions predict(const int *board){
     int i, j, sy, sx, y, x, residual_i;
     predictions res;
-    /*
-    for (i = 0; i < hw2; ++i)
-        res.policies[i] = myrandom();
-    res.value = myrandom();
-    return res;
-    */
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
-            eval_param.input_b[0][i][j] = board_param.restore_p[board[i]][j];
-            eval_param.input_b[1][i][j] = board_param.restore_o[board[i]][j];
-            eval_param.input_b[2][i][j] = board_param.restore_vacant[board[i]][j];
+            eval_param.input_b[0][i + conv_padding][j + conv_padding] = board_param.restore_p[board[i]][j];
+            eval_param.input_b[1][i + conv_padding][j + conv_padding] = board_param.restore_o[board[i]][j];
+            eval_param.input_b[2][i + conv_padding][j + conv_padding] = board_param.restore_vacant[board[i]][j];
+        }
+        for (j = 0; j < hw + conv_padding2; ++j){
+            eval_param.input_b[0][0][j] = 0.0;
+            eval_param.input_b[0][hw + conv_padding2 - 1][j] = 0.0;
+            eval_param.input_b[0][j][0] = 0.0;
+            eval_param.input_b[0][j][hw + conv_padding2 - 1] = 0.0;
         }
     }
     for (i = 0; i < n_add_input; ++i)
         eval_param.input_p[i] = 0.0;
+    eval_param.input_p[3] = eval_param.avg_canput[search_param.turn];
+    eval_param.input_p[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
+    eval_param.input_p[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
     for (i = 0; i < hw; ++i){
         eval_param.input_p[0] += eval_param.cnt_p[board[i]];
         eval_param.input_p[1] += eval_param.cnt_o[board[i]];
-    }
-    for (i = 0; i < board_index_num; ++i)
-        eval_param.input_p[2] += eval_param.canput[board[i]];
-    eval_param.input_p[3] = eval_param.avg_canput[search_param.turn];
-    for (i = 0; i < hw; ++i){
         eval_param.input_p[4] += eval_param.weight_p[i][board[i]];
         eval_param.input_p[5] += eval_param.weight_o[i][board[i]];
     }
-    eval_param.input_p[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
-    eval_param.input_p[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
     for (i = 0; i < board_index_num; ++i){
+        eval_param.input_p[2] += eval_param.canput[board[i]];
         eval_param.input_p[8] += eval_param.pot_canput_p[board[i]];
         eval_param.input_p[9] += eval_param.pot_canput_o[board[i]];
     }
@@ -826,8 +874,8 @@ inline predictions predict(const int *board){
     }
     // conv and normalization and leaky-relu for input_b
     for (i = 0; i < n_kernels; ++i){
-        for (y = 0; y < hw; ++y){
-            for (x = 0; x < hw; ++x)
+        for (y = 0; y < hw + conv_padding2; ++y){
+            for (x = 0; x < hw + conv_padding2; ++x)
                 eval_param.hidden_conv1[i][y][x] = 0.0;
         }
         for (j = 0; j < n_board_input; ++j){
@@ -835,65 +883,51 @@ inline predictions predict(const int *board){
                 for (sx = 0; sx < hw; ++sx){
                     for (y = 0; y < kernel_size; ++y){
                         for (x = 0; x < kernel_size; ++x){
-                            if (sy + y + conv_start < 0 || sy + y + conv_start >= hw || sx + x + conv_start < 0 || sx + x + conv_start >= hw)
-                                continue;
-                            eval_param.hidden_conv1[i][sy][sx] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y + conv_start][sx + x + conv_start];
+                            eval_param.hidden_conv1[i][sy + conv_padding][sx + conv_padding] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y][sx + x];
                         }
                     }
                 }
             }
         }
-        for (y = 0; y < hw; ++y){
-            for (x = 0; x < hw; ++x)
+        for (y = conv_padding; y < hw + conv_padding; ++y){
+            for (x = conv_padding; x < hw + conv_padding; ++x)
                 eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x]);
         }
     }
     // residual-error-block for input_b
     for (residual_i = 0; residual_i < n_residual; ++residual_i){
         for (i = 0; i < n_kernels; ++i){
-            for (y = 0; y < hw; ++y){
-                for (x = 0; x < hw; ++x)
+            for (y = 0; y < hw + conv_padding2; ++y){
+                for (x = 0; x < hw + conv_padding2; ++x)
                     eval_param.hidden_conv2[i][y][x] = 0.0;
             }
             for (j = 0; j < n_kernels; ++j){
                 for (sy = 0; sy < hw; ++sy){
                     for (sx = 0; sx < hw; ++sx){
                         for (y = 0; y < kernel_size; ++y){
-                            for (x = 0; x < kernel_size; ++x){
-                                if (sy + y + conv_start < 0 || sy + y + conv_start >= hw || sx + x + conv_start < 0 || sx + x + conv_start >= hw)
-                                    continue;
-                                eval_param.hidden_conv2[i][sy][sx] += eval_param.conv_residual[residual_i][i][j][y][x] * eval_param.hidden_conv1[j][sy + y + conv_start][sx + x + conv_start];
-                            }
+                            for (x = 0; x < kernel_size; ++x)
+                                eval_param.hidden_conv2[i][sy + conv_padding][sx + conv_padding] += eval_param.conv_residual[residual_i][i][j][y][x] * eval_param.hidden_conv1[j][sy + y][sx + x];
                         }
                     }
                 }
             }
         }
         for (i = 0; i < n_kernels; ++i){
-            for (y = 0; y < hw; ++y){
-                for (x = 0; x < hw; ++x)
+            for (y = conv_padding; y < hw + conv_padding; ++y){
+                for (x = conv_padding; x < hw + conv_padding; ++x)
                     eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x] + eval_param.hidden_conv2[i][y][x]);
             }
         }
     }
     // global-average-pooling for input_b
     for (i = 0; i < n_kernels; ++i){
-        eval_param.hidden_gap0[i] = 0.0;
+        eval_param.hidden_joined[i] = 0.0;
         for (y = 0; y < hw; ++y){
             for (x = 0; x < hw; ++x)
-                eval_param.hidden_gap0[i] += eval_param.hidden_conv1[i][y][x];
+                eval_param.hidden_joined[i] += eval_param.hidden_conv1[i][y + conv_padding][x + conv_padding];
         }
-        eval_param.hidden_gap0[i] /= div_pooling;
+        eval_param.hidden_joined[i] /= div_pooling;
     }
-    // dense0 and bias and leaky-relu for input_b
-    for (i = 0; i < n_dense0; ++i)
-        eval_param.hidden_dense1[i] = 0.0;
-    for (i = 0; i < n_kernels; ++i){
-        for (j = 0; j < n_dense0; ++j)
-            eval_param.hidden_joined[j] += eval_param.dense0[i][j] * eval_param.hidden_gap0[i];
-    }
-    for (i = 0; i < n_dense0; ++i)
-        eval_param.hidden_joined[i] = leaky_relu(eval_param.hidden_joined[i] + eval_param.bias0[i]);
     // dense1 and bias and leaky-relu for input_p
     for (i = 0; i < n_dense1; ++i)
         eval_param.hidden_dense1[i] = 0.0;
@@ -912,7 +946,7 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < n_dense2; ++i)
         eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias2[i]);
-    // dense and bias and softmax for policy output *don't need softmax because use softmax later
+    // dense and bias for policy output *don't need softmax because use softmax later
     for (i = 0; i < hw2; ++i)
         res.policies[i] = 0.0;
     for (i = 0; i < n_joined; ++i){
@@ -921,15 +955,6 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < hw2; ++i)
         res.policies[i] += eval_param.bias3[i];
-    /*
-    double policy_sum = 0.0;
-    for (i = 0; i < hw2; ++i){
-        res.policies[i] = exp(max(-32.0, min(10.0, res.policies[i] + eval_param.bias3[i])));
-        policy_sum += res.policies[i];
-    }
-    for (i = 0; i < hw2; ++i)
-        res.policies[i] /= policy_sum;
-    */
     // dense and bias and tanh for value output
     res.value = 0.0;
     for (i = 0; i < n_joined; ++i)
@@ -938,7 +963,6 @@ inline predictions predict(const int *board){
     // return
     return res;
 }
-
 
 inline void move(int *board, int (&res)[board_index_num], int coord){
     int i, j, tmp;
@@ -959,17 +983,48 @@ inline void move(int *board, int (&res)[board_index_num], int coord){
     }
 }
 
-inline int end_game(const int *board){
+inline int move_open(int *board, int (&res)[board_index_num], int coord){
+    int i, j, tmp;
+    unsigned long long rev = 0, neighbor = 0;
+    for (i = 0; i < board_index_num; ++i){
+        res[i] = board_param.reverse[board[i]];
+        if (board_param.put[coord][i] != -1){
+            rev |= board_param.trans[i][board[i]][board_param.put[coord][i]];
+            neighbor |= board_param.neighbor8[i][board[i]][board_param.put[coord][i]];
+        }
+    }
+    for (i = 0; i < hw2; ++i){
+        if (1 & (rev >> i)){
+            for (j = 0; j < 4; ++j){
+                if (board_param.board_rev_translate[i][j][0] == -1)
+                    break;
+                res[board_param.board_rev_translate[i][j][0]] += board_param.rev_bit3[res[board_param.board_rev_translate[i][j][0]]][board_param.board_rev_translate[i][j][1]];
+            }
+        }
+    }
+    int open_val = 0;
+    for (i = 0; i < hw2; ++i){
+        if(1 & (neighbor >> i))
+            open_val += (int)(board_param.pop_digit[board[i >> 3]][i & 0b111] == 0);
+    }
+    return open_val;
+}
+
+inline double end_game(const int *board){
     int res = 0, i, j, p, o;
     for (i = 0; i < hw; ++i){
         res += eval_param.cnt_p[board[i]];
         res -= eval_param.cnt_o[board[i]];
     }
-    return res;
+    if (res > 0)
+        return 1.0;
+    else if (res < 0)
+        return -1.0;
+    return 0.0;
 }
 
 inline double end_game_evaluate(int idx, int player){
-    double value = c_end * min(1.0, max(-1.0, (double)end_game(mcts_param.nodes[idx].board)));
+    double value = c_end * end_game(mcts_param.nodes[idx].board);
     if (value * player > 0.0)
         ++search_param.win_num;
     else if (value * player < 0.0)
@@ -982,14 +1037,14 @@ inline double end_game_evaluate(int idx, int player){
 
 double evaluate(int idx, bool passed, int player){
     double value = 0.0;
-    int i, j, cell;
+    int i, j;
     if (!mcts_param.nodes[idx].expanded){
         // when children not expanded
         // expand children
         mcts_param.nodes[idx].expanded = true;
         bool legal[hw2];
         mcts_param.nodes[idx].pass = true;
-        for (cell = 0; cell < hw2; ++cell){
+        for (const int& cell : search_param.vacant_lst){
             mcts_param.nodes[idx].children[cell] = -1;
             legal[cell] = false;
             for (i = 0; i < board_index_num; ++i){
@@ -1029,13 +1084,13 @@ double evaluate(int idx, bool passed, int player){
         value = -inf;
         double tmp_value;
         double t_sqrt = sqrt((double)mcts_param.nodes[idx].n);
-        for (cell = 0; cell < hw2; ++cell){
+        for (const int& cell : search_param.vacant_lst){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
-                if (mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n > 0)
+                if (mcts_param.nodes[idx].children[cell] != -1)
                     tmp_value = mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
                 else
-                    tmp_value = 0.0;
-                tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1.0 + (double)mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
+                    tmp_value = 10.0;
+                tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
                 if (value < tmp_value){
                     value = tmp_value;
                     a_cell = cell;
@@ -1118,27 +1173,279 @@ inline int next_action(int *board){
     int strt = tim();
     for (i = 0; i < evaluate_count; ++i){
         evaluate(0, false, 1);
-        if (tim() - strt > search_param.tl)
-            break;
     }
     for (i = 0; i < hw2; ++i){
-        if (mcts_param.nodes[0].children[i] != -1){
-            //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-            if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                res = i;
+        if (legal[i]){
+            if (mcts_param.nodes[0].children[i] != -1){
+                //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
+                if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
+                    mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+                    res = i;
+                }
             }
         }
     }
     return res;
 }
 
+void mcts(int *board){
+    int policy = next_action(board);
+    //cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << " " << search_param.n_playout << "  " << mcts_param.used_idx << endl;
+    cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
+}
+
+inline open_vals open_val_forward(int *board, int depth, bool player){
+    open_vals res;
+    if (depth == 0){
+        res.p_open_val = 0.0;
+        res.o_open_val = 0.0;
+        res.p_cnt = 0;
+        res.o_cnt = 0;
+        return res;
+    }
+    --depth;
+    int i, j;
+    int n_board[board_index_num];
+    open_vals tmp;
+    res.p_open_val = -inf;
+    res.o_open_val = inf;
+    double open_val = -inf;
+    bool passed = false;
+    for (const int& cell : search_param.vacant_lst){
+        for (i = 0; i < board_param.put_idx_num[cell]; ++i){
+            if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
+                passed = false;
+                open_val = max(open_val, eval_param.open_eval[move_open(board, n_board, cell)]);
+                tmp = open_val_forward(n_board, depth, !player);
+                if (res.p_open_val < tmp.p_open_val){
+                    res.p_open_val = tmp.p_open_val;
+                    res.p_cnt = tmp.p_cnt;
+                }
+                if (res.o_open_val > tmp.o_open_val){
+                    res.o_open_val = tmp.o_open_val;
+                    res.o_cnt = tmp.o_cnt;
+                }
+            }
+        }
+    }
+    if (passed){
+        res.p_open_val = 0.0;
+        res.o_open_val = 0.0;
+        res.p_cnt = 0;
+        res.o_cnt = 0;
+        return res;
+    }
+    if (player){
+        res.p_open_val += open_val;
+        ++res.p_cnt;
+    } else {
+        res.o_open_val += open_val;
+        ++res.o_cnt;
+    }
+    return res;
+}
+
+int cmp(board_priority p, board_priority q){
+    return p.priority > q.priority;
+}
+
+double nega_alpha_light(int *board, const int depth, double alpha, double beta, const int skip_cnt){
+    ++search_param.searched_nodes;
+    if (skip_cnt == 2)
+        return end_game(board);
+    bool is_pass = true;
+    int i, j, k;
+    double v = -1.5, g;
+    int n_board[board_index_num];
+    int n_depth = depth - 1;
+    for (const int& cell : search_param.vacant_lst){
+        for (i = 0; i < board_index_num; ++i){
+            if (board_param.put[cell][i] != -1){
+                if (board_param.legal[board[i]][board_param.put[cell][i]]){
+                    is_pass = false;
+                    move_open(board, n_board, cell);
+                    g = -nega_alpha_light(n_board, n_depth, -beta, -alpha, 0);
+                    if (beta <= g)
+                        return g;
+                    alpha = max(alpha, g);
+                    v = max(v, g);
+                    break;
+                }
+            }
+        }
+    }
+    if (is_pass){
+        for (i = 0; i < board_index_num; ++i)
+            n_board[i] = board_param.reverse[board[i]];
+        return -nega_alpha_light(n_board, depth, -beta, -alpha, skip_cnt + 1);
+    }
+    return v;
+}
+
+double nega_alpha(int *board, const int depth, double alpha, double beta, const int skip_cnt){
+    if (depth < simple_threshold)
+        return nega_alpha_light(board, depth, alpha, beta, skip_cnt);
+    ++search_param.searched_nodes;
+    if (skip_cnt == 2)
+        return end_game(board);
+    int hash = calc_hash(board);
+    double lb, ub;
+    lb = get_val_hash(search_param.memo_lb, board, hash);
+    ub = get_val_hash(search_param.memo_ub, board, hash);
+    if (lb != -inf){
+        alpha = max(alpha, lb);
+        if (alpha >= beta)
+            return alpha;
+    }
+    if (ub != -inf){
+        beta = min(beta, ub);
+        if (alpha >= beta)
+            return beta;
+    }
+    int i, j, k, canput = 0;
+    double v = -1.5, g;
+    board_priority lst[30];
+    for (const int& cell : search_param.vacant_lst){
+        for (i = 0; i < board_param.put_idx_num[cell]; ++i){
+            if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
+                lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
+                lst[canput].priority = lst[canput].n_open_val;
+                ++canput;
+                break;
+            }
+        }
+    }
+    if (canput == 0){
+        int n_board[board_index_num];
+        for (i = 0; i < board_index_num; ++i)
+            n_board[i] = board_param.reverse[board[i]];
+        return -nega_alpha(n_board, depth, -beta, -alpha, skip_cnt + 1);
+    }
+    int n_depth = depth - 1;
+    if (canput > 1)
+        sort(lst, lst + canput, cmp);
+    for (i = 0; i < canput; ++i){
+        g = -nega_alpha(lst[i].b, n_depth, -beta, -alpha, 0);
+        if (fabs(g) == inf)
+            return -inf;
+        if (beta < g){
+            register_hash(search_param.memo_lb, board, hash, g);
+            return g;
+        }
+        alpha = max(alpha, g);
+        v = max(v, g);
+    }
+    if (v == alpha)
+        register_hash(search_param.memo_lb, board, hash, v);
+    register_hash(search_param.memo_ub, board, hash, v);
+    return v;
+}
+
+double nega_alpha_heavy(int *board, int depth, double alpha, double beta, int skip_cnt){
+    if (depth <= search_param.max_depth - 3)
+        return nega_alpha(board, depth, alpha, beta, skip_cnt);
+    ++search_param.searched_nodes;
+    if (skip_cnt == 2)
+        return end_game(board);
+    int i, j, canput = 0;
+    board_priority lst[30];
+    open_vals tmp_open_vals;
+    for (const int& cell : search_param.vacant_lst){
+        for (i = 0; i < board_param.put_idx_num[cell]; ++i){
+            if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
+                lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
+                tmp_open_vals = open_val_forward(lst[canput].b, 1, true);
+                if (tmp_open_vals.p_cnt)
+                    lst[canput].priority = (lst[canput].n_open_val + tmp_open_vals.o_open_val) / tmp_open_vals.o_cnt - tmp_open_vals.p_open_val / tmp_open_vals.p_cnt;
+                else
+                    lst[canput].priority = (lst[canput].n_open_val + tmp_open_vals.o_open_val) / tmp_open_vals.o_cnt;
+                ++canput;
+                break;
+            }
+        }
+    }
+    if (canput == 0){
+        int n_board[board_index_num];
+        for (i = 0; i < board_index_num; ++i)
+            n_board[i] = board_param.reverse[board[i]];
+        return -nega_alpha_heavy(n_board, depth, -beta, -alpha, skip_cnt + 1);
+    }
+    if (canput > 2)
+        sort(lst, lst + canput, cmp);
+    double v = -1.5, g;
+    int n_depth = depth - 1;
+    for (i = 0; i < canput; ++i){
+        g = -nega_alpha_heavy(lst[i].b, n_depth, -beta, -alpha, 0);
+        if (fabs(g) == inf)
+            return -inf;
+        if (beta < g)
+            return g;
+        alpha = max(alpha, g);
+        v = max(v, g);
+    }
+    return v;
+}
+
+int cmp_main(board_priority_move p, board_priority_move q){
+    return p.priority > q.priority;
+}
+
+int cmp_vacant(int p, int q){
+    return eval_param.weight[p] > eval_param.weight[q];
+}
+
+void find_win(int *board){
+    vector<board_priority_move> lst;
+    int cell, i;
+    int draw_move = -1;
+    int canput = 0;
+    double score;
+    for (cell = 0; cell < hw2; ++cell){
+        for (i = 0; i < board_index_num; ++i){
+            if (board_param.put[cell][i] != -1){
+                if (board_param.legal[board[i]][board_param.put[cell][i]]){
+                    ++canput;
+                    board_priority_move tmp;
+                    tmp.open_val = eval_param.open_eval[move_open(board, tmp.b, cell)];
+                    tmp.priority = tmp.open_val;
+                    tmp.move = cell;
+                    lst.push_back(tmp);
+                    break;
+                }
+            }
+        }
+    }
+    if (canput > 1)
+        sort(lst.begin(), lst.end(), cmp_main);
+    search_param.searched_nodes = 0;
+    hash_table_init(search_param.memo_lb);
+    hash_table_init(search_param.memo_ub);
+    for (i = 0; i < canput; ++i){
+        score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, -0.9, 0);
+        if (score > 0.0){
+            //cerr << "WIN" << endl;
+            cout << lst[i].move / hw << " " << lst[i].move % hw << " " << 100.0 << endl;
+            return;
+        } else if (score == 0.0){
+            draw_move = lst[i].move;
+        }
+    }
+    if (draw_move != -1){
+        //cerr << "DRAW" << endl;
+        cout << draw_move / hw << " " << draw_move % hw << " " << 50.0 << endl;
+    } else{
+        //cerr << "LOSE" << endl;
+        cout << lst[0].move / hw << " " << lst[0].move % hw << " " << 0.0 << endl;
+    }
+}
+
 int main(){
     init();
     cerr << "initialized" << endl;
-    int i, j, board_tmp, ai_player, policy;
+    int i, j, board_tmp, ai_player = 0, policy;
     char elem;
     unsigned long long p, o;
+    int n_stones;
     int board[board_index_num];
     double rnd, sm;
     pair<unsigned long long, unsigned long long> key;
@@ -1149,6 +1456,9 @@ int main(){
         search_param.n_playout = 0;
         p = 0;
         o = 0;
+        n_stones = 0;
+        search_param.vacant_lst = {};
+        search_param.vacant_cnt = 0;
         //cin >> ai_player;
         //cin >> search_param.tl;
         for (i = 0; i < hw2; ++i){
@@ -1157,20 +1467,19 @@ int main(){
                 ++search_param.turn;
                 p |= (unsigned long long)(elem == '0') << i;
                 o |= (unsigned long long)(elem == '1') << i;
+                ++n_stones;
+            } else{
+                ++search_param.vacant_cnt;
+                search_param.vacant_lst.push_back(i);
             }
         }
         if (ai_player == 1)
             swap(p, o);
         key.first = p;
         key.second = o;
-        //cerr << key.first << " " << key.second << endl;
-        /*
-        if (search_param.book.find(key) != search_param.book.end()){
-            cerr << "BOOK " << search_param.book[key].policy << " " << 100.0 * search_param.book[key].rate << endl;
-            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << 100.0 * search_param.book[key].rate << endl;
-            continue;
+        if (search_param.vacant_cnt){
+            sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
         }
-        */
         for (i = 0; i < board_index_num; ++i){
             board_tmp = 0;
             for (j = 0; j < board_param.pattern_space[i]; ++j){
@@ -1195,11 +1504,12 @@ int main(){
         cerr << mx_idx << " " << mx << " " << tmp.value << endl;
         return 0;
         */
-        policy = next_action(board);
-        //cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << "  " << search_param.n_playout << " " << mcts_param.used_idx << endl;
-        //cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)(search_param.win_num - search_param.lose_num) / search_param.n_playout << endl;
-        //cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
-        cout << policy / hw << " " << policy % hw << endl;
+        if (n_stones < hw2 - complete_stones){
+            mcts(board);
+        } else{
+            search_param.max_depth = hw2 + 1 - n_stones;
+            find_win(board);
+        }
     }
     return 0;
 }
