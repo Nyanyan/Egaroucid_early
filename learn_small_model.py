@@ -232,7 +232,7 @@ def weighted_mse(y_true, y_pred):
     return 10.0 * ((y_true - y_pred) ** 2)
 
 n_epochs = 1000
-game_num = 5000
+game_num = 10000
 game_strt = 0
 n_kernels = 16
 kernel_size = 3
@@ -258,26 +258,19 @@ input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
 #x_b = BatchNormalization()(x_b)
 x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-for _ in range(2):
+for _ in range(3):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
     x_b = Add()([x_b, sc])
     x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
-'''
-x_b = Dense(32)(x_b)
-x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-x_p = Dropout(0.0625)(x_p)
-x_b = Dense(32)(x_b)
-x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-'''
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
-#x_p = Dense(32)(x_p)
+x_p = Dense(16)(x_p)
 #x_p = Dropout(0.0625)(x_p)
-#x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
+x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])

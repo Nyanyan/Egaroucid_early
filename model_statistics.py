@@ -191,7 +191,7 @@ def weighted_mse(y_true, y_pred):
 game_num = 500
 game_strt = 0
 use_ratio = 1.0
-see_rank = 5
+see_rank = 1
 model = None
 if argv[1] == 'big':
     model = load_model('param/teacher.h5')
