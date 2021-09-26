@@ -13,12 +13,26 @@ from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
 
+hw = 8
+hw2 = 64
+
 all_data = []
 
-train_board = []
-train_param = []
-train_policies = []
-train_value = []
+n_epochs = 1000
+game_num = 20000
+game_strt = 0
+n_kernels = 32
+kernel_size = 3
+use_ratio = 1.0
+test_ratio = 0.2
+leakyrelu_alpha = 0.01
+n_train_data = int(game_num * (1.0 - test_ratio))
+n_test_data = int(game_num * test_ratio)
+
+train_board = np.zeros((n_train_data * 60, hw, hw, 3))
+train_param = np.zeros((n_train_data * 60, 11))
+train_policies = np.zeros((n_train_data * 60, hw2))
+train_value = np.zeros(n_train_data * 60)
 
 test_raw_board = []
 test_board = []
@@ -28,9 +42,6 @@ test_value = []
 
 mean = []
 std= []
-
-hw = 8
-hw2 = 64
 
 my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -111,6 +122,7 @@ def reshape_data_train():
             train_data.append(in_data)
             train_labels.append(score)
     '''
+    train_idx = 0
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
         stone_num = 0
@@ -128,14 +140,34 @@ def reshape_data_train():
             continue
         test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
-        train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
-        train_param.append([float(i) for i in param.split()])
-        train_policies.append(policies)
-        train_value.append(score)
-    train_board = np.array(train_board)
-    train_param = np.array(train_param)
-    train_policies = np.array(train_policies)
-    train_value = np.array(train_value)
+        #train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
+        #train_param.append([float(i) for i in param.split()])
+        #train_policies.append(policies)
+        #train_value.append(score)
+        '''
+        train_board[idx] = [[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)]
+        train_param[idx] = [float(i) for i in param.split()]
+        train_policies[idx] = policies
+        train_value[idx] = score
+        '''
+        for i in range(hw):
+            for j in range(hw):
+                for k in range(3):
+                    train_board[train_idx][i][j][k] = grid_flat[k * hw2 + j * hw + i]
+        for i, elem in zip(range(11), param.split()):
+            train_param[train_idx][i] = elem
+        for i in range(hw2):
+            train_policies[train_idx][i] = policies[i]
+        train_value[train_idx] = score
+        train_idx += 1
+    train_board = train_board[0:train_idx]
+    train_param = train_param[0:train_idx]
+    train_policies = train_policies[0:train_idx]
+    train_value = train_value[0:train_idx]
+    #train_board = np.array(train_board)
+    #train_param = np.array(train_param)
+    #train_policies = np.array(train_policies)
+    #train_value = np.array(train_value)
     mean = train_param.mean(axis=0)
     std = train_param.std(axis=0)
     train_param = (train_param - mean) / std
@@ -230,15 +262,6 @@ def policy_error(y_true, y_pred):
 
 def weighted_mse(y_true, y_pred):
     return 10.0 * ((y_true - y_pred) ** 2)
-
-n_epochs = 1000
-game_num = 30000
-game_strt = 0
-n_kernels = 32
-kernel_size = 3
-use_ratio = 1.0
-test_ratio = 0.2
-leakyrelu_alpha = 0.01
 
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num

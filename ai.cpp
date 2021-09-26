@@ -41,7 +41,7 @@ using namespace std;
 #define n_board_input 3
 #define n_add_input 11
 #define kernel_size 3
-#define n_kernels 16
+#define n_kernels 20
 #define n_residual 3
 #define n_dense1 16
 #define n_dense2 16
