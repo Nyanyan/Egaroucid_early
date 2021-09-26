@@ -18,13 +18,13 @@
 using namespace std;
 
 #define hw 8
-#define hw_m1 7
-#define hw_p1 9
-#define hw2 64
-#define hw22 128
-#define hw2_m1 63
-#define hw2_mhw 56
-#define hw2_p1 65
+#define hw_m1 (hw - 1)
+#define hw_p1 (hw + 1)
+#define hw2 (hw * hw)
+#define hw22 (hw2 * 2)
+#define hw2_m1 (hw2 - 1)
+#define hw2_mhw (hw2 - hw)
+#define hw2_p1 (hw2 + 1)
 
 #define inf 100000.0
 #define board_index_num 38
@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 100
+#define evaluate_count 1000
 #define c_puct 50.0
 #define c_end 1.0
 
@@ -43,14 +43,13 @@ using namespace std;
 #define kernel_size 3
 #define n_kernels 16
 #define n_residual 3
-//#define n_dense0 16
 #define n_dense1 16
 #define n_dense2 16
 #define n_joined (n_kernels + n_dense2)
 #define conv_size (hw_p1 - kernel_size)
-#define conv_start (-(kernel_size / 2))
+#define conv_padding (kernel_size / 2)
 #define div_pooling (hw2)
-#define conv_padding ((hw - conv_size) / 2)
+#define conv_padding2 (conv_padding * 2)
 
 #define n_div 1000000
 #define tanh_min -5.0
@@ -88,15 +87,12 @@ struct eval_param{
 
     double mean[n_add_input];
     double std[n_add_input];
-    double input_b[n_board_input][hw][hw];
+    double input_b[n_board_input][hw + conv_padding2][hw + conv_padding2];
     double input_p[n_add_input];
     double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
-    double hidden_conv1[n_kernels][hw][hw];
-    double hidden_conv2[n_kernels][hw][hw];
-    //double hidden_gap0[n_kernels];
-    //double dense0[n_kernels][n_dense0];
-    //double bias0[n_kernels];
+    double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
+    double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
     double hidden_joined[n_joined];
     double dense1[n_add_input][n_dense1];
     double bias1[n_dense1];
@@ -843,27 +839,30 @@ inline predictions predict(const int *board){
     */
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
-            eval_param.input_b[0][i][j] = board_param.restore_p[board[i]][j];
-            eval_param.input_b[1][i][j] = board_param.restore_o[board[i]][j];
-            eval_param.input_b[2][i][j] = board_param.restore_vacant[board[i]][j];
+            eval_param.input_b[0][i + conv_padding][j + conv_padding] = board_param.restore_p[board[i]][j];
+            eval_param.input_b[1][i + conv_padding][j + conv_padding] = board_param.restore_o[board[i]][j];
+            eval_param.input_b[2][i + conv_padding][j + conv_padding] = board_param.restore_vacant[board[i]][j];
+        }
+        for (j = 0; j < hw + conv_padding2; ++j){
+            eval_param.input_b[0][0][j] = 0.0;
+            eval_param.input_b[0][hw + conv_padding2 - 1][j] = 0.0;
+            eval_param.input_b[0][j][0] = 0.0;
+            eval_param.input_b[0][j][hw + conv_padding2 - 1] = 0.0;
         }
     }
     for (i = 0; i < n_add_input; ++i)
         eval_param.input_p[i] = 0.0;
+    eval_param.input_p[3] = eval_param.avg_canput[search_param.turn];
+    eval_param.input_p[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
+    eval_param.input_p[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
     for (i = 0; i < hw; ++i){
         eval_param.input_p[0] += eval_param.cnt_p[board[i]];
         eval_param.input_p[1] += eval_param.cnt_o[board[i]];
-    }
-    for (i = 0; i < board_index_num; ++i)
-        eval_param.input_p[2] += eval_param.canput[board[i]];
-    eval_param.input_p[3] = eval_param.avg_canput[search_param.turn];
-    for (i = 0; i < hw; ++i){
         eval_param.input_p[4] += eval_param.weight_p[i][board[i]];
         eval_param.input_p[5] += eval_param.weight_o[i][board[i]];
     }
-    eval_param.input_p[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
-    eval_param.input_p[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
     for (i = 0; i < board_index_num; ++i){
+        eval_param.input_p[2] += eval_param.canput[board[i]];
         eval_param.input_p[8] += eval_param.pot_canput_p[board[i]];
         eval_param.input_p[9] += eval_param.pot_canput_o[board[i]];
     }
@@ -874,8 +873,8 @@ inline predictions predict(const int *board){
     }
     // conv and normalization and leaky-relu for input_b
     for (i = 0; i < n_kernels; ++i){
-        for (y = 0; y < hw; ++y){
-            for (x = 0; x < hw; ++x)
+        for (y = 0; y < hw + conv_padding2; ++y){
+            for (x = 0; x < hw + conv_padding2; ++x)
                 eval_param.hidden_conv1[i][y][x] = 0.0;
         }
         for (j = 0; j < n_board_input; ++j){
@@ -883,77 +882,51 @@ inline predictions predict(const int *board){
                 for (sx = 0; sx < hw; ++sx){
                     for (y = 0; y < kernel_size; ++y){
                         for (x = 0; x < kernel_size; ++x){
-                            if (sy + y + conv_start < 0 || sy + y + conv_start >= hw || sx + x + conv_start < 0 || sx + x + conv_start >= hw)
-                                continue;
-                            eval_param.hidden_conv1[i][sy][sx] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y + conv_start][sx + x + conv_start];
+                            eval_param.hidden_conv1[i][sy + conv_padding][sx + conv_padding] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y][sx + x];
                         }
                     }
                 }
             }
         }
-        for (y = 0; y < hw; ++y){
-            for (x = 0; x < hw; ++x)
+        for (y = conv_padding; y < hw + conv_padding; ++y){
+            for (x = conv_padding; x < hw + conv_padding; ++x)
                 eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x]);
         }
     }
     // residual-error-block for input_b
     for (residual_i = 0; residual_i < n_residual; ++residual_i){
         for (i = 0; i < n_kernels; ++i){
-            for (y = 0; y < hw; ++y){
-                for (x = 0; x < hw; ++x)
+            for (y = 0; y < hw + conv_padding2; ++y){
+                for (x = 0; x < hw + conv_padding2; ++x)
                     eval_param.hidden_conv2[i][y][x] = 0.0;
             }
             for (j = 0; j < n_kernels; ++j){
                 for (sy = 0; sy < hw; ++sy){
                     for (sx = 0; sx < hw; ++sx){
                         for (y = 0; y < kernel_size; ++y){
-                            for (x = 0; x < kernel_size; ++x){
-                                if (sy + y + conv_start < 0 || sy + y + conv_start >= hw || sx + x + conv_start < 0 || sx + x + conv_start >= hw)
-                                    continue;
-                                eval_param.hidden_conv2[i][sy][sx] += eval_param.conv_residual[residual_i][i][j][y][x] * eval_param.hidden_conv1[j][sy + y + conv_start][sx + x + conv_start];
-                            }
+                            for (x = 0; x < kernel_size; ++x)
+                                eval_param.hidden_conv2[i][sy + conv_padding][sx + conv_padding] += eval_param.conv_residual[residual_i][i][j][y][x] * eval_param.hidden_conv1[j][sy + y][sx + x];
                         }
                     }
                 }
             }
         }
         for (i = 0; i < n_kernels; ++i){
-            for (y = 0; y < hw; ++y){
-                for (x = 0; x < hw; ++x)
+            for (y = conv_padding; y < hw + conv_padding; ++y){
+                for (x = conv_padding; x < hw + conv_padding; ++x)
                     eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x] + eval_param.hidden_conv2[i][y][x]);
             }
         }
     }
-    // global-average-pooling for input_b **use joined**
+    // global-average-pooling for input_b
     for (i = 0; i < n_kernels; ++i){
         eval_param.hidden_joined[i] = 0.0;
         for (y = 0; y < hw; ++y){
             for (x = 0; x < hw; ++x)
-                eval_param.hidden_joined[i] += eval_param.hidden_conv1[i][y][x];
+                eval_param.hidden_joined[i] += eval_param.hidden_conv1[i][y + conv_padding][x + conv_padding];
         }
         eval_param.hidden_joined[i] /= div_pooling;
     }
-    /*
-    // global-average-pooling for input_b
-    for (i = 0; i < n_kernels; ++i){
-        eval_param.hidden_gap0[i] = 0.0;
-        for (y = 0; y < hw; ++y){
-            for (x = 0; x < hw; ++x)
-                eval_param.hidden_gap0[i] += eval_param.hidden_conv1[i][y][x];
-        }
-        eval_param.hidden_gap0[i] /= div_pooling;
-    }
-    
-    // dense0 and bias and leaky-relu for input_b
-    for (i = 0; i < n_dense0; ++i)
-        eval_param.hidden_joined[i] = 0.0;
-    for (i = 0; i < n_kernels; ++i){
-        for (j = 0; j < n_dense0; ++j)
-            eval_param.hidden_joined[j] += eval_param.dense0[i][j] * eval_param.hidden_gap0[i];
-    }
-    for (i = 0; i < n_dense0; ++i)
-        eval_param.hidden_joined[i] = leaky_relu(eval_param.hidden_joined[i] + eval_param.bias0[i]);
-    */
     // dense1 and bias and leaky-relu for input_p
     for (i = 0; i < n_dense1; ++i)
         eval_param.hidden_dense1[i] = 0.0;
@@ -972,7 +945,7 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < n_dense2; ++i)
         eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias2[i]);
-    // dense and bias and softmax for policy output *don't need softmax because use softmax later
+    // dense and bias for policy output *don't need softmax because use softmax later
     for (i = 0; i < hw2; ++i)
         res.policies[i] = 0.0;
     for (i = 0; i < n_joined; ++i){
@@ -981,15 +954,6 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < hw2; ++i)
         res.policies[i] += eval_param.bias3[i];
-    /*
-    double policy_sum = 0.0;
-    for (i = 0; i < hw2; ++i){
-        res.policies[i] = exp(max(-32.0, min(10.0, res.policies[i] + eval_param.bias3[i])));
-        policy_sum += res.policies[i];
-    }
-    for (i = 0; i < hw2; ++i)
-        res.policies[i] /= policy_sum;
-    */
     // dense and bias and tanh for value output
     res.value = 0.0;
     for (i = 0; i < n_joined; ++i)
