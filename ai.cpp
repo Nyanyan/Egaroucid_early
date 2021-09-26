@@ -29,7 +29,7 @@ using namespace std;
 #define inf 100000.0
 #define board_index_num 38
 
-#define complete_stones 12
+#define complete_stones 14
 #define simple_threshold 3
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
@@ -1459,7 +1459,6 @@ void find_win(int *board){
     hash_table_init(search_param.memo_ub);
     for (i = 0; i < canput; ++i){
         score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, 0.1, 0);
-        cerr << score << " ";
         if (score > 0.0){
             cerr << "WIN" << endl;
             cout << lst[i].move / hw << " " << lst[i].move % hw << " " << 100.0 << endl;
