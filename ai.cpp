@@ -1072,14 +1072,14 @@ inline double end_game_evaluate(int idx, int player){
 
 double evaluate(int idx, bool passed, int player){
     double value = 0.0;
-    int i, j, cell;
+    int i, j;
     if (!mcts_param.nodes[idx].expanded){
         // when children not expanded
         // expand children
         mcts_param.nodes[idx].expanded = true;
         bool legal[hw2];
         mcts_param.nodes[idx].pass = true;
-        for (cell = 0; cell < hw2; ++cell){
+        for (const int& cell : search_param.vacant_lst){
             mcts_param.nodes[idx].children[cell] = -1;
             legal[cell] = false;
             for (i = 0; i < board_index_num; ++i){
@@ -1119,7 +1119,7 @@ double evaluate(int idx, bool passed, int player){
         value = -inf;
         double tmp_value;
         double t_sqrt = sqrt((double)mcts_param.nodes[idx].n);
-        for (cell = 0; cell < hw2; ++cell){
+        for (const int& cell : search_param.vacant_lst){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
                 if (mcts_param.nodes[idx].children[cell] != -1)
                     tmp_value = mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
@@ -1212,11 +1212,13 @@ inline int next_action(int *board){
             break;
     }
     for (i = 0; i < hw2; ++i){
-        if (mcts_param.nodes[0].children[i] != -1){
-            //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-            if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                res = i;
+        if (legal[i]){
+            if (mcts_param.nodes[0].children[i] != -1){
+                //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
+                if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
+                    mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+                    res = i;
+                }
             }
         }
     }
@@ -1385,10 +1387,10 @@ double nega_alpha_heavy(int *board, int depth, double alpha, double beta, int sk
     int i, j, canput = 0;
     board_priority lst[30];
     open_vals tmp_open_vals;
-    for (j = 0; j < search_param.vacant_cnt; ++j){
-        for (i = 0; i < board_param.put_idx_num[search_param.vacant_lst[j]]; ++i){
-            if (board_param.legal[board[board_param.put_idx[search_param.vacant_lst[j]][i]]][board_param.put[search_param.vacant_lst[j]][board_param.put_idx[search_param.vacant_lst[j]][i]]]){
-                lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, search_param.vacant_lst[j])];
+    for (const int& cell : search_param.vacant_lst){
+        for (i = 0; i < board_param.put_idx_num[cell]; ++i){
+            if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
+                lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
                 tmp_open_vals = open_val_forward(lst[canput].b, 1, true);
                 if (tmp_open_vals.p_cnt)
                     lst[canput].priority = (lst[canput].n_open_val + tmp_open_vals.o_open_val) / tmp_open_vals.o_cnt - tmp_open_vals.p_open_val / tmp_open_vals.p_cnt;
