@@ -831,12 +831,6 @@ inline double leaky_relu(double x){
 inline predictions predict(const int *board){
     int i, j, sy, sx, y, x, residual_i;
     predictions res;
-    /*
-    for (i = 0; i < hw2; ++i)
-        res.policies[i] = myrandom();
-    res.value = myrandom();
-    return res;
-    */
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
             eval_param.input_b[0][i + conv_padding][j + conv_padding] = board_param.restore_p[board[i]][j];
@@ -1422,7 +1416,7 @@ void find_win(int *board){
     hash_table_init(search_param.memo_lb);
     hash_table_init(search_param.memo_ub);
     for (i = 0; i < canput; ++i){
-        score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, 0.1, 0);
+        score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, -0.9, 0);
         if (score > 0.0){
             cerr << "WIN" << endl;
             cout << lst[i].move / hw << " " << lst[i].move % hw << " " << 100.0 << endl;
