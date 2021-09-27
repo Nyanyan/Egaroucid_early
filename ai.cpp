@@ -18,13 +18,13 @@
 using namespace std;
 
 #define hw 8
-#define hw_m1 (hw - 1)
-#define hw_p1 (hw + 1)
-#define hw2 (hw * hw)
-#define hw22 (hw2 * 2)
-#define hw2_m1 (hw2 - 1)
-#define hw2_mhw (hw2 - hw)
-#define hw2_p1 (hw2 + 1)
+#define hw_m1 7
+#define hw_p1 9
+#define hw2 64
+#define hw22 128
+#define hw2_m1 63
+#define hw2_mhw 56
+#define hw2_p1 65
 
 #define inf 100000.0
 #define board_index_num 38
@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 200
+#define evaluate_count 1000
 #define c_puct 10.0
 #define c_end 1.0
 #define mcts_complete_stones 8

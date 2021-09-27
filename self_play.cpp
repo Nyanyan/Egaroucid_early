@@ -18,13 +18,13 @@
 using namespace std;
 
 #define hw 8
-#define hw_m1 (hw - 1)
-#define hw_p1 (hw + 1)
-#define hw2 (hw * hw)
-#define hw22 (hw2 * 2)
-#define hw2_m1 (hw2 - 1)
-#define hw2_mhw (hw2 - hw)
-#define hw2_p1 (hw2 + 1)
+#define hw_m1 7
+#define hw_p1 9
+#define hw2 64
+#define hw22 128
+#define hw2_m1 63
+#define hw2_mhw 56
+#define hw2_p1 65
 
 #define inf 100000.0
 #define board_index_num 38
@@ -1505,6 +1505,7 @@ int main(){
         */
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
+        /*
         for (steps = 0; steps < self_play_param.random_step; ++steps){
             legal_steps = 0;
             for (cell = 0; cell < hw2; ++cell){
@@ -1530,7 +1531,8 @@ int main(){
             swap(board, tmp_board);
             player = 1 - player;
         }
-        for (steps = self_play_param.random_step; steps < hw2 - mcts_complete_stones - 4; ++steps){
+        */
+        for (steps = 0; steps < hw2 - mcts_complete_stones - 4; ++steps){
             policy = next_action(board);
             if (policy == -1){
                 if (passed)
@@ -1544,26 +1546,28 @@ int main(){
             } else{
                 passed = false;
             }
-            history tmp_hist;
-            tmp_hist.board = "";
-            for (i = 0; i < hw; ++i){
-                tmp = board[i];
-                for (j = 0; j < hw; ++j){
-                    if (tmp % 3 == 0){
-                        tmp_hist.board += ".";
-                    } else if (tmp % 3 == 1){
-                        tmp_hist.board += "0";
-                    } else{
-                        tmp_hist.board += "1";
+            if (steps >= self_play_param.random_step){
+                history tmp_hist;
+                tmp_hist.board = "";
+                for (i = 0; i < hw; ++i){
+                    tmp = board[i];
+                    for (j = 0; j < hw; ++j){
+                        if (tmp % 3 == 0){
+                            tmp_hist.board += ".";
+                        } else if (tmp % 3 == 1){
+                            tmp_hist.board += "0";
+                        } else{
+                            tmp_hist.board += "1";
+                        }
+                        tmp /= 3;
                     }
-                    tmp /= 3;
                 }
+                tmp_hist.policy = policy;
+                if (player == 0)
+                    hist0.push_back(tmp_hist);
+                else
+                    hist1.push_back(tmp_hist);
             }
-            tmp_hist.policy = policy;
-            if (player == 0)
-                hist0.push_back(tmp_hist);
-            else
-                hist1.push_back(tmp_hist);
             move(board, tmp_board, policy);
             swap(board, tmp_board);
             player = 1 - player;

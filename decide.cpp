@@ -18,13 +18,13 @@
 using namespace std;
 
 #define hw 8
-#define hw_m1 (hw - 1)
-#define hw_p1 (hw + 1)
-#define hw2 (hw * hw)
-#define hw22 (hw2 * 2)
-#define hw2_m1 (hw2 - 1)
-#define hw2_mhw (hw2 - hw)
-#define hw2_p1 (hw2 + 1)
+#define hw_m1 7
+#define hw_p1 9
+#define hw2 64
+#define hw22 128
+#define hw2_m1 63
+#define hw2_mhw 56
+#define hw2_p1 65
 
 #define inf 100000.0
 #define board_index_num 38
@@ -1370,15 +1370,28 @@ inline int next_action(int *board){
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
     for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, 1, n_stones);
+    double policies[hw2];
+    p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
+        policies[i] = 0.0;
         if (legal[i]){
             if (mcts_param.nodes[0].children[i] != -1){
                 //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-                if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                    mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                    res = i;
-                }
+                policies[i] = (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+                policies[i] = eval_param.exp_arr[map_liner(0.1 * (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+                p_sum += policies[i];
             }
+        }
+    }
+    for (i = 0; i < hw2; ++i)
+        policies[i] /= p_sum;
+    double rnd = myrandom();
+    p_sum = 0.0;
+    for (i = 0; i < hw2; ++i){
+        p_sum += policies[i];
+        if (rnd <= p_sum){
+            res = i;
+            break;
         }
     }
     return res;
