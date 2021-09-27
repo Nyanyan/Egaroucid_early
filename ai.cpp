@@ -35,7 +35,7 @@ using namespace std;
 #define hash_mask (hash_table_size - 1)
 
 #define evaluate_count 1000
-#define c_puct 50.0
+#define c_puct 10.0
 #define c_end 1.0
 
 #define n_board_input 3
@@ -1401,7 +1401,7 @@ void find_win(int *board){
     hash_table_init(search_param.memo_lb);
     hash_table_init(search_param.memo_ub);
     for (i = 0; i < canput; ++i){
-        score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, -0.9, 0);
+        score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, 0.1, 0);
         if (score > 0.0){
             cerr << "WIN" << endl;
             cout << lst[i].move / hw << " " << lst[i].move % hw << " " << 100.0 << endl;
