@@ -1255,7 +1255,7 @@ inline double end_game_evaluate(int idx, int player){
 double evaluate(int idx, bool passed, int player, int n_stones){
     double value = 0.0;
     int i, j;
-    if (n_stones == hw2 - mcts_complete_stones){
+    if (n_stones >= hw2 - mcts_complete_stones){
         int result = find_win(mcts_param.nodes[idx].board).first;
         search_param.win_num += max(0, player * result);
         search_param.lose_num += max(0, -player * result);
