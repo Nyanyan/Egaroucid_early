@@ -33,7 +33,7 @@ var graph = new Chart(ctx, {
     labels: [],
     datasets: [
         {
-        label: '評価値',
+        label: '予想勝率',
         data: [],
         borderColor: "rgb(0,0,0)",
         backgroundColor: "rgb(0,0,0)"
