@@ -13,6 +13,9 @@ from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
 
+#def LeakyReLU(x):
+#    return tf.math.maximum(0.01 * x, x)
+
 all_data = set()
 
 test_raw_board = []

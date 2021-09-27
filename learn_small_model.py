@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D,
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
-from keras.layers.advanced_activations import LeakyReLU
+#from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -21,7 +21,7 @@ all_data = []
 n_epochs = 1000
 game_num = 20000
 game_strt = 0
-n_kernels = 32
+n_kernels = 20
 kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.2
@@ -263,16 +263,25 @@ def policy_error(y_true, y_pred):
 def weighted_mse(y_true, y_pred):
     return 10.0 * ((y_true - y_pred) ** 2)
 
+def LeakyReLU(x):
+    return tf.math.maximum(0.01 * x, x)
+
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-records = sample(list(range(65000)), game_num)
+records = sample(list(range(21000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
-    collect_data(records[i], use_ratio)
+    try:
+        collect_data(records[i], use_ratio)
+    except:
+        continue
 reshape_data_train()
 all_data = []
 for i in trange(game_strt + train_num, game_strt + game_num):
-    collect_data(records[i], use_ratio)
+    try:
+        collect_data(records[i], use_ratio)
+    except:
+        continue
 reshape_data_test()
 my_evaluate.kill()
 
@@ -280,20 +289,24 @@ input_b = Input(shape=(hw, hw, 3,))
 input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
 #x_b = BatchNormalization()(x_b)
-x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+#x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+x_b = LeakyReLU(x_b)
 for _ in range(3):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
     x_b = Add()([x_b, sc])
-    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    #x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    x_b = LeakyReLU(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(16)(input_p)
-x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
+x_p = Dense(32)(input_p)
+#x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
+x_p = LeakyReLU(x_p)
 x_p = Dense(16)(x_p)
 #x_p = Dropout(0.0625)(x_p)
-x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
+#x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
+x_p = LeakyReLU(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
@@ -311,7 +324,7 @@ model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 model.summary()
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
 #plot_model(model, show_shapes=True, show_layer_names=False)
-early_stop = EarlyStopping(monitor='val_loss', patience=20)
+early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 with open('param/mean.txt', 'w') as f:

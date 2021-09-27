@@ -43,7 +43,7 @@ using namespace std;
 #define kernel_size 3
 #define n_kernels 20
 #define n_residual 3
-#define n_dense1 16
+#define n_dense1 32
 #define n_dense2 16
 #define n_joined (n_kernels + n_dense2)
 #define conv_size (hw_p1 - kernel_size)
@@ -244,6 +244,7 @@ struct mcts_node{
 struct mcts_param{
     mcts_node nodes[65 * evaluate_count];
     int used_idx;
+    double sqrt_arr[100];
 };
 
 struct predictions{
@@ -804,6 +805,8 @@ void init(){
         eval_param.tanh_arr[i] = tanh(rev_map_liner(i, tanh_min, tanh_max));
         eval_param.exp_arr[i] = exp(rev_map_liner(i, exp_min, exp_max));
     }
+    for (i = 0; i < 100; ++i)
+        mcts_param.sqrt_arr[i] = sqrt((double)i);
 }
 
 inline double leaky_relu(double x){
@@ -1058,13 +1061,13 @@ double evaluate(int idx, bool passed, int player){
         int a_cell = -1;
         value = -inf;
         double tmp_value;
-        double t_sqrt = sqrt((double)mcts_param.nodes[idx].n);
+        double t_sqrt = mcts_param.sqrt_arr[mcts_param.nodes[idx].n];
         for (const int& cell : search_param.vacant_lst){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
                 if (mcts_param.nodes[idx].children[cell] != -1)
-                    tmp_value = mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
+                    tmp_value = -mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
                 else
-                    tmp_value = 10.0;
+                    tmp_value = 0.0;
                 tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
                 if (value < tmp_value){
                     value = tmp_value;

@@ -14,6 +14,9 @@ import subprocess
 from math import exp
 import sys
 
+#def LeakyReLU(x):
+#    return tf.math.maximum(0.01 * x, x)
+
 argv = sys.argv
 if len(argv) != 3:
     print('arg err')

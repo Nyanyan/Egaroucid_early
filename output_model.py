@@ -12,8 +12,16 @@ from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
+import sys
 
-model = load_model('param/model.h5')
+#def LeakyReLU(x):
+#    return tf.math.maximum(0.01 * x, x)
+
+if len(sys.argv) != 2:
+    print('arg err')
+    exit()
+
+model = load_model('param/' + sys.argv[1])
 
 with open('param/param.txt', 'w') as f:
     i = 0
