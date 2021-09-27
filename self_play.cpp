@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 10
+#define evaluate_count 5
 #define c_puct 10.0
 #define c_end 1.0
 #define mcts_complete_stones 8
@@ -1483,7 +1483,7 @@ int main(){
         randomed = false;
         random_step = -1;
         while (random_step == -1){
-            for (i = self_play_param.random_step; i < hw2; ++i){
+            for (i = self_play_param.random_step; i < hw2 - mcts_complete_stones - 8; ++i){
                 if (myrandom() < self_play_param.random_rate){
                     random_step = i;
                     break;
