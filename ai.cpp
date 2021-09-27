@@ -825,9 +825,9 @@ inline predictions predict(const int *board){
         }
         for (j = 0; j < hw + conv_padding2; ++j){
             eval_param.input_b[0][0][j] = 0.0;
-            eval_param.input_b[0][hw + conv_padding2 - 1][j] = 0.0;
+            eval_param.input_b[0][hw_m1 + conv_padding2][j] = 0.0;
             eval_param.input_b[0][j][0] = 0.0;
-            eval_param.input_b[0][j][hw + conv_padding2 - 1] = 0.0;
+            eval_param.input_b[0][j][hw_m1 + conv_padding2] = 0.0;
         }
     }
     for (i = 0; i < n_add_input; ++i)
@@ -835,6 +835,7 @@ inline predictions predict(const int *board){
     eval_param.input_p[3] = eval_param.avg_canput[search_param.turn];
     eval_param.input_p[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
     eval_param.input_p[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
+    eval_param.input_p[10] = search_param.turn;
     for (i = 0; i < hw; ++i){
         eval_param.input_p[0] += eval_param.cnt_p[board[i]];
         eval_param.input_p[1] += eval_param.cnt_o[board[i]];
@@ -846,7 +847,6 @@ inline predictions predict(const int *board){
         eval_param.input_p[8] += eval_param.pot_canput_p[board[i]];
         eval_param.input_p[9] += eval_param.pot_canput_o[board[i]];
     }
-    eval_param.input_p[10] = search_param.turn;
     for (i = 0; i < n_add_input; ++i){
         eval_param.input_p[i] -= eval_param.mean[i];
         eval_param.input_p[i] /= eval_param.std[i];
@@ -861,9 +861,8 @@ inline predictions predict(const int *board){
             for (sy = 0; sy < hw; ++sy){
                 for (sx = 0; sx < hw; ++sx){
                     for (y = 0; y < kernel_size; ++y){
-                        for (x = 0; x < kernel_size; ++x){
+                        for (x = 0; x < kernel_size; ++x)
                             eval_param.hidden_conv1[i][sy + conv_padding][sx + conv_padding] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y][sx + x];
-                        }
                     }
                 }
             }
