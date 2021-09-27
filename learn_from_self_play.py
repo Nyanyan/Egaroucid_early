@@ -16,9 +16,9 @@ from math import exp
 from os import rename
 
 num_self_play_in_one_time_train = 100
-num_self_play_in_one_time_test = 50
+num_self_play_in_one_time_test = 20
 num_of_decide = 100
-n_epochs = 10
+n_epochs = 25
 
 hw = 8
 hw2 = 64
@@ -353,13 +353,19 @@ for _ in range(10):
 
     print('start learning')
     model = load_model('param/best.h5')
-    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
-    model.load_weights('param/best.h5')
+    print(model.evaluate([train_board, train_param], [train_policies, train_value]))
+    model.trainable = True
+    for layer in model.layers:
+        layer.trainable = True
+    model.load_weights('param/best.hdf5')
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.00001))
+    print(model.evaluate([train_board, train_param], [train_policies, train_value]))
     early_stop = EarlyStopping(monitor='val_loss', patience=10)
     history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 
     print('saving')
-    #model.save('param/model.h5')
+    model.save('param/model_new.h5')
+    model.save_weights('param/model_new.hdf5')
     '''
     with open('param/mean_new.txt', 'w') as f:
         for i in range(mean.shape[0]):

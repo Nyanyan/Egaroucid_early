@@ -334,6 +334,7 @@ with open('param/std.txt', 'w') as f:
     for i in std:
         f.write(str(i) + '\n')
 model.save('param/model.h5')
+model.save_weights('param/model.hdf5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)

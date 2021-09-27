@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 5
+#define evaluate_count 20
 #define c_puct 10.0
 #define c_end 1.0
 #define mcts_complete_stones 8
@@ -1417,15 +1417,28 @@ inline int next_action(int *board){
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
     for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, 1, n_stones);
+    double policies[hw2];
+    p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
+        policies[i] = 0.0;
         if (legal[i]){
             if (mcts_param.nodes[0].children[i] != -1){
                 //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-                if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                    mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                    res = i;
-                }
+                policies[i] = (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+                policies[i] = eval_param.exp_arr[map_liner(0.1 * (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+                p_sum += policies[i];
             }
+        }
+    }
+    for (i = 0; i < hw2; ++i)
+        policies[i] /= p_sum;
+    double rnd = myrandom();
+    p_sum = 0.0;
+    for (i = 0; i < hw2; ++i){
+        p_sum += policies[i];
+        if (rnd <= p_sum){
+            res = i;
+            break;
         }
     }
     return res;
@@ -1470,17 +1483,15 @@ int main(){
     double value;
     int legal_places[hw2];
     int legal_steps, random_step;
-    bool randomed;
     double ratio, ratio_sum;
     vector<history> hist0, hist1;
     for (int tim = 0; tim < num; ++tim){
-        cerr << tim;
+        cerr << tim << " ";
         hist0 = {};
         hist1 = {};
         player = 1;
         passed = false;
-        steps = 0;
-        randomed = false;
+        /*
         random_step = -1;
         while (random_step == -1){
             for (i = self_play_param.random_step; i < hw2 - mcts_complete_stones - 8; ++i){
@@ -1491,9 +1502,10 @@ int main(){
             }
         }
         //cerr << "random: " << random_step << endl;
+        */
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
-        for (steps = 0; steps < random_step; ++steps){
+        for (steps = 0; steps < self_play_param.random_step; ++steps){
             legal_steps = 0;
             for (cell = 0; cell < hw2; ++cell){
                 for (i = 0; i < board_index_num; ++i){
@@ -1518,7 +1530,7 @@ int main(){
             swap(board, tmp_board);
             player = 1 - player;
         }
-        for (steps = random_step; steps < hw2 - mcts_complete_stones - 4; ++steps){
+        for (steps = self_play_param.random_step; steps < hw2 - mcts_complete_stones - 4; ++steps){
             policy = next_action(board);
             if (policy == -1){
                 if (passed)
