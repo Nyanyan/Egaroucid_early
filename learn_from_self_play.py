@@ -41,6 +41,12 @@ test_value = []
 mean = []
 std = []
 
+with open('param/mean.txt', 'r') as f:
+    mean = np.array([float(i) for i in f.read().splitlines()])
+with open('param/std.txt', 'r') as f:
+    std = np.array([float(i) for i in f.read().splitlines()])
+
+
 early_stages = []
 
 def self_play(num_self_play_in_one_time):
