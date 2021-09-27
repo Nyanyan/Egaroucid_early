@@ -603,16 +603,9 @@ void init(){
         exit(1);
     }
     eval_param.bias4 = atof(cbuf);
-    if (mode == 0){
-        if ((fp = fopen("param/mean.txt", "r")) == NULL){
-            printf("mean file not exist");
-            exit(1);
-        }
-    } else{
-        if ((fp = fopen("param/mean_new.txt", "r")) == NULL){
-            printf("mean file not exist");
-            exit(1);
-        }
+    if ((fp = fopen("param/mean.txt", "r")) == NULL){
+        printf("mean file not exist");
+        exit(1);
     }
     for (i = 0; i < n_add_input; ++i){
         if (!fgets(cbuf, 1024, fp)){
@@ -621,16 +614,9 @@ void init(){
         }
         eval_param.mean[i] = atof(cbuf);
     }
-    if (mode == 0){
-        if ((fp = fopen("param/std.txt", "r")) == NULL){
-            printf("std file not exist");
-            exit(1);
-        }
-    } else{
-        if ((fp = fopen("param/std_new.txt", "r")) == NULL){
-            printf("std file not exist");
-            exit(1);
-        }
+    if ((fp = fopen("param/std.txt", "r")) == NULL){
+        printf("std file not exist");
+        exit(1);
     }
     for (i = 0; i < n_add_input; ++i){
         if (!fgets(cbuf, 1024, fp)){
@@ -1382,12 +1368,8 @@ inline int next_action(int *board){
     int n_stones = 0;
     for (i = 0; i < hw; ++i)
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
-    int strt = tim();
-    for (i = 0; i < evaluate_count; ++i){
+    for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, 1, n_stones);
-        if (tim() - strt > search_param.tl)
-            break;
-    }
     for (i = 0; i < hw2; ++i){
         if (legal[i]){
             if (mcts_param.nodes[0].children[i] != -1){
@@ -1441,8 +1423,8 @@ int main(){
         n_stones = 0;
         search_param.vacant_lst = {};
         search_param.vacant_cnt = 0;
-        cin >> ai_player;
-        cin >> search_param.tl;
+        //cin >> ai_player;
+        //cin >> search_param.tl;
         for (i = 0; i < hw2; ++i){
             cin >> elem;
             if (elem != '.'){
@@ -1455,8 +1437,8 @@ int main(){
                 search_param.vacant_lst.push_back(i);
             }
         }
-        if (ai_player == 1)
-            swap(p, o);
+        //if (ai_player == 1)
+        //    swap(p, o);
         if (search_param.vacant_cnt){
             sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
         }

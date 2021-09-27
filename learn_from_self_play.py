@@ -15,10 +15,10 @@ import subprocess
 from math import exp
 from os import rename
 
-num_self_play_in_one_time_train = 10
-num_self_play_in_one_time_test = 5
-num_of_decide = 10
-n_epochs = 50
+num_self_play_in_one_time_train = 100
+num_self_play_in_one_time_test = 50
+num_of_decide = 100
+n_epochs = 10
 
 hw = 8
 hw2 = 64
@@ -99,8 +99,8 @@ def reshape_data_train():
     train_param = np.array(train_param)
     train_policies = np.array(train_policies)
     train_value = np.array(train_value)
-    mean = train_param.mean(axis=0)
-    std = train_param.std(axis=0)
+    #mean = train_param.mean(axis=0)
+    #std = train_param.std(axis=0)
     train_param = (train_param - mean) / std
     print('train', train_board.shape, train_param.shape, train_policies.shape, train_value.shape)
 
@@ -353,12 +353,14 @@ for _ in range(10):
 
     print('saving')
     #model.save('param/model.h5')
+    '''
     with open('param/mean_new.txt', 'w') as f:
         for i in range(mean.shape[0]):
             f.write(str(mean[i]) + '\n')
     with open('param/std_new.txt', 'w') as f:
         for i in range(std.shape[0]):
             f.write(str(std[i]) + '\n')
+    '''
     with open('param/param_new.txt', 'w') as f:
         i = 0
         while True:
