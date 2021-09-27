@@ -353,7 +353,8 @@ for _ in range(10):
 
     print('start learning')
     model = load_model('param/best.h5')
-    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam', metrics=['mae'])
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+    model.load_weights('param/best.h5')
     early_stop = EarlyStopping(monitor='val_loss', patience=10)
     history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 
