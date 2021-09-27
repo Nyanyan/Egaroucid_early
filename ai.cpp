@@ -37,6 +37,7 @@ using namespace std;
 #define evaluate_count 1000
 #define c_puct 10.0
 #define c_end 1.0
+#define mcts_complete_stones 7
 
 #define n_board_input 3
 #define n_add_input 11
@@ -1001,179 +1002,6 @@ inline double end_game(const int *board){
     return 0.0;
 }
 
-inline double end_game_evaluate(int idx, int player){
-    double value = c_end * end_game(mcts_param.nodes[idx].board);
-    if (value * player > 0.0)
-        ++search_param.win_num;
-    else if (value * player < 0.0)
-        ++search_param.lose_num;
-    ++search_param.n_playout;
-    mcts_param.nodes[idx].w += value;
-    ++mcts_param.nodes[idx].n;
-    return value;
-}
-
-double evaluate(int idx, bool passed, int player){
-    double value = 0.0;
-    int i, j;
-    if (!mcts_param.nodes[idx].expanded){
-        // when children not expanded
-        // expand children
-        mcts_param.nodes[idx].expanded = true;
-        bool legal[hw2];
-        mcts_param.nodes[idx].pass = true;
-        for (const int& cell : search_param.vacant_lst){
-            mcts_param.nodes[idx].children[cell] = -1;
-            legal[cell] = false;
-            for (i = 0; i < board_index_num; ++i){
-                if (board_param.put[cell][i] != -1){
-                    if (board_param.legal[mcts_param.nodes[idx].board[i]][board_param.put[cell][i]]){
-                        mcts_param.nodes[idx].pass = false;
-                        legal[cell] = true;
-                        break;
-                    }
-                }
-            }
-        }
-        mcts_param.nodes[idx].children[hw2] = -1;
-        if (!mcts_param.nodes[idx].pass){
-            //predict and create policy array
-            predictions pred = predict(mcts_param.nodes[idx].board);
-            mcts_param.nodes[idx].w += pred.value;
-            value = pred.value;
-            ++mcts_param.nodes[idx].n;
-            double p_sum = 0.0;
-            for (i = 0; i < hw2; ++i){
-                if (legal[i]){
-                    mcts_param.nodes[idx].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
-                    p_sum += mcts_param.nodes[idx].p[i];
-                } else{
-                    mcts_param.nodes[idx].p[i] = 0.0;
-                }
-            }
-            for (i = 0; i < hw2; ++i)
-                mcts_param.nodes[idx].p[i] /= p_sum;
-        }
-    }
-    if (!mcts_param.nodes[idx].pass){
-        // children already expanded
-        // select next move
-        int a_cell = -1;
-        value = -inf;
-        double tmp_value;
-        double t_sqrt = mcts_param.sqrt_arr[mcts_param.nodes[idx].n];
-        for (const int& cell : search_param.vacant_lst){
-            if (mcts_param.nodes[idx].p[cell] != 0.0){
-                if (mcts_param.nodes[idx].children[cell] != -1)
-                    tmp_value = -mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
-                else
-                    tmp_value = 0.0;
-                tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
-                if (value < tmp_value){
-                    value = tmp_value;
-                    a_cell = cell;
-                }
-            }
-        }
-        if (mcts_param.nodes[idx].children[a_cell] == -1){
-            mcts_param.nodes[idx].children[a_cell] = mcts_param.used_idx;
-            mcts_param.nodes[mcts_param.used_idx].w = 0.0;
-            mcts_param.nodes[mcts_param.used_idx].n = 0;
-            mcts_param.nodes[mcts_param.used_idx].pass = true;
-            mcts_param.nodes[mcts_param.used_idx].expanded = false;
-            move(mcts_param.nodes[idx].board, mcts_param.nodes[mcts_param.used_idx++].board, a_cell);
-        }
-        value = -evaluate(mcts_param.nodes[idx].children[a_cell], false, -player);
-        mcts_param.nodes[idx].w += value;
-        ++mcts_param.nodes[idx].n;
-    } else{
-        // pass
-        if (passed){
-            return end_game_evaluate(idx, player);
-        } else{
-            if (mcts_param.nodes[idx].children[hw2] == -1){
-                mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
-                mcts_param.nodes[mcts_param.used_idx].w = 0.0;
-                mcts_param.nodes[mcts_param.used_idx].n = 0;
-                mcts_param.nodes[mcts_param.used_idx].pass = true;
-                mcts_param.nodes[mcts_param.used_idx].expanded = false;
-                for (i = 0; i < board_index_num; ++i)
-                    mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
-                ++mcts_param.used_idx;
-            }
-            value = -evaluate(mcts_param.nodes[idx].children[hw2], true, -player);
-            mcts_param.nodes[idx].w += value;
-            ++mcts_param.nodes[idx].n;
-        }
-    }
-    return value;
-}
-
-inline int next_action(int *board){
-    int i, cell, mx = 0, res = -1;
-    mcts_param.used_idx = 1;
-    for (i = 0; i < board_index_num; ++i)
-        mcts_param.nodes[0].board[i] = board[i];
-    mcts_param.nodes[0].w = 0.0;
-    mcts_param.nodes[0].n = 0;
-    mcts_param.nodes[0].pass = true;
-    mcts_param.nodes[0].expanded = true;
-    // expand children
-    bool legal[hw2];
-    for (cell = 0; cell < hw2; ++cell){
-        mcts_param.nodes[0].children[cell] = -1;
-        legal[cell] = false;
-        for (i = 0; i < board_index_num; ++i){
-            if (board_param.put[cell][i] != -1){
-                if (board_param.legal[board[i]][board_param.put[cell][i]]){
-                    mcts_param.nodes[0].pass = false;
-                    legal[cell] = true;
-                    break;
-                }
-            }
-        }
-    }
-    //predict and create policy array
-    predictions pred = predict(board);
-    mcts_param.nodes[0].w += pred.value;
-    ++mcts_param.nodes[0].n;
-    double p_sum = 0.0;
-    for (i = 0; i < hw2; ++i){
-        if (legal[i]){
-            mcts_param.nodes[0].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
-            p_sum += mcts_param.nodes[0].p[i];
-        } else{
-            mcts_param.nodes[0].p[i] = 0.0;
-        }
-    }
-    for (i = 0; i < hw2; ++i)
-        mcts_param.nodes[0].p[i] /= p_sum;
-    int strt = tim();
-    for (i = 0; i < evaluate_count; ++i){
-        evaluate(0, false, 1);
-        if (tim() - strt > search_param.tl)
-            break;
-    }
-    for (i = 0; i < hw2; ++i){
-        if (legal[i]){
-            if (mcts_param.nodes[0].children[i] != -1){
-                //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-                if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                    mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                    res = i;
-                }
-            }
-        }
-    }
-    return res;
-}
-
-void mcts(int *board){
-    int policy = next_action(board);
-    cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << " " << search_param.n_playout << "  " << mcts_param.used_idx << endl;
-    cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
-}
-
 inline open_vals open_val_forward(int *board, int depth, bool player){
     open_vals res;
     if (depth == 0){
@@ -1374,7 +1202,7 @@ int cmp_vacant(int p, int q){
     return eval_param.weight[p] > eval_param.weight[q];
 }
 
-void find_win(int *board){
+inline pair<int, int> find_win(int *board){
     vector<board_priority_move> lst;
     int cell, i;
     int draw_move = -1;
@@ -1403,20 +1231,219 @@ void find_win(int *board){
     for (i = 0; i < canput; ++i){
         score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, 0.1, 0);
         if (score > 0.0){
-            cerr << "WIN" << endl;
-            cout << lst[i].move / hw << " " << lst[i].move % hw << " " << 100.0 << endl;
-            return;
+            return make_pair(1, lst[i].move);
+            //cerr << "WIN" << endl;
+            //cout << lst[i].move / hw << " " << lst[i].move % hw << " " << 100.0 << endl;
+            //return;
         } else if (score == 0.0){
             draw_move = lst[i].move;
         }
     }
     if (draw_move != -1){
-        cerr << "DRAW" << endl;
-        cout << draw_move / hw << " " << draw_move % hw << " " << 50.0 << endl;
+        return make_pair(0, draw_move);
+        //cerr << "DRAW" << endl;
+        //cout << draw_move / hw << " " << draw_move % hw << " " << 50.0 << endl;
     } else{
-        cerr << "LOSE" << endl;
-        cout << lst[0].move / hw << " " << lst[0].move % hw << " " << 0.0 << endl;
+        return make_pair(1, lst[0].move);
+        //cerr << "LOSE" << endl;
+        //cout << lst[0].move / hw << " " << lst[0].move % hw << " " << 0.0 << endl;
     }
+}
+
+inline double end_game_evaluate(int idx, int player){
+    double value = c_end * end_game(mcts_param.nodes[idx].board);
+    if (value * player > 0.0)
+        ++search_param.win_num;
+    else if (value * player < 0.0)
+        ++search_param.lose_num;
+    ++search_param.n_playout;
+    mcts_param.nodes[idx].w += value;
+    ++mcts_param.nodes[idx].n;
+    return value;
+}
+
+double evaluate(int idx, bool passed, int player, int n_stones){
+    double value = 0.0;
+    int i, j;
+    if (n_stones == hw2 - mcts_complete_stones){
+        int result = find_win(mcts_param.nodes[idx].board).first;
+        search_param.win_num += max(0, player * result);
+        search_param.lose_num += max(0, -player * result);
+        ++search_param.n_playout;
+        mcts_param.nodes[idx].w += c_end * (double)result;
+        ++mcts_param.nodes[idx].n;
+        return (double)result;
+    }
+    if (!mcts_param.nodes[idx].expanded){
+        // when children not expanded
+        // expand children
+        mcts_param.nodes[idx].expanded = true;
+        bool legal[hw2];
+        mcts_param.nodes[idx].pass = true;
+        for (const int& cell : search_param.vacant_lst){
+            mcts_param.nodes[idx].children[cell] = -1;
+            legal[cell] = false;
+            for (i = 0; i < board_index_num; ++i){
+                if (board_param.put[cell][i] != -1){
+                    if (board_param.legal[mcts_param.nodes[idx].board[i]][board_param.put[cell][i]]){
+                        mcts_param.nodes[idx].pass = false;
+                        legal[cell] = true;
+                        break;
+                    }
+                }
+            }
+        }
+        mcts_param.nodes[idx].children[hw2] = -1;
+        if (!mcts_param.nodes[idx].pass){
+            //predict and create policy array
+            predictions pred = predict(mcts_param.nodes[idx].board);
+            mcts_param.nodes[idx].w += pred.value;
+            value = pred.value;
+            ++mcts_param.nodes[idx].n;
+            double p_sum = 0.0;
+            for (i = 0; i < hw2; ++i){
+                if (legal[i]){
+                    mcts_param.nodes[idx].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
+                    p_sum += mcts_param.nodes[idx].p[i];
+                } else{
+                    mcts_param.nodes[idx].p[i] = 0.0;
+                }
+            }
+            for (i = 0; i < hw2; ++i)
+                mcts_param.nodes[idx].p[i] /= p_sum;
+        }
+    }
+    if (!mcts_param.nodes[idx].pass){
+        // children already expanded
+        // select next move
+        int a_cell = -1;
+        value = -inf;
+        double tmp_value;
+        double t_sqrt = mcts_param.sqrt_arr[mcts_param.nodes[idx].n];
+        for (const int& cell : search_param.vacant_lst){
+            if (mcts_param.nodes[idx].p[cell] != 0.0){
+                if (mcts_param.nodes[idx].children[cell] != -1)
+                    tmp_value = -mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
+                else
+                    tmp_value = 0.0;
+                tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
+                if (value < tmp_value){
+                    value = tmp_value;
+                    a_cell = cell;
+                }
+            }
+        }
+        if (mcts_param.nodes[idx].children[a_cell] == -1){
+            mcts_param.nodes[idx].children[a_cell] = mcts_param.used_idx;
+            mcts_param.nodes[mcts_param.used_idx].w = 0.0;
+            mcts_param.nodes[mcts_param.used_idx].n = 0;
+            mcts_param.nodes[mcts_param.used_idx].pass = true;
+            mcts_param.nodes[mcts_param.used_idx].expanded = false;
+            move(mcts_param.nodes[idx].board, mcts_param.nodes[mcts_param.used_idx++].board, a_cell);
+        }
+        value = -evaluate(mcts_param.nodes[idx].children[a_cell], false, -player, n_stones + 1);
+        mcts_param.nodes[idx].w += value;
+        ++mcts_param.nodes[idx].n;
+    } else{
+        // pass
+        if (passed){
+            return end_game_evaluate(idx, player);
+        } else{
+            if (mcts_param.nodes[idx].children[hw2] == -1){
+                mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
+                mcts_param.nodes[mcts_param.used_idx].w = 0.0;
+                mcts_param.nodes[mcts_param.used_idx].n = 0;
+                mcts_param.nodes[mcts_param.used_idx].pass = true;
+                mcts_param.nodes[mcts_param.used_idx].expanded = false;
+                for (i = 0; i < board_index_num; ++i)
+                    mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
+                ++mcts_param.used_idx;
+            }
+            value = -evaluate(mcts_param.nodes[idx].children[hw2], true, -player, n_stones);
+            mcts_param.nodes[idx].w += value;
+            ++mcts_param.nodes[idx].n;
+        }
+    }
+    return value;
+}
+
+inline int next_action(int *board){
+    int i, cell, mx = 0, res = -1;
+    mcts_param.used_idx = 1;
+    for (i = 0; i < board_index_num; ++i)
+        mcts_param.nodes[0].board[i] = board[i];
+    mcts_param.nodes[0].w = 0.0;
+    mcts_param.nodes[0].n = 0;
+    mcts_param.nodes[0].pass = true;
+    mcts_param.nodes[0].expanded = true;
+    // expand children
+    bool legal[hw2];
+    for (cell = 0; cell < hw2; ++cell){
+        mcts_param.nodes[0].children[cell] = -1;
+        legal[cell] = false;
+        for (i = 0; i < board_index_num; ++i){
+            if (board_param.put[cell][i] != -1){
+                if (board_param.legal[board[i]][board_param.put[cell][i]]){
+                    mcts_param.nodes[0].pass = false;
+                    legal[cell] = true;
+                    break;
+                }
+            }
+        }
+    }
+    //predict and create policy array
+    predictions pred = predict(board);
+    mcts_param.nodes[0].w += pred.value;
+    ++mcts_param.nodes[0].n;
+    double p_sum = 0.0;
+    for (i = 0; i < hw2; ++i){
+        if (legal[i]){
+            mcts_param.nodes[0].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
+            p_sum += mcts_param.nodes[0].p[i];
+        } else{
+            mcts_param.nodes[0].p[i] = 0.0;
+        }
+    }
+    for (i = 0; i < hw2; ++i)
+        mcts_param.nodes[0].p[i] /= p_sum;
+    int n_stones = 0;
+    for (i = 0; i < hw; ++i)
+        n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
+    int strt = tim();
+    for (i = 0; i < evaluate_count; ++i){
+        evaluate(0, false, 1, n_stones);
+        if (tim() - strt > search_param.tl)
+            break;
+    }
+    for (i = 0; i < hw2; ++i){
+        if (legal[i]){
+            if (mcts_param.nodes[0].children[i] != -1){
+                //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
+                if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
+                    mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+                    res = i;
+                }
+            }
+        }
+    }
+    return res;
+}
+
+inline void mcts(int *board){
+    int policy = next_action(board);
+    cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << " " << search_param.n_playout << "  " << mcts_param.used_idx << endl;
+    cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
+}
+
+inline void complete(int *board){
+    pair<int, int> result = find_win(board);
+    if (result.first == 1)
+        cerr << "WIN" << endl;
+    else if (result.first == 0)
+        cerr << "DRAW" << endl;
+    else
+        cerr << "LOSE" << endl;
+    cout << result.second / hw << " " << result.second % hw << " " << 100.0 << endl;
 }
 
 int main(){
@@ -1494,7 +1521,7 @@ int main(){
             mcts(board);
         } else{
             search_param.max_depth = hw2 + 1 - n_stones;
-            find_win(board);
+            complete(board);
         }
     }
     return 0;
