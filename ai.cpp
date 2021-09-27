@@ -37,7 +37,7 @@ using namespace std;
 #define evaluate_count 200
 #define c_puct 10.0
 #define c_end 1.0
-#define mcts_complete_stones 7
+#define mcts_complete_stones 8
 
 #define n_board_input 3
 #define n_add_input 11
@@ -1434,7 +1434,7 @@ inline void complete(int *board){
         cerr << "DRAW" << endl;
     else
         cerr << "LOSE" << endl;
-    cout << result.second / hw << " " << result.second % hw << " " << 100.0 << endl;
+    cout << result.second / hw << " " << result.second % hw << " " << 50.0 + 50.0 * result.first << endl;
 }
 
 int main(){
