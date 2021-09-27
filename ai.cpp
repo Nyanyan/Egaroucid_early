@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 1000
+#define evaluate_count 200
 #define c_puct 10.0
 #define c_end 1.0
 #define mcts_complete_stones 7
@@ -1230,24 +1230,15 @@ inline pair<int, int> find_win(int *board){
     hash_table_init(search_param.memo_ub);
     for (i = 0; i < canput; ++i){
         score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, 0.1, 0);
-        if (score > 0.0){
+        if (score > 0.0)
             return make_pair(1, lst[i].move);
-            //cerr << "WIN" << endl;
-            //cout << lst[i].move / hw << " " << lst[i].move % hw << " " << 100.0 << endl;
-            //return;
-        } else if (score == 0.0){
+        else if (score == 0.0)
             draw_move = lst[i].move;
-        }
     }
-    if (draw_move != -1){
+    if (draw_move != -1)
         return make_pair(0, draw_move);
-        //cerr << "DRAW" << endl;
-        //cout << draw_move / hw << " " << draw_move % hw << " " << 50.0 << endl;
-    } else{
-        return make_pair(1, lst[0].move);
-        //cerr << "LOSE" << endl;
-        //cout << lst[0].move / hw << " " << lst[0].move % hw << " " << 0.0 << endl;
-    }
+    else
+        return make_pair(-1, lst[0].move);
 }
 
 inline double end_game_evaluate(int idx, int player){
