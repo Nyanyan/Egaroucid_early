@@ -501,7 +501,7 @@ void init(){
     */
     FILE *fp;
     char cbuf[1024];
-    if ((fp = fopen("param/param.txt", "r")) == NULL){
+    if ((fp = fopen("learn/param/param.txt", "r")) == NULL){
         printf("param file not exist");
         exit(1);
     }
@@ -621,7 +621,7 @@ void init(){
         eval_param.std[i] = atof(cbuf);
     }
     */
-    if ((fp = fopen("param/book.txt", "r")) == NULL){
+    if ((fp = fopen("book/param/book.txt", "r")) == NULL){
         printf("book file not exist");
         exit(1);
     }
