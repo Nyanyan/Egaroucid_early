@@ -35,9 +35,10 @@ using namespace std;
 #define hash_mask (hash_table_size - 1)
 
 #define evaluate_count 10000
-#define c_puct 10.0
+#define c_puct 5.0
 #define c_end 1.0
-#define mcts_complete_stones 8
+#define c_value 0.25
+#define mcts_complete_stones 9
 
 #define n_board_input 3
 #define n_add_input 15
@@ -1329,7 +1330,7 @@ double evaluate(int idx, bool passed, int n_stones){
         if (!mcts_param.nodes[idx].pass){
             //predict and create policy array
             predictions pred = predict(mcts_param.nodes[idx].board);
-            mcts_param.nodes[idx].w += pred.value;
+            mcts_param.nodes[idx].w += c_value * pred.value;
             ++mcts_param.nodes[idx].n;
             double p_sum = 0.0;
             for (i = 0; i < hw2; ++i){
@@ -1342,11 +1343,11 @@ double evaluate(int idx, bool passed, int n_stones){
             }
             for (i = 0; i < hw2; ++i)
                 mcts_param.nodes[idx].p[i] /= p_sum;
-            return pred.value;
+            return c_value * pred.value;
         } else{
             for (i = 0; i < hw2; ++i)
                 mcts_param.nodes[idx].p[i] = 0.0;
-            value = predict(mcts_param.nodes[idx].board).value;
+            value = c_value * predict(mcts_param.nodes[idx].board).value;
             mcts_param.nodes[idx].w += value;
             ++mcts_param.nodes[idx].n;
             return value;
@@ -1518,12 +1519,14 @@ int main(){
             swap(p, o);
         key.first = p;
         key.second = o;
+        /*
         cerr << key.first << " " << key.second << endl;
         if (search_param.book.find(key) != search_param.book.end()){
             cerr << "BOOK " << search_param.book[key].policy << " " << search_param.book[key].rate << endl;
             cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << search_param.book[key].rate << endl;
             continue;
         }
+        */
         if (search_param.vacant_cnt)
             sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
         for (i = 0; i < board_index_num; ++i){
