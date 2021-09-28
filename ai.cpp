@@ -1343,6 +1343,11 @@ double evaluate(int idx, bool passed, int n_stones){
             for (i = 0; i < hw2; ++i)
                 mcts_param.nodes[idx].p[i] /= p_sum;
             return pred.value;
+        } else{
+            value = predict(mcts_param.nodes[idx].board).value;
+            for (i = 0; i < hw2; ++i)
+                mcts_param.nodes[idx].p[i] = 0.0;
+            return value;
         }
     }
     if (!mcts_param.nodes[idx].pass){
