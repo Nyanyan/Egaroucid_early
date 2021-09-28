@@ -598,7 +598,7 @@ void init(){
     }
     eval_param.bias4 = atof(cbuf);
     /*
-    if ((fp = fopen("param/mean.txt", "r")) == NULL){
+    if ((fp = fopen("learn/param/mean.txt", "r")) == NULL){
         printf("mean file not exist");
         exit(1);
     }
@@ -609,7 +609,7 @@ void init(){
         }
         eval_param.mean[i] = atof(cbuf);
     }
-    if ((fp = fopen("param/std.txt", "r")) == NULL){
+    if ((fp = fopen("learn/param/std.txt", "r")) == NULL){
         printf("std file not exist");
         exit(1);
     }
