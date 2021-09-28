@@ -5,6 +5,7 @@ tmp.py
 learn/evaluation.out
 learn/self_play.out
 book/make_board.out
+book/ai_probability.out
 learn/decide.out
 learn/early_stage.out
 Procfile
