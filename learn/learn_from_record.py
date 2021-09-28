@@ -18,8 +18,8 @@ hw2 = 64
 
 all_data = []
 
-n_epochs = 1000
-game_num = 20000
+n_epochs = 10
+game_num = 20
 game_strt = 0
 n_kernels = 20
 kernel_size = 3

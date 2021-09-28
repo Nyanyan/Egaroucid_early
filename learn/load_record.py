@@ -202,3 +202,4 @@ for i in trange(len(games)):
         continue
     collect_data(idx, games[i])
     idx += 1
+print(idx)
