@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D,
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
-from keras.layers.advanced_activations import LeakyReLU
+#from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,8 +14,8 @@ import subprocess
 from math import exp
 import sys
 
-#def LeakyReLU(x):
-#    return tf.math.maximum(0.01 * x, x)
+def LeakyReLU(x):
+    return tf.math.maximum(0.01 * x, x)
 
 if len(sys.argv) != 2:
     print('arg err')

@@ -19,18 +19,21 @@ hw2 = 64
 all_data = []
 
 n_epochs = 1000
-game_num = 65000
+game_num = 30000
 game_strt = 0
-n_kernels = 25
-kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.2
+
+kernel_size = 3
+n_kernels = 25
+n_residual = 2
+
 leakyrelu_alpha = 0.01
 n_train_data = int(game_num * (1.0 - test_ratio))
 n_test_data = int(game_num * test_ratio)
 
 train_board = np.zeros((n_train_data * 60, hw, hw, 3))
-train_param = np.zeros((n_train_data * 60, 11))
+train_param = np.zeros((n_train_data * 60, 15))
 train_policies = np.zeros((n_train_data * 60, hw2))
 train_value = np.zeros(n_train_data * 60)
 
@@ -140,7 +143,6 @@ def reshape_data_train():
                 stone_num += board[idx] != '.'
         if stone_num < 10 or stone_num > 56:
             continue
-        test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         #train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
         #train_param.append([float(i) for i in param.split()])
@@ -156,7 +158,7 @@ def reshape_data_train():
             for j in range(hw):
                 for k in range(3):
                     train_board[train_idx][i][j][k] = grid_flat[k * hw2 + j * hw + i]
-        for i, elem in zip(range(11), param.split()):
+        for i, elem in zip(range(15), param.split()):
             train_param[train_idx][i] = float(elem)
         for i in range(hw2):
             train_policies[train_idx][i] = policies[i]
@@ -166,9 +168,11 @@ def reshape_data_train():
     train_param = train_param[0:train_idx]
     train_policies = train_policies[0:train_idx]
     train_value = train_value[0:train_idx]
-    #mean = train_param.mean(axis=0)
-    #std = train_param.std(axis=0)
-    #train_param = (train_param - mean) / std
+    mean = train_param.mean(axis=0)
+    std = train_param.std(axis=0)
+    print('mean', mean)
+    print('std', std)
+    train_param = (train_param - mean) / std
     '''
     print(train_board[0])
     print(train_param[0])
@@ -237,7 +241,7 @@ def reshape_data_test():
     test_param = np.array(test_param)
     test_policies = np.array(test_policies)
     test_value = np.array(test_value)
-    #test_param = (test_param - mean) / std
+    test_param = (test_param - mean) / std
     '''
     print(test_board[0])
     print(test_param[0])
@@ -269,7 +273,9 @@ def LeakyReLU(x):
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-records = sample(list(range(21000)), game_num)
+range_lst = list(range(65000))
+shuffle(range_lst)
+records = range_lst[:game_num]
 for i in trange(game_strt, game_strt + train_num):
     try:
         collect_data(records[i], use_ratio)
@@ -286,12 +292,12 @@ reshape_data_test()
 my_evaluate.kill()
 
 input_b = Input(shape=(hw, hw, 3,))
-input_p = Input(shape=(11,))
+input_p = Input(shape=(15,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
 #x_b = BatchNormalization()(x_b)
 #x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
 x_b = LeakyReLU(x_b)
-for _ in range(2):
+for _ in range(n_residual):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
     x_b = Add()([x_b, sc])
@@ -371,7 +377,7 @@ pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
 pred_value = test_predictions[1]
 for i in range(test_num):
     #print('board', [[[ii for ii in jj] for jj in kk] for kk in test_board[i]])
-    #print('param', list(test_param[i]))
+    print('param', list(test_param[i]))
     print('raw_board', test_raw_board[i])
     '''
     board_str = ''

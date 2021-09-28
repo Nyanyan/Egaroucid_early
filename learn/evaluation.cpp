@@ -226,6 +226,8 @@ struct eval_param{
     int confirm_p[6561], confirm_o[6561];
     int pot_canput_p[6561], pot_canput_o[6561];
     double open_eval[40];
+    double x_corner_p[6561], x_corner_o[6561];
+    double c_a_b_p[6561], c_a_b_o[6561];
 };
 
 struct search_param{
@@ -513,6 +515,42 @@ void init(){
             eval_param.cnt_p[i] += 1 & (p >> j);
             eval_param.cnt_o[i] += 1 & (o >> j);
         }
+        eval_param.x_corner_p[i] = 0.0;
+        if (((~p & 1) & ((p >> 1) & 1)) & 1)
+            eval_param.x_corner_p[i] += 1.0;
+        if (((~(p >> 7) & 1) & ((p >> 6) & 1)) & 1)
+            eval_param.x_corner_p[i] += 1.0;
+        eval_param.x_corner_o[i] = 0.0;
+        if (((~o & 1) & ((o >> 1) & 1)) & 1)
+            eval_param.x_corner_o[i] += 1.0;
+        if (((~(o >> 7) & 1) & ((o >> 6) & 1)) & 1)
+            eval_param.x_corner_o[i] += 1.0;
+        eval_param.c_a_b_p[i] = 0.0;
+        if (((~p & 1) & ((p >> 1) & 1)) & 1){
+            if (~(p >> 2) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+            if (~(p >> 3) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+        }
+        if (((~(p >> 7) & 1) & ((p >> 6) & 1)) & 1){
+            if (~(p >> 5) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+            if (~(p >> 4) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+        }
+        eval_param.c_a_b_o[i] = 0.0;
+        if (((~o & 1) & ((o >> 1) & 1)) & 1){
+            if (~(o >> 2) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
+            if (~(o >> 3) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
+        }
+        if (((~(o >> 7) & 1) & ((o >> 6) & 1)) & 1){
+            if (~(o >> 5) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
+            if (~(o >> 4) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
+        }
         mobility = check_mobility(p, o);
         canput_num = 0;
         for (j = 0; j < hw; ++j){
@@ -732,6 +770,10 @@ inline double evaluate(const int *board, const double open){
     double confirm = confirm_eval(board);
     double pot_canput = pot_canput_eval(board);
     cout << search_param.turn << " ";
+    cout << eval_param.x_corner_p[board[21]] + eval_param.x_corner_p[board[32]] << " ";
+    cout << eval_param.x_corner_o[board[21]] + eval_param.x_corner_o[board[32]] << " ";
+    cout << eval_param.c_a_b_p[board[0]] + eval_param.c_a_b_p[board[7]] + eval_param.c_a_b_p[board[8]] + eval_param.c_a_b_p[board[15]] << " ";
+    cout << eval_param.c_a_b_o[board[0]] + eval_param.c_a_b_o[board[7]] + eval_param.c_a_b_o[board[8]] + eval_param.c_a_b_o[board[15]] << " ";
     //double open = eval_param.open_eval[min(39, open_val)];
     return 0.0;
 }

@@ -4,9 +4,9 @@ app.py
 tmp.py
 learn/evaluation.out
 learn/self_play.out
-learn/make_board.out
+book/make_board.out
 learn/decide.out
-book/early_stage.out
+learn/early_stage.out
 Procfile
 statistics
 learn/graph
