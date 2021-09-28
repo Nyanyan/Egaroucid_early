@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D,
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
-#from keras.layers.advanced_activations import LeakyReLU
+from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,22 +18,19 @@ hw2 = 64
 
 all_data = []
 
-n_epochs = 1000
-game_num = 30000
+n_epochs = 10
+game_num = 20
 game_strt = 0
+n_kernels = 20
+kernel_size = 3
 use_ratio = 1.0
 test_ratio = 0.2
-
-kernel_size = 3
-n_kernels = 25
-n_residual = 2
-
 leakyrelu_alpha = 0.01
 n_train_data = int(game_num * (1.0 - test_ratio))
 n_test_data = int(game_num * test_ratio)
 
 train_board = np.zeros((n_train_data * 60, hw, hw, 3))
-train_param = np.zeros((n_train_data * 60, 15))
+train_param = np.zeros((n_train_data * 60, 11))
 train_policies = np.zeros((n_train_data * 60, hw2))
 train_value = np.zeros(n_train_data * 60)
 
@@ -104,7 +101,6 @@ def reshape_data_train():
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
         tmp_data.append([board, additional_data, policies, score])
-        #tmp_data.append([board, policies, score])
     shuffle(tmp_data)
     ln = len(tmp_data)
     print('got', ln)
@@ -129,7 +125,6 @@ def reshape_data_train():
     train_idx = 0
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
-        #board, policies, score = tmp_data[ii]
         stone_num = 0
         grid_space0 = ''
         grid_space1 = ''
@@ -143,6 +138,7 @@ def reshape_data_train():
                 stone_num += board[idx] != '.'
         if stone_num < 10 or stone_num > 56:
             continue
+        test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         #train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
         #train_param.append([float(i) for i in param.split()])
@@ -158,8 +154,8 @@ def reshape_data_train():
             for j in range(hw):
                 for k in range(3):
                     train_board[train_idx][i][j][k] = grid_flat[k * hw2 + j * hw + i]
-        for i, elem in zip(range(15), param.split()):
-            train_param[train_idx][i] = float(elem)
+        for i, elem in zip(range(11), param.split()):
+            train_param[train_idx][i] = elem
         for i in range(hw2):
             train_policies[train_idx][i] = policies[i]
         train_value[train_idx] = score
@@ -168,10 +164,12 @@ def reshape_data_train():
     train_param = train_param[0:train_idx]
     train_policies = train_policies[0:train_idx]
     train_value = train_value[0:train_idx]
+    #train_board = np.array(train_board)
+    #train_param = np.array(train_param)
+    #train_policies = np.array(train_policies)
+    #train_value = np.array(train_value)
     mean = train_param.mean(axis=0)
     std = train_param.std(axis=0)
-    print('mean', mean)
-    print('std', std)
     train_param = (train_param - mean) / std
     '''
     print(train_board[0])
@@ -193,7 +191,6 @@ def reshape_data_test():
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
         tmp_data.append([board, additional_data, policies, score])
-        #tmp_data.append([board, policies, score])
     shuffle(tmp_data)
     ln = len(tmp_data)
     print('got', ln)
@@ -217,7 +214,6 @@ def reshape_data_test():
     '''
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
-        #board, policies, score = tmp_data[ii]
         stone_num = 0
         grid_space0 = ''
         grid_space1 = ''
@@ -267,15 +263,13 @@ def policy_error(y_true, y_pred):
 def weighted_mse(y_true, y_pred):
     return 10.0 * ((y_true - y_pred) ** 2)
 
-def LeakyReLU(x):
-    return tf.math.maximum(0.01 * x, x)
+#def LeakyReLU(x):
+#    return tf.math.maximum(0.01 * x, x)
 
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-range_lst = list(range(65000))
-shuffle(range_lst)
-records = range_lst[:game_num]
+records = sample(list(range(21000)), game_num)
 for i in trange(game_strt, game_strt + train_num):
     try:
         collect_data(records[i], use_ratio)
@@ -292,24 +286,20 @@ reshape_data_test()
 my_evaluate.kill()
 
 input_b = Input(shape=(hw, hw, 3,))
-input_p = Input(shape=(15,))
+input_p = Input(shape=(11,))
 x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
 #x_b = BatchNormalization()(x_b)
-#x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-x_b = LeakyReLU(x_b)
-for _ in range(n_residual):
+x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+#x_b = LeakyReLU(x_b)
+for _ in range(3):
     sc = x_b
     x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
     x_b = Add()([x_b, sc])
-    #x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-    x_b = LeakyReLU(x_b)
+    x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    #x_b = LeakyReLU(x_b)
 x_b = GlobalAveragePooling2D()(x_b)
-
 x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(8)(input_p)
-x_p = LeakyReLU(x_p)
-'''
 x_p = Dense(32)(input_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 #x_p = LeakyReLU(x_p)
@@ -317,12 +307,9 @@ x_p = Dense(16)(x_p)
 #x_p = Dropout(0.0625)(x_p)
 x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
 #x_p = LeakyReLU(x_p)
-'''
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
 x_all = concatenate([x_b.output, x_p.output])
-
-#x_all = x_b
 
 output_p = Dense(hw2)(x_all)
 output_p = Activation('softmax', name='policy')(output_p)
@@ -334,14 +321,12 @@ output_v = Dense(1)(x_all)
 output_v = Activation('tanh', name='value')(output_v)
 
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
-#model = Model(inputs=[input_b], outputs=[output_p, output_v])
 model.summary()
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
 #plot_model(model, show_shapes=True, show_layer_names=False)
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
-#history = model.fit([train_board], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board], [test_policies, test_value]), callbacks=[early_stop])
 with open('param/mean.txt', 'w') as f:
     for i in mean:
         f.write(str(i) + '\n')
@@ -370,14 +355,13 @@ plt.clf()
 test_num = 10
 test_num = min(test_value.shape[0], test_num)
 test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
-#test_predictions = model.predict([test_board[0:test_num]])
 ans_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_policies[0:test_num]]
 ans_value = [round(i, 3) for i in test_value[0:test_num]]
 pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
 pred_value = test_predictions[1]
 for i in range(test_num):
     #print('board', [[[ii for ii in jj] for jj in kk] for kk in test_board[i]])
-    print('param', list(test_param[i]))
+    #print('param', list(test_param[i]))
     print('raw_board', test_raw_board[i])
     '''
     board_str = ''
