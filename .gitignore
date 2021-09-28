@@ -3,7 +3,7 @@ ai.out
 app.py
 tmp.py
 learn/evaluation.out
-self_play.out
+learn/self_play.out
 learn/make_board.out
 learn/decide.out
 book/early_stage.out
