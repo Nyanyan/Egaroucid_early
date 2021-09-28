@@ -152,9 +152,10 @@ pooling_out = Model(inputs=model.input, outputs=model.get_layer('global_average_
 
 test_num = 3
 test_num = min(test_board.shape[0], test_num)
-test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
-conv_outs = conv_out.predict([test_board[0:test_num], test_param[0:test_num]])
-pooling_outs = pooling_out.predict([test_board[0:test_num], test_param[0:test_num]])
+#test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
+test_predictions = model.predict([test_board[0:test_num]])
+#conv_outs = conv_out.predict([test_board[0:test_num], test_param[0:test_num]])
+#pooling_outs = pooling_out.predict([test_board[0:test_num], test_param[0:test_num]])
 pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
 pred_value = test_predictions[1]
 print('')

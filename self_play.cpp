@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 20
+#define evaluate_count 5
 #define c_puct 10.0
 #define c_end 1.0
 #define mcts_complete_stones 8

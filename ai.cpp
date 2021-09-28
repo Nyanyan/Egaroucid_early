@@ -42,10 +42,10 @@ using namespace std;
 #define n_board_input 3
 #define n_add_input 11
 #define kernel_size 3
-#define n_kernels 20
+#define n_kernels 32
 #define n_residual 3
-#define n_dense1 32
-#define n_dense2 16
+#define n_dense1 0
+#define n_dense2 0
 #define n_joined (n_kernels + n_dense2)
 #define conv_size (hw_p1 - kernel_size)
 #define conv_padding (kernel_size / 2)
@@ -518,6 +518,7 @@ void init(){
             }
         }
     }
+    cerr << "a";
     int residual_i;
     for (residual_i = 0; residual_i < n_residual; ++residual_i){
         for (i = 0; i < n_kernels; ++i){
@@ -534,6 +535,7 @@ void init(){
             }
         }
     }
+    /*
     for (i = 0; i < n_add_input; ++i){
         for (j = 0; j < n_dense1; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -566,6 +568,7 @@ void init(){
         }
         eval_param.bias2[i] = atof(cbuf);
     }
+    */
     for (i = 0; i < n_joined; ++i){
         for (j = 0; j < hw2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -594,6 +597,7 @@ void init(){
         exit(1);
     }
     eval_param.bias4 = atof(cbuf);
+    /*
     if ((fp = fopen("param/mean.txt", "r")) == NULL){
         printf("mean file not exist");
         exit(1);
@@ -616,6 +620,7 @@ void init(){
         }
         eval_param.std[i] = atof(cbuf);
     }
+    */
     if ((fp = fopen("param/book.txt", "r")) == NULL){
         printf("book file not exist");
         exit(1);
@@ -830,6 +835,7 @@ inline predictions predict(const int *board){
             eval_param.input_b[0][j][hw_m1 + conv_padding2] = 0.0;
         }
     }
+    /*
     for (i = 0; i < n_add_input; ++i)
         eval_param.input_p[i] = 0.0;
     eval_param.input_p[3] = eval_param.avg_canput[search_param.turn];
@@ -851,6 +857,7 @@ inline predictions predict(const int *board){
         eval_param.input_p[i] -= eval_param.mean[i];
         eval_param.input_p[i] /= eval_param.std[i];
     }
+    */
     // conv and normalization and leaky-relu for input_b
     for (i = 0; i < n_kernels; ++i){
         for (y = 0; y < hw + conv_padding2; ++y){
@@ -906,6 +913,7 @@ inline predictions predict(const int *board){
         }
         eval_param.hidden_joined[i] /= div_pooling;
     }
+    /*
     // dense1 and bias and leaky-relu for input_p
     for (i = 0; i < n_dense1; ++i)
         eval_param.hidden_dense1[i] = 0.0;
@@ -924,6 +932,7 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < n_dense2; ++i)
         eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias2[i]);
+    */
     // dense and bias for policy output *don't need softmax because use softmax later
     for (i = 0; i < hw2; ++i)
         res.policies[i] = 0.0;
@@ -1472,6 +1481,7 @@ int main(){
         }
         if (ai_player == 1)
             swap(p, o);
+        /*
         key.first = p;
         key.second = o;
         cerr << key.first << " " << key.second << endl;
@@ -1480,9 +1490,9 @@ int main(){
             cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << search_param.book[key].rate << endl;
             continue;
         }
-        if (search_param.vacant_cnt){
+        */
+        if (search_param.vacant_cnt)
             sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
-        }
         for (i = 0; i < board_index_num; ++i){
             board_tmp = 0;
             for (j = 0; j < board_param.pattern_space[i]; ++j){
@@ -1493,7 +1503,7 @@ int main(){
             }
             board[i] = board_tmp;
         }
-        /*
+        
         print_board(board);
         predictions tmp = predict(board);
         double mx = -1000.0;
@@ -1506,7 +1516,7 @@ int main(){
         }
         cerr << mx_idx << " " << mx << " " << tmp.value << endl;
         return 0;
-        */
+        
         if (n_stones < hw2 - complete_stones){
             mcts(board);
         } else{

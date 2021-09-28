@@ -15,9 +15,9 @@ import subprocess
 from math import exp
 from os import rename
 
-selfplay_num = 2
-num_self_play_in_one_time_train = 100
-num_self_play_in_one_time_test = 20
+selfplay_num = 1
+num_self_play_in_one_time_train = 500
+num_self_play_in_one_time_test = 50
 num_of_decide = 100
 n_epochs = 50
 
