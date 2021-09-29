@@ -26,6 +26,8 @@ var tl_idx = -1;
 let tl_names = ['レベル-2', 'レベル-1', 'レベル1', 'レベル2', 'レベル3', 'レベル4', 'レベル5', 'レベル6', 'レベル7'];
 let record = [];
 var step = 0;
+var direction = -1;
+var isstart = true;
 var ctx = document.getElementById("graph");
 var graph = new Chart(ctx, {
     type: 'line',
@@ -288,6 +290,7 @@ function ai() {
     }
     data_json["ai_player"] = ai_player;
     data_json["tl"] = tl;
+    data_json["direction"] = direction;
     $.ajax({
         type: "POST",
         url: "/ai",
@@ -326,6 +329,17 @@ function ai() {
 }
 
 function move(y, x) {
+    if (isstart) {
+        isstart = false;
+        if (x == 5)
+            direction = 0;
+        else if (x == 4)
+            direction = 1;
+        else if (x == 3)
+            direction = 3;
+        else
+            direction = 2;
+    }
     grid[y][x] = player;
     for (var dr = 0; dr < 8; ++dr) {
         var ny = y + dy[dr];

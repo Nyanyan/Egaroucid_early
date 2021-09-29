@@ -75,6 +75,7 @@ struct board_param{
     int put_idx[hw2][10];
     int put_idx_num[hw2];
     int restore_p[6561][hw], restore_o[6561][hw], restore_vacant[6561][hw];
+    int turn_board[4][hw2];
 };
 
 struct eval_param{
@@ -477,28 +478,6 @@ void init(){
             }
         }
     }
-    /*
-    all_idx = 0;
-    for (i = 0; i < super_compress_pattern.length(); ++i){
-        if ((int)super_compress_pattern[i] >= num_s){
-            for (j = 0; j < (int)super_compress_pattern[i] - num_s + 1; ++j){
-                compress_pattern[all_idx] = compress_pattern[all_idx - 1];
-                ++all_idx;
-            }
-        } else {
-            compress_pattern[all_idx] = super_compress_pattern[i];
-            ++all_idx;
-        }
-    }
-    //cerr << "unziped elems: " << all_idx << endl;
-    for (i = 0; i < pattern_elem_num; ++i)
-        patterns[i] = compress_vals[compress_pattern[i] - char_s];
-    all_idx = 0;
-    for (i = 0; i < pattern_num; ++i){
-        for (j = 0; j < (int)pow(3, eval_param.pattern_space[i]); ++j)
-            eval_param.pattern[i][j] = patterns[all_idx++];
-    }
-    */
     FILE *fp;
     char cbuf[1024];
     if ((fp = fopen("learn/param/param.txt", "r")) == NULL){
@@ -551,24 +530,6 @@ void init(){
         }
         eval_param.bias1[i] = atof(cbuf);
     }
-    /*
-    for (i = 0; i < n_dense1; ++i){
-        for (j = 0; j < n_dense2; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense2[i][j] = atof(cbuf);
-        }
-    }
-    for (i = 0; i < n_dense2; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias2[i] = atof(cbuf);
-    }
-    */
     for (i = 0; i < n_joined; ++i){
         for (j = 0; j < hw2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -847,6 +808,22 @@ void init(){
     }
     for (i = 0; i < 100; ++i)
         mcts_param.sqrt_arr[i] = sqrt((double)i);
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[0][i * hw + j] = i * hw + j;
+    }
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[1][i * hw + j] = j * hw + i;
+    }
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[2][i * hw + j] = (hw_m1 - i) * hw + (hw_m1 - j);
+    }
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[3][i * hw + j] = (hw_m1 - j) * hw + (hw_m1 - i);
+    }
 }
 
 inline double leaky_relu(double x){
@@ -1467,13 +1444,13 @@ inline int next_action(int *board){
     return res;
 }
 
-inline void mcts(int *board){
+inline void mcts(int *board, int direction){
     int policy = next_action(board);
     cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
-    cout << policy / hw << " " << policy % hw << " " << 50.0 - 50.0 * (double)mcts_param.nodes[mcts_param.nodes[0].children[policy]].w / mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << endl;
+    cout << board_param.turn_board[direction][policy] / hw << " " << board_param.turn_board[direction][policy] % hw << " " << 50.0 - 50.0 * (double)mcts_param.nodes[mcts_param.nodes[0].children[policy]].w / mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << endl;
 }
 
-inline void complete(int *board){
+inline void complete(int *board, int direction){
     pair<int, int> result = find_win(board);
     if (result.first == 1)
         cerr << "WIN" << endl;
@@ -1481,7 +1458,7 @@ inline void complete(int *board){
         cerr << "DRAW" << endl;
     else
         cerr << "LOSE" << endl;
-    cout << result.second / hw << " " << result.second % hw << " " << 50.0 + 50.0 * result.first << endl;
+    cout << board_param.turn_board[direction][result.second] / hw << " " << board_param.turn_board[direction][result.second] % hw << " " << 50.0 + 50.0 * result.first << endl;
 }
 
 int main(){
@@ -1494,6 +1471,7 @@ int main(){
     int board[board_index_num];
     double rnd, sm;
     pair<unsigned long long, unsigned long long> key;
+    int direction = -1;
     while (true){
         search_param.turn = 0;
         p = 0;
@@ -1503,25 +1481,28 @@ int main(){
         search_param.vacant_cnt = 0;
         cin >> ai_player;
         cin >> search_param.tl;
-        for (i = 0; i < hw2; ++i){
-            cin >> elem;
-            if (elem != '.'){
-                ++search_param.turn;
-                p |= (unsigned long long)(elem == '0') << i;
-                o |= (unsigned long long)(elem == '1') << i;
-                ++n_stones;
-            } else{
-                ++search_param.vacant_cnt;
-                search_param.vacant_lst.push_back(i);
-            }
-        }
-        if (ai_player == 1)
-            swap(p, o);
-        if (n_stones == 4){
+        cin >> direction;
+        if (direction == -1){
+            for (i = 0; i < hw2; ++i)
+                cin >> elem;
             cerr << "FIRST" << endl;
             cout << 4 << " " << 5 << " " << 50.0 << endl;
             continue;
         }
+        for (i = 0; i < hw2; ++i){
+            cin >> elem;
+            if (elem != '.'){
+                ++search_param.turn;
+                p |= (unsigned long long)(elem == '0') << board_param.turn_board[direction][i];
+                o |= (unsigned long long)(elem == '1') << board_param.turn_board[direction][i];
+                ++n_stones;
+            } else{
+                ++search_param.vacant_cnt;
+                search_param.vacant_lst.push_back(board_param.turn_board[direction][i]);
+            }
+        }
+        if (ai_player == 1)
+            swap(p, o);
         /*
         key.first = p;
         key.second = o;
@@ -1559,10 +1540,10 @@ int main(){
         return 0;
         */
         if (n_stones < hw2 - complete_stones){
-            mcts(board);
+            mcts(board, direction);
         } else{
             search_param.max_depth = hw2 + 1 - n_stones;
-            complete(board);
+            complete(board, direction);
         }
     }
     return 0;
