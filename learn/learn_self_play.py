@@ -18,7 +18,7 @@ from time import time
 import datetime
 
 selfplay_num = 10
-num_self_play_in_one_time_train = 1000
+num_self_play_in_one_time_train = 500
 num_self_play_in_one_time_test = 100
 num_of_decide = 100
 n_epochs = 50
@@ -357,12 +357,12 @@ def get_early_stages():
             early_stages.append(grid)
     print('len early stages', len(early_stages))
 
-get_early_stages()
+#get_early_stages()
 
 
 model_updated = True
 
-for _ in range(10):
+while True:
     
     #if model_updated:
     all_data = []

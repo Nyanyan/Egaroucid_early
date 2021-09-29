@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 100
+#define evaluate_count 200
 #define c_puct 3.0
 #define c_end 1.0
 #define c_value 0.25
@@ -243,7 +243,7 @@ struct mcts_node{
 };
 
 struct mcts_param{
-    mcts_node nodes[65 * evaluate_count];
+    mcts_node nodes[2 * evaluate_count];
     int used_idx;
     double sqrt_arr[100];
 };

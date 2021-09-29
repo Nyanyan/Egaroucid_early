@@ -244,7 +244,7 @@ struct mcts_node{
 };
 
 struct mcts_param{
-    mcts_node nodes[65 * evaluate_count];
+    mcts_node nodes[2 * evaluate_count];
     int used_idx;
     double sqrt_arr[100];
 };
