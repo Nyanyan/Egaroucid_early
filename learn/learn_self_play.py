@@ -16,7 +16,7 @@ from math import exp
 from os import rename
 from time import time
 
-selfplay_num = 1
+selfplay_num = 10
 num_self_play_in_one_time_train = 1000
 num_self_play_in_one_time_test = 100
 num_of_decide = 100

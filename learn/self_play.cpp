@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 25
+#define evaluate_count 50
 #define c_puct 3.0
 #define c_end 1.0
 #define c_value 0.25
@@ -1531,6 +1531,7 @@ int main(int argc, char* argv[]){
     int legal_steps, random_step;
     double ratio, ratio_sum;
     vector<history> hist0, hist1;
+    string output_str;
     for (int tim = 0; tim < num; ++tim){
         cerr << tim << " ";
         hist0 = {};
@@ -1628,18 +1629,19 @@ int main(int argc, char* argv[]){
         if (player)
             win0 = -win0;
         value = (double)win0;
-        cout << hist0.size() << endl;
-        cout << value << endl;
+        output_str += to_string(hist0.size()) + "\n";
+        output_str += to_string(value) + "\n";
         for (i = 0; i < hist0.size(); ++i){
-            cout << hist0[i].board << endl;
-            cout << hist0[i].policy << endl;
+            output_str += hist0[i].board + "\n";
+            output_str += to_string(hist0[i].policy) + "\n";
         }
-        cout << hist1.size() << endl;
-        cout << -value << endl;
+        output_str += to_string(hist1.size()) + "\n";
+        output_str += to_string(-value) + "\n";
         for (i = 0; i < hist1.size(); ++i){
-            cout << hist1[i].board << endl;
-            cout << hist1[i].policy << endl;
+            output_str += hist1[i].board + "\n";
+            output_str += to_string(hist1[i].policy) + "\n";
         }
     }
+    cout << output_str;
     return 0;
 }
