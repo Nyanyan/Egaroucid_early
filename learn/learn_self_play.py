@@ -14,10 +14,11 @@ from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
 from os import rename
+from time import time
 
 selfplay_num = 1
-num_self_play_in_one_time_train = 500
-num_self_play_in_one_time_test = 50
+num_self_play_in_one_time_train = 1000
+num_self_play_in_one_time_test = 100
 num_of_decide = 100
 n_epochs = 50
 
@@ -52,27 +53,29 @@ early_stages = []
 
 def self_play(num_self_play_in_one_time):
     global all_data
-    sp = [subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(selfplay_num)]
+    strt = time()
+    sp = []
     one_play_num = num_self_play_in_one_time // selfplay_num
     for i in range(selfplay_num):
         seed = randint(1, 2000000000)
-        sp[i].stdin.write((str(seed) + '\n').encode('utf-8'))
-        sp[i].stdin.write((str(one_play_num) + '\n').encode('utf-8'))
-        sp[i].stdin.flush()
+        #stdin = str(seed) + '\n' + str(one_play_num) + '\n'
+        sp.append(subprocess.Popen(('./self_play.out ' + str(seed) + ' ' + str(one_play_num)).split(), stdout=subprocess.PIPE))
     for i in range(selfplay_num):
         idx = 0
+        result = sp[i].communicate()[0].decode().splitlines()
         for num in range(one_play_num * 2):
-            ln = int(sp[i].stdout.readline().decode().strip())
+            ln = int(result[idx])
             idx += 1
-            score = float(sp[i].stdout.readline().decode().strip())
+            score = float(result[idx])
             idx += 1
             for _ in range(ln):
-                board = sp[i].stdout.readline().decode().strip()
+                board = result[idx]
                 idx += 1
-                policy = int(sp[i].stdout.readline().decode().strip())
+                policy = int(result[idx])
                 idx += 1
                 all_data.append([board, policy, score])
         sp[i].kill()
+    print(time() - strt)
 
 def reshape_data_train():
     global train_board, train_param, train_policies, train_value, mean, std
@@ -309,7 +312,9 @@ def decide(num):
             #print(stdin)
             ais[player2ai[rv.player]].stdin.write(stdin.encode('utf-8'))
             ais[player2ai[rv.player]].stdin.flush()
-            y, x, _ = [int(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
+            y, x, _ = [float(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
+            y = int(y)
+            x = int(x)
             rv.move(y, x)
             if rv.end():
                 break
@@ -351,28 +356,27 @@ model_updated = True
 
 for _ in range(10):
     
-    if model_updated:
-        all_data = []
-        train_board = []
-        train_param = []
-        train_policies = []
-        train_value = []
-        print('loading train data')
-        self_play(num_self_play_in_one_time_train)
-        reshape_data_train()
-        all_data = []
-        test_raw_board = []
-        test_board = []
-        test_param = []
-        test_policies = []
-        test_value = []
-        print('loading test data')
-        self_play(num_self_play_in_one_time_test)
-        reshape_data_test()
+    #if model_updated:
+    all_data = []
+    train_board = []
+    train_param = []
+    train_policies = []
+    train_value = []
+    print('loading train data')
+    self_play(num_self_play_in_one_time_train)
+    reshape_data_train()
+    all_data = []
+    test_raw_board = []
+    test_board = []
+    test_param = []
+    test_policies = []
+    test_value = []
+    print('loading test data')
+    self_play(num_self_play_in_one_time_test)
+    reshape_data_test()
 
     print('start learning')
     model = load_model('param/best.h5')
-    print(model.evaluate([train_board, train_param], [train_policies, train_value]))
     model.trainable = True
     for layer in model.layers:
         layer.trainable = True

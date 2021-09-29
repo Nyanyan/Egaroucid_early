@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 100
+#define evaluate_count 25
 #define c_puct 3.0
 #define c_end 1.0
 #define c_value 0.25
@@ -501,9 +501,18 @@ void init(){
     */
     FILE *fp;
     char cbuf[1024];
-    if ((fp = fopen("param/param.txt", "r")) == NULL){
-        printf("param file not exist");
-        exit(1);
+    int mode;
+    cin >> mode;
+    if (mode == 0){
+        if ((fp = fopen("param/param.txt", "r")) == NULL){
+            printf("param file not exist");
+            exit(1);
+        }
+    } else{
+        if ((fp = fopen("param/param_new.txt", "r")) == NULL){
+            printf("param file not exist");
+            exit(1);
+        }
     }
     for (i = 0; i < n_kernels; ++i){
         for (j = 0; j < n_board_input; ++j){

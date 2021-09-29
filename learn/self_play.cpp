@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 100
+#define evaluate_count 25
 #define c_puct 3.0
 #define c_end 1.0
 #define c_value 0.25
@@ -1508,10 +1508,9 @@ inline void complete(int *board){
     cout << result.second / hw << " " << result.second % hw << " " << 50.0 + 50.0 * result.first << endl;
 }
 
-int main(){
-    cin >> xorw;
-    int num;
-    cin >> num;
+int main(int argc, char* argv[]){
+    xorw = atoi(argv[1]);
+    int num = atoi(argv[2]);
     init();
     self_play_param.random_step = 5;
     self_play_param.random_rate = 0.05;

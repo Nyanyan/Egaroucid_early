@@ -34,8 +34,8 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 10000
-#define c_puct 5.0
+#define evaluate_count 100
+#define c_puct 3.0
 #define c_end 1.0
 #define c_value 0.25
 #define mcts_complete_stones 9
@@ -1305,7 +1305,7 @@ double evaluate(int idx, bool passed, int n_stones){
         int result = find_win(mcts_param.nodes[idx].board).first;
         mcts_param.nodes[idx].w += c_end * (double)result;
         ++mcts_param.nodes[idx].n;
-        return (double)result;
+        return c_end * (double)result;
     }
     if (!mcts_param.nodes[idx].expanded){
         // when children not expanded
@@ -1448,20 +1448,28 @@ inline int next_action(int *board){
     for (i = 0; i < hw; ++i)
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
     int strt = tim();
-    for (i = 0; i < evaluate_count; ++i){
+    for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, n_stones);
-        if (tim() - strt > search_param.tl)
-            break;
-    }
+    double policies[hw2];
+    p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
+        policies[i] = 0.0;
         if (legal[i]){
             if (mcts_param.nodes[0].children[i] != -1){
-                //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-                if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                    mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                    res = i;
-                }
+                policies[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+                p_sum += policies[i];
             }
+        }
+    }
+    for (i = 0; i < hw2; ++i)
+        policies[i] /= p_sum;
+    double rnd = myrandom();
+    p_sum = 0.0;
+    for (i = 0; i < hw2; ++i){
+        p_sum += policies[i];
+        if (rnd <= p_sum){
+            res = i;
+            break;
         }
     }
     return res;
@@ -1469,18 +1477,20 @@ inline int next_action(int *board){
 
 inline void mcts(int *board){
     int policy = next_action(board);
-    cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
+    //cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
     cout << policy / hw << " " << policy % hw << " " << 50.0 - 50.0 * (double)mcts_param.nodes[mcts_param.nodes[0].children[policy]].w / mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << endl;
 }
 
 inline void complete(int *board){
     pair<int, int> result = find_win(board);
+    /*
     if (result.first == 1)
         cerr << "WIN" << endl;
     else if (result.first == 0)
         cerr << "DRAW" << endl;
     else
         cerr << "LOSE" << endl;
+    */
     cout << result.second / hw << " " << result.second % hw << " " << 50.0 + 50.0 * result.first << endl;
 }
 
@@ -1517,16 +1527,21 @@ int main(){
         }
         if (ai_player == 1)
             swap(p, o);
+        if (n_stones == 4){
+            //cerr << "FIRST" << endl;
+            cout << 4 << " " << 5 << " " << 50.0 << endl;
+            continue;
+        }
+        /*
         key.first = p;
         key.second = o;
-        
         cerr << key.first << " " << key.second << endl;
         if (search_param.book.find(key) != search_param.book.end()){
             cerr << "BOOK " << search_param.book[key].policy << " " << search_param.book[key].rate << endl;
             cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << search_param.book[key].rate << endl;
             continue;
         }
-        
+        */
         if (search_param.vacant_cnt)
             sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
         for (i = 0; i < board_index_num; ++i){

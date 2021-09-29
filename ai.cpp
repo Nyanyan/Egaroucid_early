@@ -1305,7 +1305,7 @@ double evaluate(int idx, bool passed, int n_stones){
         int result = find_win(mcts_param.nodes[idx].board).first;
         mcts_param.nodes[idx].w += c_end * (double)result;
         ++mcts_param.nodes[idx].n;
-        return (double)result;
+        return c_end * (double)result;
     }
     if (!mcts_param.nodes[idx].expanded){
         // when children not expanded
