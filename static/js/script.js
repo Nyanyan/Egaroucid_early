@@ -27,8 +27,6 @@ let tl_names = ['レベル-2', 'レベル-1', 'レベル1', 'レベル2', 'レ�
 let record = [];
 var step = 0;
 var ctx = document.getElementById("graph");
-var former_value1 = 50.0;
-var former_value2 = 50.0;
 var graph = new Chart(ctx, {
     type: 'line',
     data: {
@@ -381,12 +379,9 @@ function update_record() {
 }
 
 function update_graph(s) {
-    var value = (former_value1 + former_value2 + s) / 3.0;
     graph.data.labels.push(record.length);
-    graph.data.datasets[0].data.push(value);
+    graph.data.datasets[0].data.push(s);
     graph.update();
-    former_value1 = former_value2;
-    former_value2 = s;
 }
 
 function end_game() {
