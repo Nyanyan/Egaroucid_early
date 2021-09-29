@@ -19,12 +19,12 @@ hw2 = 64
 all_data = []
 
 n_epochs = 1000
-game_num = 30000
+game_num = 20000
 game_strt = 0
 use_ratio = 1.0
 test_ratio = 0.15
 n_additional_param = 15
-n_boards = 6
+n_boards = 3
 
 kernel_size = 3
 n_kernels = 25
@@ -151,7 +151,8 @@ def reshape_data_train():
                 stone_num += board[idx] != '.'
         if stone_num < 10 or stone_num > 56:
             continue
-        grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
+        #grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
+        grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         #train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
         #train_param.append([float(i) for i in param.split()])
         #train_policies.append(policies)
@@ -248,7 +249,8 @@ def reshape_data_test():
         if stone_num < 10 or stone_num > 56:
             continue
         test_raw_board.append(board)
-        grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
+        #grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
+        grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(n_boards)] for j in range(hw)] for i in range(hw)])
         test_param.append([float(i) for i in param.split()])
         test_policies.append(policies)
