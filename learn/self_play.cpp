@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 #include <random>
+#include<fstream>
 
 using namespace std;
 
@@ -1532,53 +1533,17 @@ int main(int argc, char* argv[]){
     double ratio, ratio_sum;
     vector<history> hist0, hist1;
     string output_str;
+    string record;
+    string alp = "abcdefgh";
     for (int tim = 0; tim < num; ++tim){
         cerr << tim << " ";
         hist0 = {};
         hist1 = {};
         player = 1;
         passed = false;
-        /*
-        random_step = -1;
-        while (random_step == -1){
-            for (i = self_play_param.random_step; i < hw2 - mcts_complete_stones - 8; ++i){
-                if (myrandom() < self_play_param.random_rate){
-                    random_step = i;
-                    break;
-                }
-            }
-        }
-        //cerr << "random: " << random_step << endl;
-        */
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
-        /*
-        for (steps = 0; steps < self_play_param.random_step; ++steps){
-            legal_steps = 0;
-            for (cell = 0; cell < hw2; ++cell){
-                for (i = 0; i < board_index_num; ++i){
-                    if (board_param.put[cell][i] != -1){
-                        if (board_param.legal[board[i]][board_param.put[cell][i]]){
-                            legal_places[legal_steps++] = cell;
-                            break;
-                        }
-                    }
-                }
-            }
-            rnd = myrandom();
-            ratio = 1.0 / legal_steps;
-            ratio_sum = 0.0;
-            for (i = 0; i < legal_steps; ++i){
-                ratio_sum += ratio;
-                if (rnd <= ratio_sum){
-                    move(board, tmp_board, legal_places[i]);
-                    break;
-                }
-            }
-            swap(board, tmp_board);
-            player = 1 - player;
-        }
-        */
+        record += "f5";
         for (steps = 0; steps < hw2 - mcts_complete_stones - 4; ++steps){
             policy = next_action(board);
             if (policy == -1){
@@ -1592,6 +1557,7 @@ int main(int argc, char* argv[]){
                 continue;
             } else{
                 passed = false;
+                record += alp[policy / hw] + to_string(policy % hw + 1);
             }
             if (steps >= self_play_param.random_step){
                 history tmp_hist;
@@ -1628,6 +1594,7 @@ int main(int argc, char* argv[]){
         }
         if (player)
             win0 = -win0;
+        record += " " + to_string(win0) + "\n";
         value = (double)win0;
         output_str += to_string(hist0.size()) + "\n";
         output_str += to_string(value) + "\n";
@@ -1642,6 +1609,13 @@ int main(int argc, char* argv[]){
             output_str += to_string(hist1[i].policy) + "\n";
         }
     }
+    string filename("self_play/record.txt");
+    ofstream file_out;
+    file_out.open(filename, ios_base::app);
+    file_out << record.substr(0, record.length() - 1) << endl;
+    
+    cerr << "end";
+
     cout << output_str;
     return 0;
 }

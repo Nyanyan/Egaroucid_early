@@ -15,6 +15,7 @@ import subprocess
 from math import exp
 from os import rename
 from time import time
+import datetime
 
 selfplay_num = 10
 num_self_play_in_one_time_train = 1000
@@ -50,6 +51,13 @@ with open('param/std.txt', 'r') as f:
 
 
 early_stages = []
+
+def digit(n, r):
+    n = str(n)
+    l = len(n)
+    for i in range(r - l):
+        n = '0' + n
+    return n
 
 def self_play(num_self_play_in_one_time):
     global all_data
@@ -377,10 +385,6 @@ for _ in range(10):
 
     print('start learning')
     model = load_model('param/best.h5')
-    model.trainable = True
-    for layer in model.layers:
-        layer.trainable = True
-    model.load_weights('param/best.hdf5')
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.0001))
     print(model.evaluate([train_board, train_param], [train_policies, train_value]))
     early_stop = EarlyStopping(monitor='val_loss', patience=10)
@@ -436,7 +440,9 @@ for _ in range(10):
         print('new won')
         model_updated = True
         model.save('param/best.h5')
-        model.save_weights('param/best.hdf5')
+        now = datetime.datetime.today()
+        print(str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2))
+        model.save('param/selfplay_model/' + str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2) + '.h5')
         with open('param/param_new.txt', 'r') as f:
             new_params = f.read()
         with open('param/param.txt', 'w') as f:
