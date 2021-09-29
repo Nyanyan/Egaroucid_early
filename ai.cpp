@@ -35,7 +35,7 @@ using namespace std;
 #define hash_mask (hash_table_size - 1)
 
 #define evaluate_count 10000
-#define c_puct 5.0
+#define c_puct 3.0
 #define c_end 1.0
 #define c_value 0.25
 #define mcts_complete_stones 9
@@ -1517,9 +1517,14 @@ int main(){
         }
         if (ai_player == 1)
             swap(p, o);
+        if (n_stones == 4){
+            cerr << "FIRST" << endl;
+            cout << 4 << " " << 5 << " " << 50.0 << endl;
+            continue;
+        }
+        /*
         key.first = p;
         key.second = o;
-        /*
         cerr << key.first << " " << key.second << endl;
         if (search_param.book.find(key) != search_param.book.end()){
             cerr << "BOOK " << search_param.book[key].policy << " " << search_param.book[key].rate << endl;
