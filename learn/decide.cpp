@@ -34,19 +34,20 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 20
-#define c_puct 10.0
+#define evaluate_count 100
+#define c_puct 3.0
 #define c_end 1.0
-#define mcts_complete_stones 8
+#define c_value 0.25
+#define mcts_complete_stones 9
 
 #define n_board_input 3
-#define n_add_input 11
+#define n_add_input 15
 #define kernel_size 3
-#define n_kernels 20
-#define n_residual 3
-#define n_dense1 32
-#define n_dense2 16
-#define n_joined (n_kernels + n_dense2)
+#define n_kernels 25
+#define n_residual 2
+#define n_dense1 8
+#define n_dense2 0
+#define n_joined (n_kernels + n_dense1)
 #define conv_size (hw_p1 - kernel_size)
 #define conv_padding (kernel_size / 2)
 #define div_pooling (hw2)
@@ -85,6 +86,8 @@ struct eval_param{
     int confirm_p[6561], confirm_o[6561];
     int pot_canput_p[6561], pot_canput_o[6561];
     double open_eval[40];
+    double x_corner_p[6561], x_corner_o[6561];
+    double c_a_b_p[6561], c_a_b_o[6561];
 
     double mean[n_add_input];
     double std[n_add_input];
@@ -208,9 +211,6 @@ struct search_param{
     int searched_nodes;
     vector<int> vacant_lst;
     int vacant_cnt;
-    int win_num;
-    int lose_num;
-    int n_playout;
     unordered_map<pair<unsigned long long, unsigned long long>, book_elem, hash_pair> book;
 };
 
@@ -501,18 +501,9 @@ void init(){
     */
     FILE *fp;
     char cbuf[1024];
-    int mode;
-    cin >> mode;
-    if (mode == 0){
-        if ((fp = fopen("param/param.txt", "r")) == NULL){
-            printf("param file not exist");
-            exit(1);
-        }
-    } else{
-        if ((fp = fopen("param/param_new.txt", "r")) == NULL){
-            printf("param file not exist");
-            exit(1);
-        }
+    if ((fp = fopen("param/param.txt", "r")) == NULL){
+        printf("param file not exist");
+        exit(1);
     }
     for (i = 0; i < n_kernels; ++i){
         for (j = 0; j < n_board_input; ++j){
@@ -543,6 +534,7 @@ void init(){
             }
         }
     }
+    
     for (i = 0; i < n_add_input; ++i){
         for (j = 0; j < n_dense1; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -559,6 +551,7 @@ void init(){
         }
         eval_param.bias1[i] = atof(cbuf);
     }
+    /*
     for (i = 0; i < n_dense1; ++i){
         for (j = 0; j < n_dense2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -575,6 +568,7 @@ void init(){
         }
         eval_param.bias2[i] = atof(cbuf);
     }
+    */
     for (i = 0; i < n_joined; ++i){
         for (j = 0; j < hw2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -625,6 +619,48 @@ void init(){
         }
         eval_param.std[i] = atof(cbuf);
     }
+    /*
+    if ((fp = fopen("book/param/book.txt", "r")) == NULL){
+        printf("book file not exist");
+        exit(1);
+    }
+    if (!fgets(cbuf, 1024, fp)){
+        printf("book file broken");
+        exit(1);
+    }
+    int book_len = atoi(cbuf);
+    int policy;
+    double rate;
+    unsigned long long up, uo;
+    pair<unsigned long long, unsigned long long> key;
+    for (i = 0; i < book_len; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        up = atoll(cbuf);
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        uo = atoll(cbuf);
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        policy = atoi(cbuf);
+        if (!fgets(cbuf, 1024, fp)){
+            printf("book file broken");
+            exit(1);
+        }
+        rate = atof(cbuf);
+        //cerr << up << " " << uo << " " << policy << " " << rate << endl;
+        key.first = up;
+        key.second = uo;
+        search_param.book[key].policy = policy;
+        search_param.book[key].rate = rate;
+    }
+    */
     int p, o, mobility, canput_num, rev;
     for (i = 0; i < 6561; ++i){
         board_param.reverse[i] = board_reverse(i);
@@ -638,6 +674,42 @@ void init(){
             board_param.restore_vacant[i][j] = 1 & ((~(p | o)) >> (hw_m1 - j));
             eval_param.cnt_p[i] += board_param.restore_p[i][j];
             eval_param.cnt_o[i] += board_param.restore_o[i][j];
+        }
+        eval_param.x_corner_p[i] = 0.0;
+        if (((~p & 1) & ((p >> 1) & 1)) & 1)
+            eval_param.x_corner_p[i] += 1.0;
+        if (((~(p >> 7) & 1) & ((p >> 6) & 1)) & 1)
+            eval_param.x_corner_p[i] += 1.0;
+        eval_param.x_corner_o[i] = 0.0;
+        if (((~o & 1) & ((o >> 1) & 1)) & 1)
+            eval_param.x_corner_o[i] += 1.0;
+        if (((~(o >> 7) & 1) & ((o >> 6) & 1)) & 1)
+            eval_param.x_corner_o[i] += 1.0;
+        eval_param.c_a_b_p[i] = 0.0;
+        if (((~p & 1) & ((p >> 1) & 1)) & 1){
+            if (~(p >> 2) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+            if (~(p >> 3) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+        }
+        if (((~(p >> 7) & 1) & ((p >> 6) & 1)) & 1){
+            if (~(p >> 5) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+            if (~(p >> 4) & 1)
+                eval_param.c_a_b_p[i] += 1.0;
+        }
+        eval_param.c_a_b_o[i] = 0.0;
+        if (((~o & 1) & ((o >> 1) & 1)) & 1){
+            if (~(o >> 2) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
+            if (~(o >> 3) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
+        }
+        if (((~(o >> 7) & 1) & ((o >> 6) & 1)) & 1){
+            if (~(o >> 5) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
+            if (~(o >> 4) & 1)
+                eval_param.c_a_b_o[i] += 1.0;
         }
         mobility = check_mobility(p, o);
         canput_num = 0;
@@ -805,6 +877,10 @@ inline predictions predict(const int *board){
     eval_param.input_p[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
     eval_param.input_p[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
     eval_param.input_p[10] = search_param.turn;
+    eval_param.input_p[11] = eval_param.x_corner_p[board[21]] + eval_param.x_corner_p[board[32]];
+    eval_param.input_p[12] = eval_param.x_corner_o[board[21]] + eval_param.x_corner_o[board[32]];
+    eval_param.input_p[13] = eval_param.c_a_b_p[board[0]] + eval_param.c_a_b_p[board[7]] + eval_param.c_a_b_p[board[8]] + eval_param.c_a_b_p[board[15]];
+    eval_param.input_p[14] = eval_param.c_a_b_o[board[0]] + eval_param.c_a_b_o[board[7]] + eval_param.c_a_b_o[board[8]] + eval_param.c_a_b_o[board[15]];
     for (i = 0; i < hw; ++i){
         eval_param.input_p[0] += eval_param.cnt_p[board[i]];
         eval_param.input_p[1] += eval_param.cnt_o[board[i]];
@@ -877,6 +953,16 @@ inline predictions predict(const int *board){
     }
     // dense1 and bias and leaky-relu for input_p
     for (i = 0; i < n_dense1; ++i)
+        eval_param.hidden_joined[n_kernels + i] = 0.0;
+    for (i = 0; i < n_add_input; ++i){
+        for (j = 0; j < n_dense1; ++j)
+            eval_param.hidden_joined[n_kernels + j] += eval_param.dense1[i][j] * eval_param.input_p[i];
+    }
+    for (i = 0; i < n_dense1; ++i)
+        eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias1[i]);
+    /*
+    // dense1 and bias and leaky-relu for input_p
+    for (i = 0; i < n_dense1; ++i)
         eval_param.hidden_dense1[i] = 0.0;
     for (i = 0; i < n_add_input; ++i){
         for (j = 0; j < n_dense1; ++j)
@@ -893,6 +979,7 @@ inline predictions predict(const int *board){
     }
     for (i = 0; i < n_dense2; ++i)
         eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias2[i]);
+    */
     // dense and bias for policy output *don't need softmax because use softmax later
     for (i = 0; i < hw2; ++i)
         res.policies[i] = 0.0;
@@ -1209,29 +1296,18 @@ inline pair<int, int> find_win(int *board){
         return make_pair(-1, lst[0].move);
 }
 
-inline double end_game_evaluate(int idx, int player){
-    double value = c_end * end_game(mcts_param.nodes[idx].board);
-    if (value * player > 0.0)
-        ++search_param.win_num;
-    else if (value * player < 0.0)
-        ++search_param.lose_num;
-    ++search_param.n_playout;
-    mcts_param.nodes[idx].w += value;
-    ++mcts_param.nodes[idx].n;
-    return value;
+inline double end_game_evaluate(int idx){
+    return c_end * end_game(mcts_param.nodes[idx].board);
 }
 
-double evaluate(int idx, bool passed, int player, int n_stones){
+double evaluate(int idx, bool passed, int n_stones){
     double value = 0.0;
     int i, j;
     if (n_stones >= hw2 - mcts_complete_stones){
         int result = find_win(mcts_param.nodes[idx].board).first;
-        search_param.win_num += max(0, player * result);
-        search_param.lose_num += max(0, -player * result);
-        ++search_param.n_playout;
         mcts_param.nodes[idx].w += c_end * (double)result;
         ++mcts_param.nodes[idx].n;
-        return (double)result;
+        return c_end * (double)result;
     }
     if (!mcts_param.nodes[idx].expanded){
         // when children not expanded
@@ -1256,8 +1332,7 @@ double evaluate(int idx, bool passed, int player, int n_stones){
         if (!mcts_param.nodes[idx].pass){
             //predict and create policy array
             predictions pred = predict(mcts_param.nodes[idx].board);
-            mcts_param.nodes[idx].w += pred.value;
-            value = pred.value;
+            mcts_param.nodes[idx].w += c_value * pred.value;
             ++mcts_param.nodes[idx].n;
             double p_sum = 0.0;
             for (i = 0; i < hw2; ++i){
@@ -1270,6 +1345,14 @@ double evaluate(int idx, bool passed, int player, int n_stones){
             }
             for (i = 0; i < hw2; ++i)
                 mcts_param.nodes[idx].p[i] /= p_sum;
+            return c_value * pred.value;
+        } else{
+            for (i = 0; i < hw2; ++i)
+                mcts_param.nodes[idx].p[i] = 0.0;
+            value = c_value * predict(mcts_param.nodes[idx].board).value;
+            mcts_param.nodes[idx].w += value;
+            ++mcts_param.nodes[idx].n;
+            return value;
         }
     }
     if (!mcts_param.nodes[idx].pass){
@@ -1281,10 +1364,9 @@ double evaluate(int idx, bool passed, int player, int n_stones){
         double t_sqrt = mcts_param.sqrt_arr[mcts_param.nodes[idx].n];
         for (const int& cell : search_param.vacant_lst){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
+                tmp_value = 0.0;
                 if (mcts_param.nodes[idx].children[cell] != -1)
                     tmp_value = -mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
-                else
-                    tmp_value = 0.0;
                 tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
                 if (value < tmp_value){
                     value = tmp_value;
@@ -1300,28 +1382,27 @@ double evaluate(int idx, bool passed, int player, int n_stones){
             mcts_param.nodes[mcts_param.used_idx].expanded = false;
             move(mcts_param.nodes[idx].board, mcts_param.nodes[mcts_param.used_idx++].board, a_cell);
         }
-        value = -evaluate(mcts_param.nodes[idx].children[a_cell], false, -player, n_stones + 1);
+        value = -evaluate(mcts_param.nodes[idx].children[a_cell], false, n_stones + 1);
         mcts_param.nodes[idx].w += value;
         ++mcts_param.nodes[idx].n;
     } else{
         // pass
-        if (passed){
-            return end_game_evaluate(idx, player);
-        } else{
-            if (mcts_param.nodes[idx].children[hw2] == -1){
-                mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
-                mcts_param.nodes[mcts_param.used_idx].w = 0.0;
-                mcts_param.nodes[mcts_param.used_idx].n = 0;
-                mcts_param.nodes[mcts_param.used_idx].pass = true;
-                mcts_param.nodes[mcts_param.used_idx].expanded = false;
-                for (i = 0; i < board_index_num; ++i)
-                    mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
-                ++mcts_param.used_idx;
-            }
-            value = -evaluate(mcts_param.nodes[idx].children[hw2], true, -player, n_stones);
-            mcts_param.nodes[idx].w += value;
-            ++mcts_param.nodes[idx].n;
+        if (mcts_param.nodes[idx].children[hw2] == -1){
+            mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
+            mcts_param.nodes[mcts_param.used_idx].w = 0.0;
+            mcts_param.nodes[mcts_param.used_idx].n = 0;
+            mcts_param.nodes[mcts_param.used_idx].pass = true;
+            mcts_param.nodes[mcts_param.used_idx].expanded = false;
+            for (i = 0; i < board_index_num; ++i)
+                mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
+            ++mcts_param.used_idx;
         }
+        if (passed)
+            value = end_game_evaluate(idx);
+        else
+            value = -evaluate(mcts_param.nodes[idx].children[hw2], true, n_stones);
+        mcts_param.nodes[idx].w += value;
+        ++mcts_param.nodes[idx].n;
     }
     return value;
 }
@@ -1368,17 +1449,16 @@ inline int next_action(int *board){
     int n_stones = 0;
     for (i = 0; i < hw; ++i)
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
+    int strt = tim();
     for (i = 0; i < evaluate_count; ++i)
-        evaluate(0, false, 1, n_stones);
+        evaluate(0, false, n_stones);
     double policies[hw2];
     p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         policies[i] = 0.0;
         if (legal[i]){
             if (mcts_param.nodes[0].children[i] != -1){
-                //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-                policies[i] = (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                policies[i] = eval_param.exp_arr[map_liner(0.1 * (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+                policies[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
                 p_sum += policies[i];
             }
         }
@@ -1399,8 +1479,8 @@ inline int next_action(int *board){
 
 inline void mcts(int *board){
     int policy = next_action(board);
-    //cerr << "SEARCH " << search_param.win_num << " " << search_param.lose_num << " " << search_param.n_playout << "  " << mcts_param.used_idx << endl;
-    cout << policy / hw << " " << policy % hw << " " << 100.0 * (double)search_param.win_num / search_param.n_playout << endl;
+    //cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
+    cout << policy / hw << " " << policy % hw << " " << 50.0 - 50.0 * (double)mcts_param.nodes[mcts_param.nodes[0].children[policy]].w / mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << endl;
 }
 
 inline void complete(int *board){
@@ -1428,9 +1508,6 @@ int main(){
     pair<unsigned long long, unsigned long long> key;
     while (true){
         search_param.turn = 0;
-        search_param.win_num = 0;
-        search_param.lose_num = 0;
-        search_param.n_playout = 0;
         p = 0;
         o = 0;
         n_stones = 0;
@@ -1450,11 +1527,27 @@ int main(){
                 search_param.vacant_lst.push_back(i);
             }
         }
-        //if (ai_player == 1)
-        //    swap(p, o);
-        if (search_param.vacant_cnt){
-            sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
+        /*
+        if (ai_player == 1)
+            swap(p, o);
+        */
+        if (n_stones == 4){
+            //cerr << "FIRST" << endl;
+            cout << 4 << " " << 5 << " " << 50.0 << endl;
+            continue;
         }
+        /*
+        key.first = p;
+        key.second = o;
+        cerr << key.first << " " << key.second << endl;
+        if (search_param.book.find(key) != search_param.book.end()){
+            cerr << "BOOK " << search_param.book[key].policy << " " << search_param.book[key].rate << endl;
+            cout << search_param.book[key].policy / hw << " " << search_param.book[key].policy % hw << " " << search_param.book[key].rate << endl;
+            continue;
+        }
+        */
+        if (search_param.vacant_cnt)
+            sort(search_param.vacant_lst.begin(), search_param.vacant_lst.end(), cmp_vacant);
         for (i = 0; i < board_index_num; ++i){
             board_tmp = 0;
             for (j = 0; j < board_param.pattern_space[i]; ++j){
@@ -1465,6 +1558,20 @@ int main(){
             }
             board[i] = board_tmp;
         }
+        /*
+        print_board(board);
+        predictions tmp = predict(board);
+        double mx = -1000.0;
+        int mx_idx = -1;
+        for (i = 0; i < hw2; ++i){
+            if (mx < tmp.policies[i]){
+                mx = tmp.policies[i];
+                mx_idx = i;
+            }
+        }
+        cerr << mx_idx << " " << mx << " " << tmp.value << endl;
+        return 0;
+        */
         if (n_stones < hw2 - complete_stones){
             mcts(board);
         } else{
@@ -1474,4 +1581,3 @@ int main(){
     }
     return 0;
 }
-
