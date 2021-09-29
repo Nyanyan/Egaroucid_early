@@ -37,6 +37,7 @@ var graph = new Chart(ctx, {
         {
         label: '予想勝率',
         data: [],
+        fill: false,
         borderColor: "rgb(0,0,0)",
         backgroundColor: "rgb(0,0,0)"
         }
