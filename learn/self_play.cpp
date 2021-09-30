@@ -35,7 +35,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 200
+#define evaluate_count 50
 #define c_puct 3.0
 #define c_end 1.0
 #define c_value 0.25
@@ -1613,10 +1613,10 @@ int main(int argc, char* argv[]){
     //ofstream file_out;
     //file_out.open(filename, ios_base::app);
     //file_out << record.substr(0, record.length() - 1) << endl;
-    cout << record;
     
     cerr << "end";
 
     cout << output_str;
+    cout << record;
     return 0;
 }

@@ -13,11 +13,11 @@ from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
-from os import rename
+from os import rename, path, listdir
 from time import time
 import datetime
 
-selfplay_num = 10
+selfplay_num = 5
 num_self_play_in_one_time_train = 500
 num_self_play_in_one_time_test = 100
 num_of_decide = 100
@@ -68,6 +68,8 @@ def self_play(num_self_play_in_one_time):
         seed = randint(1, 2000000000)
         #stdin = str(seed) + '\n' + str(one_play_num) + '\n'
         sp.append(subprocess.Popen(('./self_play.out ' + str(seed) + ' ' + str(one_play_num)).split(), stdout=subprocess.PIPE))
+    n_record = sum(path.isfile(path.join('self_play/records', name)) for name in listdir('self_play/records'))
+    records = []
     for i in range(selfplay_num):
         idx = 0
         result = sp[i].communicate()[0].decode().splitlines()
@@ -82,7 +84,11 @@ def self_play(num_self_play_in_one_time):
                 policy = int(result[idx])
                 idx += 1
                 all_data.append([board, policy, score])
+        records.extend(result[idx:])
         sp[i].kill()
+    with open('self_play/records/' + digit(n_record + i, 7) + '.txt', 'w') as f:
+        for record in records:
+            f.write(record + '\n')
     print(time() - strt)
 
 def reshape_data_train():

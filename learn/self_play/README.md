@@ -39,8 +39,6 @@ following number -1, 0, or 1 shows the result of the game. Each number shows:
 -1: white won
 ```
 
-Each file has 1000 records.
-
 
 
 ## License
