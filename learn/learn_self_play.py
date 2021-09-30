@@ -18,7 +18,7 @@ from time import time
 import datetime
 
 selfplay_num = 5
-num_self_play_in_one_time_train = 100
+num_self_play_in_one_time_train = 80
 num_self_play_in_one_time_test = 20
 num_of_decide = 100
 n_epochs = 50
@@ -296,7 +296,7 @@ def decide(num):
     ais = [subprocess.Popen('./decide.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
     ais[0].stdin.write('0\n'.encode('utf-8')) # best
     ais[1].stdin.write('1\n'.encode('utf-8')) # 
-    best_win = 0
+    new_win = 0
     for game_idx in trange(num):
         rv = reversi()
         player2ai = [0, 1] if game_idx % 2 == 0 else [1, 0]
@@ -334,15 +334,15 @@ def decide(num):
                 break
         rv.check_pass()
         #rv.output()
-        if rv.nums[player2ai[0]] > rv.nums[player2ai[1]]:
-            best_win += 1
+        if rv.nums[player2ai[0]] < rv.nums[player2ai[1]]:
+            new_win += 1
     for i in range(2):
         ais[i].kill()
-    print('score of best player', best_win)
-    if best_win > num * 0.55:
-        return 0
-    else:
+    print('score of new player', new_win)
+    if new_win > num * 0.55:
         return 1
+    else:
+        return 0
 
 def get_early_stages():
     global early_stages

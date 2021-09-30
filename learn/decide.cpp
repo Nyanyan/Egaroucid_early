@@ -1416,7 +1416,7 @@ double evaluate(int idx, bool passed, int n_stones){
     return value;
 }
 
-inline int next_action(int *board){
+inline int next_action(int *board, bool mode){
     int i, cell, mx = 0, res = -1;
     mcts_param.used_idx = 1;
     for (i = 0; i < board_index_num; ++i)
@@ -1461,33 +1461,47 @@ inline int next_action(int *board){
     int strt = tim();
     for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, n_stones);
-    double policies[hw2];
+    if (!mode){
+        double policies[hw2];
     p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         policies[i] = 0.0;
-        if (legal[i]){
-            if (mcts_param.nodes[0].children[i] != -1){
-                policies[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
-                p_sum += policies[i];
+            if (legal[i]){
+                if (mcts_param.nodes[0].children[i] != -1){
+                    policies[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+                    p_sum += policies[i];
+                }
             }
         }
-    }
-    for (i = 0; i < hw2; ++i)
-        policies[i] /= p_sum;
-    double rnd = myrandom();
-    p_sum = 0.0;
-    for (i = 0; i < hw2; ++i){
-        p_sum += policies[i];
-        if (rnd <= p_sum){
-            res = i;
-            break;
+        for (i = 0; i < hw2; ++i)
+            policies[i] /= p_sum;
+        double rnd = myrandom();
+        p_sum = 0.0;
+        for (i = 0; i < hw2; ++i){
+            p_sum += policies[i];
+            if (rnd <= p_sum){
+                res = i;
+                break;
+            }
+        }
+    } else{
+        int mx_n = -1;
+        for (i = 0; i < hw2; ++i){
+            if (legal[i]){
+                if (mcts_param.nodes[0].children[i] != -1){
+                    if (mx_n < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
+                        mx_n = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+                        res = i;
+                    }
+                }
+            }
         }
     }
     return res;
 }
 
-inline void mcts(int *board){
-    int policy = next_action(board);
+inline void mcts(int *board, bool mode){
+    int policy = next_action(board, mode);
     //cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
     cout << policy / hw << " " << policy % hw << " " << 50.0 - 50.0 * (double)mcts_param.nodes[mcts_param.nodes[0].children[policy]].w / mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << endl;
 }
@@ -1582,7 +1596,7 @@ int main(){
         return 0;
         */
         if (n_stones < hw2 - complete_stones){
-            mcts(board);
+            mcts(board, myrandom() < 0.75);
         } else{
             search_param.max_depth = hw2 + 1 - n_stones;
             complete(board);

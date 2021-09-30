@@ -35,7 +35,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 150
+#define evaluate_count 300
 #define c_puct 1.0 //3.0
 #define c_end 1.0
 #define c_value 1.0 //0.25
