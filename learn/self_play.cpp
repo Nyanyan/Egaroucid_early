@@ -1527,7 +1527,7 @@ inline void complete(int *board){
 }
 
 int main(int argc, char* argv[]){
-    search_param.tl = 16;
+    search_param.tl = 20;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();

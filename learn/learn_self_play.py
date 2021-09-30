@@ -297,54 +297,53 @@ def decide(num):
     ais[1].stdin.write('1\n'.encode('utf-8')) # 
     new_win = 0
     best_win = 0
-    for game_idx in trange(num):
-        rv = reversi()
-        player2ai = [0, 1] if game_idx % 2 == 0 else [1, 0]
-        
-        rnd = randint(0, len(early_stages) - 1)
-        for y in range(hw):
-            for x in range(hw):
-                rv.grid[y][x] = early_stages[rnd][y][x]
-        rv.player = 0
-        '''
-        for y in range(hw):
-            for x in range(hw):
-                rv.grid[y][x] = -1
-        rv.grid[3][3] = 1
-        rv.grid[3][4] = 0
-        rv.grid[4][3] = 0
-        rv.grid[4][4] = 0
-        rv.grid[4][5] = 0
-        rv.player = 1
-        '''
-        while True:
-            if rv.check_pass() and rv.check_pass():
-                break
-            stdin = ''
+    for game_idx in trange(len(early_stages)):
+        for player2ai in [[0, 1], [1, 0]]:
+            rv = reversi()
+            #rnd = randint(0, len(early_stages) - 1)
             for y in range(hw):
                 for x in range(hw):
-                    stdin += '0' if rv.grid[y][x] == rv.player else '1' if rv.grid[y][x] == 1 - rv.player else '.'
-            stdin += '\n'
-            #print(stdin)
-            ais[player2ai[rv.player]].stdin.write(stdin.encode('utf-8'))
-            ais[player2ai[rv.player]].stdin.flush()
-            y, x, _ = [float(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
-            y = int(y)
-            x = int(x)
-            rv.move(y, x)
-            if rv.end():
-                break
-        rv.check_pass()
-        #rv.output()
-        if rv.nums[player2ai[0]] < rv.nums[player2ai[1]]:
-            new_win += 1
-        elif rv.nums[player2ai[0]] > rv.nums[player2ai[1]]:
-            best_win += 1
+                    rv.grid[y][x] = early_stages[game_idx][y][x]
+            rv.player = 0
+            '''
+            for y in range(hw):
+                for x in range(hw):
+                    rv.grid[y][x] = -1
+            rv.grid[3][3] = 1
+            rv.grid[3][4] = 0
+            rv.grid[4][3] = 0
+            rv.grid[4][4] = 0
+            rv.grid[4][5] = 0
+            rv.player = 1
+            '''
+            while True:
+                if rv.check_pass() and rv.check_pass():
+                    break
+                stdin = ''
+                for y in range(hw):
+                    for x in range(hw):
+                        stdin += '0' if rv.grid[y][x] == rv.player else '1' if rv.grid[y][x] == 1 - rv.player else '.'
+                stdin += '\n'
+                #print(stdin)
+                ais[player2ai[rv.player]].stdin.write(stdin.encode('utf-8'))
+                ais[player2ai[rv.player]].stdin.flush()
+                y, x, _ = [float(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
+                y = int(y)
+                x = int(x)
+                rv.move(y, x)
+                if rv.end():
+                    break
+            rv.check_pass()
+            #rv.output()
+            if rv.nums[player2ai[0]] < rv.nums[player2ai[1]]:
+                new_win += 1
+            elif rv.nums[player2ai[0]] > rv.nums[player2ai[1]]:
+                best_win += 1
     for i in range(2):
         ais[i].kill()
     print('score of new player', new_win)
     print('score of best player', best_win)
-    if new_win > num * 0.55:
+    if new_win >= len(early_stages) * 2 * 0.55:
         return 1
     else:
         return 0
@@ -393,14 +392,15 @@ while True:
 
     print('start learning')
     model = load_model('param/best.h5')
-    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.001))
+    #model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.001))
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
     print(model.evaluate([train_board, train_param], [train_policies, train_value]))
     early_stop = EarlyStopping(monitor='val_loss', patience=5)
     history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 
     print('saving')
-    model.save('param/model_new.h5')
-    model.save_weights('param/model_new.hdf5')
+    #model.save('param/model_new.h5')
+    model.save('param/best.h5')
     '''
     with open('param/mean_new.txt', 'w') as f:
         for i in range(mean.shape[0]):
@@ -408,6 +408,7 @@ while True:
     with open('param/std_new.txt', 'w') as f:
         for i in range(std.shape[0]):
             f.write(str(std[i]) + '\n')
+    '''
     '''
     with open('param/param_new.txt', 'w') as f:
         i = 0
@@ -438,7 +439,40 @@ while True:
                 i += 1
             except:
                 break
-    
+    '''
+    with open('param/param.txt', 'w') as f:
+        i = 0
+        while True:
+            try:
+                #print(i, model.layers[i])
+                dammy = model.layers[i]
+                j = 0
+                while True:
+                    try:
+                        print(model.layers[i].weights[j].shape)
+                        if len(model.layers[i].weights[j].shape) == 4:
+                            for ll in range(model.layers[i].weights[j].shape[3]):
+                                for kk in range(model.layers[i].weights[j].shape[2]):
+                                    for jj in range(model.layers[i].weights[j].shape[1]):
+                                        for ii in range(model.layers[i].weights[j].shape[0]):
+                                            f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
+                        elif len(model.layers[i].weights[j].shape) == 2:
+                            for ii in range(model.layers[i].weights[j].shape[0]):
+                                for jj in range(model.layers[i].weights[j].shape[1]):
+                                    f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
+                        elif len(model.layers[i].weights[j].shape) == 1:
+                            for ii in range(model.layers[i].weights[j].shape[0]):
+                                f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
+                        j += 1
+                    except:
+                        break
+                i += 1
+            except:
+                break
+    now = datetime.datetime.today()
+    print(str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2))
+    model.save('param/selfplay_model/' + str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2) + '.h5')
+    '''
     print('decision')
     decision = decide(num_of_decide)
     if decision == 0:
@@ -455,5 +489,6 @@ while True:
             new_params = f.read()
         with open('param/param.txt', 'w') as f:
             f.write(new_params)
+    '''
 
 my_evaluate.kill()

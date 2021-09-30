@@ -13,18 +13,13 @@ from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
 
-with open('param/mean.txt', 'r') as f:
-    mean = np.array([float(i) for i in f.read().splitlines()])
-with open('param/std.txt', 'r') as f:
-    std = np.array([float(i) for i in f.read().splitlines()])
-
 hw = 8
 hw2 = 64
 
 all_data = []
 
 n_epochs = 1000
-game_num = 2000
+game_num = 1000
 game_strt = 0
 use_ratio = 1.0
 test_ratio = 0.2
@@ -32,7 +27,7 @@ n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 64
+n_kernels = 48
 n_residual = 1
 
 leakyrelu_alpha = 0.01
@@ -52,6 +47,11 @@ test_value = []
 
 mean = []
 std= []
+
+with open('param/mean.txt', 'r') as f:
+    mean = np.array([float(i) for i in f.read().splitlines()])
+with open('param/std.txt', 'r') as f:
+    std = np.array([float(i) for i in f.read().splitlines()])
 
 my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -276,6 +276,7 @@ x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)
 x_p = LeakyReLU(x_p)
+#x_p = Dropout(0.0625)(x_p)
 x_p = Dense(16)(x_p)
 x_p = LeakyReLU(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)

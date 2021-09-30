@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 50
+#define evaluate_count 1000
 #define c_puct 1.0 //3.0
 #define c_end 1.0
 #define c_value 1.0 //0.25
@@ -1498,7 +1498,7 @@ inline void complete(int *board){
 }
 
 int main(){
-    search_param.tl = 16;
+    search_param.tl = 20;
     init();
     cerr << "initialized" << endl;
     int i, j, board_tmp, ai_player, policy;
