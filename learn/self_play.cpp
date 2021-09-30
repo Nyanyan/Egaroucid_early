@@ -36,9 +36,9 @@ using namespace std;
 #define hash_mask (hash_table_size - 1)
 
 #define evaluate_count 50
-#define c_puct 3.0
+#define c_puct 1.0 //3.0
 #define c_end 1.0
-#define c_value 0.25
+#define c_value 1.0 //0.25
 #define mcts_complete_stones 9
 
 #define n_board_input 3
@@ -1420,7 +1420,7 @@ double evaluate(int idx, bool passed, int n_stones){
     return value;
 }
 
-inline int next_action(int *board){
+inline int next_action(int *board, bool mode){
     int i, cell, mx = 0, res = -1;
     mcts_param.used_idx = 1;
     for (i = 0; i < board_index_num; ++i)
@@ -1464,36 +1464,49 @@ inline int next_action(int *board){
     int n_stones = 0;
     for (i = 0; i < hw; ++i)
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
-    int strt = tim();
     for (i = 0; i < evaluate_count; ++i)
         evaluate(0, false, n_stones);
-    double policies[hw2];
-    p_sum = 0.0;
-    for (i = 0; i < hw2; ++i){
-        policies[i] = 0.0;
-        if (legal[i]){
-            if (mcts_param.nodes[0].children[i] != -1){
-                policies[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
-                p_sum += policies[i];
+    if (!mode){
+        double policies[hw2];
+        p_sum = 0.0;
+        for (i = 0; i < hw2; ++i){
+            policies[i] = 0.0;
+            if (legal[i]){
+                if (mcts_param.nodes[0].children[i] != -1){
+                    policies[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+                    p_sum += policies[i];
+                }
             }
         }
-    }
-    for (i = 0; i < hw2; ++i)
-        policies[i] /= p_sum;
-    double rnd = myrandom();
-    p_sum = 0.0;
-    for (i = 0; i < hw2; ++i){
-        p_sum += policies[i];
-        if (rnd <= p_sum){
-            res = i;
-            break;
+        for (i = 0; i < hw2; ++i)
+            policies[i] /= p_sum;
+        double rnd = myrandom();
+        p_sum = 0.0;
+        for (i = 0; i < hw2; ++i){
+            p_sum += policies[i];
+            if (rnd <= p_sum){
+                res = i;
+                break;
+            }
+        }
+    } else{
+        int mx_n = -1;
+        for (i = 0; i < hw2; ++i){
+            if (legal[i]){
+                if (mcts_param.nodes[0].children[i] != -1){
+                    if (mx_n < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
+                        mx_n = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+                        res = i;
+                    }
+                }
+            }
         }
     }
     return res;
 }
 
 inline void mcts(int *board){
-    int policy = next_action(board);
+    int policy = next_action(board, true);
     cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
     cout << policy / hw << " " << policy % hw << " " << 50.0 - 50.0 * (double)mcts_param.nodes[mcts_param.nodes[0].children[policy]].w / mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << endl;
 }
@@ -1535,6 +1548,7 @@ int main(int argc, char* argv[]){
     string output_str;
     string record;
     string alp = "abcdefgh";
+    bool modes[2];
     for (int tim = 0; tim < num; ++tim){
         cerr << "=";
         hist0 = {};
@@ -1544,8 +1558,15 @@ int main(int argc, char* argv[]){
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
         record += "f5";
+        if (myrandom() < 0.5){
+            modes[0] = true;
+            modes[1] = false;
+        } else{
+            modes[0] = false;
+            modes[1] = true;
+        }
         for (steps = 0; steps < hw2 - mcts_complete_stones - 4; ++steps){
-            policy = next_action(board);
+            policy = next_action(board, modes[player]);
             if (policy == -1){
                 if (passed)
                     break;
@@ -1559,7 +1580,7 @@ int main(int argc, char* argv[]){
                 passed = false;
                 record += alp[policy / hw] + to_string(policy % hw + 1);
             }
-            if (steps >= self_play_param.random_step){
+            if (modes[player] && steps >= self_play_param.random_step){
                 history tmp_hist;
                 tmp_hist.board = "";
                 for (i = 0; i < hw; ++i){
