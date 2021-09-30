@@ -35,7 +35,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 50
+#define evaluate_count 150
 #define c_puct 1.0 //3.0
 #define c_end 1.0
 #define c_value 1.0 //0.25
@@ -1548,7 +1548,7 @@ int main(int argc, char* argv[]){
     string output_str;
     string record;
     string alp = "abcdefgh";
-    bool modes[2];
+    bool mode;
     for (int tim = 0; tim < num; ++tim){
         cerr << "=";
         hist0 = {};
@@ -1558,15 +1558,12 @@ int main(int argc, char* argv[]){
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
         record += "f5";
-        if (myrandom() < 0.5){
-            modes[0] = true;
-            modes[1] = false;
-        } else{
-            modes[0] = false;
-            modes[1] = true;
-        }
         for (steps = 0; steps < hw2 - mcts_complete_stones - 4; ++steps){
-            policy = next_action(board, modes[player]);
+            if (myrandom() < 0.75)
+                mode = true;
+            else
+                mode = false;
+            policy = next_action(board, mode);
             if (policy == -1){
                 if (passed)
                     break;
@@ -1580,7 +1577,7 @@ int main(int argc, char* argv[]){
                 passed = false;
                 record += alp[policy / hw] + to_string(policy % hw + 1);
             }
-            if (modes[player] && steps >= self_play_param.random_step){
+            if (mode && steps >= self_play_param.random_step){
                 history tmp_hist;
                 tmp_hist.board = "";
                 for (i = 0; i < hw; ++i){

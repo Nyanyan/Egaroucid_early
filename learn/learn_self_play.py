@@ -18,8 +18,8 @@ from time import time
 import datetime
 
 selfplay_num = 5
-num_self_play_in_one_time_train = 500
-num_self_play_in_one_time_test = 100
+num_self_play_in_one_time_train = 100
+num_self_play_in_one_time_test = 20
 num_of_decide = 100
 n_epochs = 50
 
@@ -336,12 +336,10 @@ def decide(num):
         #rv.output()
         if rv.nums[player2ai[0]] > rv.nums[player2ai[1]]:
             best_win += 1
-        elif rv.nums[player2ai[0]] < rv.nums[player2ai[1]]:
-            best_win -= 1
     for i in range(2):
         ais[i].kill()
     print('score of best player', best_win)
-    if best_win > 0:
+    if best_win > num * 0.55:
         return 0
     else:
         return 1
