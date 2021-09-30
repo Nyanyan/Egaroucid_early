@@ -1,34 +1,38 @@
-# Egaroucid - 世界10位を経験したオセロAI
+# Egaroucid - An Othello AI Which Got 10th in The World
 
 
 
-## 概要
+## About
 
-このレポジトリは[Web公開版Egaroucid](https://www.egaroucid.nyanyan.dev/)で公開しているオセロAIです。
+You can play with this AI at [Egaroucid on the Web (in Japanese)](https://www.egaroucid.nyanyan.dev/). As of October, 2021, the AI on the web is weaker than the AI on this repository.
 
-このオセロAIは2021年6月に[Codingame Othello](https://www.codingame.com/multiplayer/bot-programming/othello-1/leaderboard)で世界10位になりました。
+This AI got 10th in [Codingame Othello](https://www.codingame.com/multiplayer/bot-programming/othello-1/leaderboard) in June, 2021.
 
-一部の棋譜やパラメータ、バックエンドのコードは非公開です。
-
-現在深層強化学習を使用したアルゴリズムに乗り換えを試みています。
+You cannot see parameters of this AI, but can see a lot of [game records](https://github.com/Nyanyan/Web_Egaroucid/tree/main/learn/self_play) of this AI.
 
 
 
-## 技術
+## Technology
 
-### 深層学習
+I used AlphaZero-like algorithm.
 
-TBD
+### Deep Learning
 
-### モンテカルロ木探索
+This AI uses a neural network which outputs policies and values.
 
-TBD
+I modified AlphaZero’s network to make it smaller, and I used boards and additional values for its inputs.
+
+### Monte Carlo Tree Search
+
+Almost same as AlphaZero’s.
 
 
 
-## 詳しい思考と試行
+## What I think and done
 
-Scrapboxにて公開しています
+Written in Japanese.
+
+Please visit: 
 
 [オセロAI”Egaroucid”全般](https://scrapbox.io/nyanyan/%E3%82%AA%E3%82%BB%E3%83%ADAI%22Egaroucid%22%E5%85%A8%E8%88%AC)
 
