@@ -35,7 +35,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 50
+#define evaluate_count 1000
 #define c_puct 1.0 //3.0
 #define c_end 1.0
 #define c_value 1.0 //0.25
@@ -1464,8 +1464,12 @@ inline int next_action(int *board, bool mode){
     int n_stones = 0;
     for (i = 0; i < hw; ++i)
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
-    for (i = 0; i < evaluate_count; ++i)
+    int strt = tim();
+    for (i = 0; i < evaluate_count; ++i){
         evaluate(0, false, n_stones);
+        if (tim() - strt > search_param.tl)
+            break;
+    }
     if (!mode){
         double policies[hw2];
         p_sum = 0.0;
@@ -1523,6 +1527,7 @@ inline void complete(int *board){
 }
 
 int main(int argc, char* argv[]){
+    search_param.tl = 16;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();

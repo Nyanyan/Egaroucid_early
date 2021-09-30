@@ -17,10 +17,10 @@ from os import rename, path, listdir
 from time import time
 import datetime
 
-selfplay_num = 5
-num_self_play_in_one_time_train = 100
-num_self_play_in_one_time_test = 20
-num_of_decide = 100
+selfplay_num = 10
+num_self_play_in_one_time_train = 500
+num_self_play_in_one_time_test = 100
+num_of_decide = 200
 n_epochs = 100
 
 hw = 8
@@ -296,14 +296,16 @@ def decide(num):
     ais[0].stdin.write('0\n'.encode('utf-8')) # best
     ais[1].stdin.write('1\n'.encode('utf-8')) # 
     new_win = 0
+    best_win = 0
     for game_idx in trange(num):
         rv = reversi()
         player2ai = [0, 1] if game_idx % 2 == 0 else [1, 0]
-        '''
+        
         rnd = randint(0, len(early_stages) - 1)
         for y in range(hw):
             for x in range(hw):
                 rv.grid[y][x] = early_stages[rnd][y][x]
+        rv.player = 0
         '''
         for y in range(hw):
             for x in range(hw):
@@ -314,6 +316,7 @@ def decide(num):
         rv.grid[4][4] = 0
         rv.grid[4][5] = 0
         rv.player = 1
+        '''
         while True:
             if rv.check_pass() and rv.check_pass():
                 break
@@ -335,9 +338,12 @@ def decide(num):
         #rv.output()
         if rv.nums[player2ai[0]] < rv.nums[player2ai[1]]:
             new_win += 1
+        elif rv.nums[player2ai[0]] > rv.nums[player2ai[1]]:
+            best_win += 1
     for i in range(2):
         ais[i].kill()
     print('score of new player', new_win)
+    print('score of best player', best_win)
     if new_win > num * 0.55:
         return 1
     else:
@@ -352,7 +358,7 @@ def get_early_stages():
         n_stones = 0
         for elem in grid_str:
             n_stones += elem != '.'
-        if n_stones == 10:
+        if n_stones == 8:
             grid = [[-1 for _ in range(hw)] for _ in range(hw)]
             for y in range(hw):
                 for x in range(hw):
@@ -360,8 +366,7 @@ def get_early_stages():
             early_stages.append(grid)
     print('len early stages', len(early_stages))
 
-#get_early_stages()
-
+get_early_stages()
 
 model_updated = True
 
@@ -388,9 +393,9 @@ while True:
 
     print('start learning')
     model = load_model('param/best.h5')
-    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.0001))
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.001))
     print(model.evaluate([train_board, train_param], [train_policies, train_value]))
-    early_stop = EarlyStopping(monitor='val_loss', patience=10)
+    early_stop = EarlyStopping(monitor='val_loss', patience=5)
     history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 
     print('saving')

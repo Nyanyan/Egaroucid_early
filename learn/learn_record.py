@@ -13,22 +13,27 @@ from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
 
+with open('param/mean.txt', 'r') as f:
+    mean = np.array([float(i) for i in f.read().splitlines()])
+with open('param/std.txt', 'r') as f:
+    std = np.array([float(i) for i in f.read().splitlines()])
+
 hw = 8
 hw2 = 64
 
 all_data = []
 
 n_epochs = 1000
-game_num = 20000
+game_num = 2000
 game_strt = 0
 use_ratio = 1.0
-test_ratio = 0.15
+test_ratio = 0.2
 n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 32
-n_residual = 2
+n_kernels = 64
+n_residual = 1
 
 leakyrelu_alpha = 0.01
 n_train_data = int(game_num * (1.0 - test_ratio))
@@ -111,23 +116,6 @@ def reshape_data_train():
     ln = len(tmp_data)
     print('got', ln)
     print('creating train data & labels')
-    '''
-    for idx in trange(ln):
-        grid_str_no_rotate, score, additional_data = tmp_data[idx]
-        for rotation in range(4):
-            grid_str = ''
-            grid_space0 = ''
-            grid_space1 = ''
-            for i in range(hw):
-                for j in range(hw):
-                    idx = calc_idx(i, j, rotation)
-                    grid_str += grid_str_no_rotate[idx]
-                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
-                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
-            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
-            train_data.append(in_data)
-            train_labels.append(score)
-    '''
     train_idx = 0
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
@@ -177,8 +165,8 @@ def reshape_data_train():
     train_param = train_param[0:train_idx]
     train_policies = train_policies[0:train_idx]
     train_value = train_value[0:train_idx]
-    mean = train_param.mean(axis=0)
-    std = train_param.std(axis=0)
+    #mean = train_param.mean(axis=0)
+    #std = train_param.std(axis=0)
     print('mean', mean)
     print('std', std)
     train_param = (train_param - mean) / std
@@ -207,23 +195,6 @@ def reshape_data_test():
     ln = len(tmp_data)
     print('got', ln)
     print('creating test data & labels')
-    '''
-    for idx in trange(ln):
-        grid_str_no_rotate, score, additional_data = tmp_data[idx]
-        for rotation in range(4):
-            grid_str = ''
-            grid_space0 = ''
-            grid_space1 = ''
-            for i in range(hw):
-                for j in range(hw):
-                    idx = calc_idx(i, j, rotation)
-                    grid_str += grid_str_no_rotate[idx]
-                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
-                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
-            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
-            train_data.append(in_data)
-            train_labels.append(score)
-    '''
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
         #board, policies, score = tmp_data[ii]
@@ -305,7 +276,7 @@ x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
 x_p = Dense(16)(input_p)
 x_p = LeakyReLU(x_p)
-x_p = Dense(8)(x_p)
+x_p = Dense(16)(x_p)
 x_p = LeakyReLU(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
@@ -349,14 +320,15 @@ early_stop = EarlyStopping(monitor='val_loss', patience=10)
 
 history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 #history = model.fit([train_board], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board], [test_policies, test_value]), callbacks=[early_stop])
+'''
 with open('param/mean.txt', 'w') as f:
     for i in mean:
         f.write(str(i) + '\n')
 with open('param/std.txt', 'w') as f:
     for i in std:
         f.write(str(i) + '\n')
+'''
 model.save('param/model.h5')
-model.save_weights('param/model.hdf5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)
