@@ -1609,10 +1609,11 @@ int main(int argc, char* argv[]){
             output_str += to_string(hist1[i].policy) + "\n";
         }
     }
-    string filename("self_play/record.txt");
-    ofstream file_out;
-    file_out.open(filename, ios_base::app);
-    file_out << record.substr(0, record.length() - 1) << endl;
+    //string filename("self_play/record.txt");
+    //ofstream file_out;
+    //file_out.open(filename, ios_base::app);
+    //file_out << record.substr(0, record.length() - 1) << endl;
+    cout << record;
     
     cerr << "end";
 
