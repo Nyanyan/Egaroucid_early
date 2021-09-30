@@ -27,7 +27,7 @@ n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 25
+n_kernels = 32
 n_residual = 2
 
 leakyrelu_alpha = 0.01
@@ -288,6 +288,39 @@ def weighted_mse(y_true, y_pred):
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
+input_b = Input(shape=(hw, hw, n_boards,))
+input_p = Input(shape=(n_additional_param,))
+x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
+#x_b = BatchNormalization()(x_b)
+#x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+x_b = LeakyReLU(x_b)
+for _ in range(n_residual):
+    sc = x_b
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
+    x_b = Add()([x_b, sc])
+    #x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    x_b = LeakyReLU(x_b)
+x_b = GlobalAveragePooling2D()(x_b)
+x_b = Model(inputs=[input_b, input_p], outputs=x_b)
+
+x_p = Dense(16)(input_p)
+x_p = LeakyReLU(x_p)
+x_p = Dense(8)(x_p)
+x_p = LeakyReLU(x_p)
+x_p = Model(inputs=[input_b, input_p], outputs=x_p)
+
+x_all = concatenate([x_b.output, x_p.output])
+
+output_p = Dense(hw2)(x_all)
+output_p = Activation('softmax', name='policy')(output_p)
+
+output_v = Dense(1)(x_all)
+output_v = Activation('tanh', name='value')(output_v)
+
+model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
+#model = Model(inputs=[input_b], outputs=[output_p, output_v])
+model.summary()
+
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
@@ -309,51 +342,7 @@ for i in trange(game_strt + train_num, game_strt + game_num):
 reshape_data_test()
 my_evaluate.kill()
 
-input_b = Input(shape=(hw, hw, n_boards,))
-input_p = Input(shape=(n_additional_param,))
-x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
-#x_b = BatchNormalization()(x_b)
-#x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-x_b = LeakyReLU(x_b)
-for _ in range(n_residual):
-    sc = x_b
-    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
-    x_b = Add()([x_b, sc])
-    #x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-    x_b = LeakyReLU(x_b)
-x_b = GlobalAveragePooling2D()(x_b)
 
-x_b = Model(inputs=[input_b, input_p], outputs=x_b)
-
-x_p = Dense(8)(input_p)
-x_p = LeakyReLU(x_p)
-'''
-x_p = Dense(32)(input_p)
-x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
-#x_p = LeakyReLU(x_p)
-x_p = Dense(16)(x_p)
-#x_p = Dropout(0.0625)(x_p)
-x_p = LeakyReLU(alpha=leakyrelu_alpha)(x_p)
-#x_p = LeakyReLU(x_p)
-'''
-x_p = Model(inputs=[input_b, input_p], outputs=x_p)
-
-x_all = concatenate([x_b.output, x_p.output])
-
-#x_all = x_b
-
-output_p = Dense(hw2)(x_all)
-output_p = Activation('softmax', name='policy')(output_p)
-'''
-x_all = Dense(16)(x_all)
-x_all = LeakyReLU(alpha=leakyrelu_alpha)(x_all)
-'''
-output_v = Dense(1)(x_all)
-output_v = Activation('tanh', name='value')(output_v)
-
-model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
-#model = Model(inputs=[input_b], outputs=[output_p, output_v])
-model.summary()
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
 #plot_model(model, show_shapes=True, show_layer_names=False)
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
