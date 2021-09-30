@@ -18,10 +18,10 @@ from time import time
 import datetime
 
 selfplay_num = 5
-num_self_play_in_one_time_train = 80
+num_self_play_in_one_time_train = 100
 num_self_play_in_one_time_test = 20
 num_of_decide = 100
-n_epochs = 50
+n_epochs = 100
 
 hw = 8
 hw2 = 64
@@ -66,7 +66,6 @@ def self_play(num_self_play_in_one_time):
     one_play_num = num_self_play_in_one_time // selfplay_num
     for i in range(selfplay_num):
         seed = randint(1, 2000000000)
-        #stdin = str(seed) + '\n' + str(one_play_num) + '\n'
         sp.append(subprocess.Popen(('./self_play.out ' + str(seed) + ' ' + str(one_play_num)).split(), stdout=subprocess.PIPE))
     n_record = sum(path.isfile(path.join('self_play/records', name)) for name in listdir('self_play/records'))
     records = []

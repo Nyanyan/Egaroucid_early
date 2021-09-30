@@ -35,7 +35,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 300
+#define evaluate_count 50
 #define c_puct 1.0 //3.0
 #define c_end 1.0
 #define c_value 1.0 //0.25
@@ -1549,6 +1549,8 @@ int main(int argc, char* argv[]){
     string record;
     string alp = "abcdefgh";
     bool mode;
+    int legal[hw2];
+    int legal_idx;
     for (int tim = 0; tim < num; ++tim){
         cerr << "=";
         hist0 = {};
@@ -1558,7 +1560,26 @@ int main(int argc, char* argv[]){
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
         record += "f5";
-        for (steps = 0; steps < hw2 - mcts_complete_stones - 4; ++steps){
+        for (steps = 0; steps < 3; ++steps){
+            legal_idx = 0;
+            for (cell = 0; cell < hw2; ++cell){
+                for (i = 0; i < board_index_num; ++i){
+                    if (board_param.put[cell][i] != -1){
+                        if (board_param.legal[board[i]][board_param.put[cell][i]]){
+                            mcts_param.nodes[0].pass = false;
+                            legal[legal_idx++] = cell;
+                            break;
+                        }
+                    }
+                }
+            }
+            policy = legal[(int)(myrandom() * legal_idx)];
+            record += alp[policy / hw] + to_string(policy % hw + 1);
+            move(board, tmp_board, policy);
+            swap(board, tmp_board);
+            player = 1 - player;
+        }
+        for (steps = 3; steps < hw2 - mcts_complete_stones - 4; ++steps){
             if (myrandom() < 0.75)
                 mode = true;
             else
