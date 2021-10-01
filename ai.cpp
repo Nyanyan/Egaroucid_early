@@ -35,10 +35,10 @@ using namespace std;
 #define hash_mask (hash_table_size - 1)
 
 #define evaluate_count 10000
-#define c_puct 1.0
+#define c_puct 2.0
 #define c_end 1.0
 #define c_value 1.0
-#define mcts_complete_stones 9
+#define mcts_complete_stones 8
 
 #define n_board_input 3
 #define n_add_input 15
@@ -207,7 +207,7 @@ struct search_param{
     node_t *memo_lb[hash_table_size];
     node_t *memo_ub[hash_table_size];
     int max_depth;
-    int strt, tl;
+    long long strt, tl;
     int turn;
     int searched_nodes;
     vector<int> vacant_lst;
@@ -278,8 +278,9 @@ inline int myrandom_int(){
     return xorw;
 }
 
-inline int tim(){
-    return static_cast<int>(chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now().time_since_epoch()).count());
+inline long long tim(){
+    //return static_cast<int>(chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now().time_since_epoch()).count());
+    return chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count();
 }
 
 inline int map_liner(double x, double mn, double mx){
@@ -406,7 +407,7 @@ int board_reverse(int idx){
 }
 
 void init(){
-    int strt = tim();
+    long long strt = tim();
     int i, j, k, l;
     static int translate[hw2] = {
         0, 1, 2, 3, 3, 2, 1, 0,
@@ -1126,6 +1127,7 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
     ++search_param.searched_nodes;
     if (skip_cnt == 2)
         return end_game(board);
+    /*
     int hash = calc_hash(board);
     double lb, ub;
     lb = get_val_hash(search_param.memo_lb, board, hash);
@@ -1140,6 +1142,7 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
         if (alpha >= beta)
             return beta;
     }
+    */
     int i, j, k, canput = 0;
     double v = -1.5, g;
     board_priority lst[30];
@@ -1167,15 +1170,17 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
         if (fabs(g) == inf)
             return -inf;
         if (beta < g){
-            register_hash(search_param.memo_lb, board, hash, g);
+            //register_hash(search_param.memo_lb, board, hash, g);
             return g;
         }
         alpha = max(alpha, g);
         v = max(v, g);
     }
+    /*
     if (v == alpha)
         register_hash(search_param.memo_lb, board, hash, v);
     register_hash(search_param.memo_ub, board, hash, v);
+    */
     return v;
 }
 
@@ -1279,7 +1284,8 @@ double evaluate(int idx, bool passed, int n_stones){
     double value = 0.0;
     int i, j;
     if (n_stones >= hw2 - mcts_complete_stones){
-        int result = find_win(mcts_param.nodes[idx].board).first;
+        //int result = find_win(mcts_param.nodes[idx].board).first;
+        int result = nega_alpha_heavy(mcts_param.nodes[idx].board, search_param.max_depth, -1.1, 1.1, 0);
         mcts_param.nodes[idx].w += c_end * (double)result;
         ++mcts_param.nodes[idx].n;
         return c_end * (double)result;
@@ -1290,7 +1296,7 @@ double evaluate(int idx, bool passed, int n_stones){
         mcts_param.nodes[idx].expanded = true;
         bool legal[hw2];
         mcts_param.nodes[idx].pass = true;
-        for (const int& cell : search_param.vacant_lst){
+        for (int cell = 0; cell < hw2; ++cell){
             mcts_param.nodes[idx].children[cell] = -1;
             legal[cell] = false;
             for (i = 0; i < board_index_num; ++i){
@@ -1327,7 +1333,7 @@ double evaluate(int idx, bool passed, int n_stones){
             value = c_value * predict(mcts_param.nodes[idx].board).value;
             mcts_param.nodes[idx].w += value;
             ++mcts_param.nodes[idx].n;
-            return value;
+            return c_value * value;
         }
     }
     if (!mcts_param.nodes[idx].pass){
@@ -1339,10 +1345,10 @@ double evaluate(int idx, bool passed, int n_stones){
         double t_sqrt = mcts_param.sqrt_arr[mcts_param.nodes[idx].n];
         for (const int& cell : search_param.vacant_lst){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
-                tmp_value = 0.0;
                 if (mcts_param.nodes[idx].children[cell] != -1)
-                    tmp_value = -mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
-                tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
+                    tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n) - mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
+                else
+                    tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt;
                 if (value < tmp_value){
                     value = tmp_value;
                     a_cell = cell;
@@ -1424,7 +1430,7 @@ inline int next_action(int *board){
     int n_stones = 0;
     for (i = 0; i < hw; ++i)
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
-    int strt = tim();
+    long long strt = tim();
     for (i = 0; i < evaluate_count; ++i){
         evaluate(0, false, n_stones);
         if (tim() - strt > search_param.tl)

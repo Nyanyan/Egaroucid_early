@@ -14,7 +14,6 @@
 #include <string>
 #include <unordered_map>
 #include <random>
-#include<fstream>
 
 using namespace std;
 
@@ -35,10 +34,10 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 1000
-#define c_puct 1.0 //3.0
+#define evaluate_count 10000
+#define c_puct 2.0
 #define c_end 1.0
-#define c_value 1.0 //0.25
+#define c_value 1.0
 #define mcts_complete_stones 9
 
 #define n_board_input 3
@@ -88,6 +87,7 @@ struct board_param{
     int put_idx[hw2][10];
     int put_idx_num[hw2];
     int restore_p[6561][hw], restore_o[6561][hw], restore_vacant[6561][hw];
+    int turn_board[4][hw2];
 };
 
 struct eval_param{
@@ -219,7 +219,7 @@ struct search_param{
     node_t *memo_lb[hash_table_size];
     node_t *memo_ub[hash_table_size];
     int max_depth;
-    int strt, tl;
+    long long strt, tl;
     int turn;
     int searched_nodes;
     vector<int> vacant_lst;
@@ -290,8 +290,9 @@ inline int myrandom_int(){
     return xorw;
 }
 
-inline int tim(){
-    return static_cast<int>(chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now().time_since_epoch()).count());
+inline long long tim(){
+    //return static_cast<int>(chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now().time_since_epoch()).count());
+    return chrono::duration_cast<chrono::milliseconds>(chrono::high_resolution_clock::now().time_since_epoch()).count();
 }
 
 inline int map_liner(double x, double mn, double mx){
@@ -418,7 +419,7 @@ int board_reverse(int idx){
 }
 
 void init(){
-    int strt = tim();
+    long long strt = tim();
     int i, j, k, l;
     static int translate[hw2] = {
         0, 1, 2, 3, 3, 2, 1, 0,
@@ -490,28 +491,6 @@ void init(){
             }
         }
     }
-    /*
-    all_idx = 0;
-    for (i = 0; i < super_compress_pattern.length(); ++i){
-        if ((int)super_compress_pattern[i] >= num_s){
-            for (j = 0; j < (int)super_compress_pattern[i] - num_s + 1; ++j){
-                compress_pattern[all_idx] = compress_pattern[all_idx - 1];
-                ++all_idx;
-            }
-        } else {
-            compress_pattern[all_idx] = super_compress_pattern[i];
-            ++all_idx;
-        }
-    }
-    //cerr << "unziped elems: " << all_idx << endl;
-    for (i = 0; i < pattern_elem_num; ++i)
-        patterns[i] = compress_vals[compress_pattern[i] - char_s];
-    all_idx = 0;
-    for (i = 0; i < pattern_num; ++i){
-        for (j = 0; j < (int)pow(3, eval_param.pattern_space[i]); ++j)
-            eval_param.pattern[i][j] = patterns[all_idx++];
-    }
-    */
     FILE *fp;
     char cbuf[1024];
     if ((fp = fopen("param/param.txt", "r")) == NULL){
@@ -564,24 +543,6 @@ void init(){
         }
         eval_param.bias1[i] = atof(cbuf);
     }
-    /*
-    for (i = 0; i < n_dense1; ++i){
-        for (j = 0; j < n_dense2; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense2[i][j] = atof(cbuf);
-        }
-    }
-    for (i = 0; i < n_dense2; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias2[i] = atof(cbuf);
-    }
-    */
     for (i = 0; i < n_joined; ++i){
         for (j = 0; j < hw2; ++j){
             if (!fgets(cbuf, 1024, fp)){
@@ -862,6 +823,22 @@ void init(){
     }
     for (i = 0; i < 100; ++i)
         mcts_param.sqrt_arr[i] = sqrt((double)i);
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[0][i * hw + j] = i * hw + j;
+    }
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[1][i * hw + j] = j * hw + i;
+    }
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[2][i * hw + j] = (hw_m1 - i) * hw + (hw_m1 - j);
+    }
+    for (i = 0; i < hw; ++i){
+        for (j = 0; j < hw; ++j)
+            board_param.turn_board[3][i * hw + j] = (hw_m1 - j) * hw + (hw_m1 - i);
+    }
 }
 
 inline double leaky_relu(double x){
@@ -1087,7 +1064,7 @@ inline open_vals open_val_forward(int *board, int depth, bool player){
     res.o_open_val = inf;
     double open_val = -inf;
     bool passed = false;
-    for (int cell = 0; cell < hw2; ++cell){
+    for (const int& cell : search_param.vacant_lst){
         for (i = 0; i < board_param.put_idx_num[cell]; ++i){
             if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
                 passed = false;
@@ -1134,7 +1111,7 @@ double nega_alpha_light(int *board, const int depth, double alpha, double beta, 
     double v = -1.5, g;
     int n_board[board_index_num];
     int n_depth = depth - 1;
-    for (int cell = 0; cell < hw2; ++cell){
+    for (const int& cell : search_param.vacant_lst){
         for (i = 0; i < board_index_num; ++i){
             if (board_param.put[cell][i] != -1){
                 if (board_param.legal[board[i]][board_param.put[cell][i]]){
@@ -1164,6 +1141,7 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
     ++search_param.searched_nodes;
     if (skip_cnt == 2)
         return end_game(board);
+    /*
     int hash = calc_hash(board);
     double lb, ub;
     lb = get_val_hash(search_param.memo_lb, board, hash);
@@ -1178,10 +1156,11 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
         if (alpha >= beta)
             return beta;
     }
+    */
     int i, j, k, canput = 0;
     double v = -1.5, g;
     board_priority lst[30];
-    for (int cell = 0; cell < hw2; ++cell){
+    for (const int& cell : search_param.vacant_lst){
         for (i = 0; i < board_param.put_idx_num[cell]; ++i){
             if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
                 lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
@@ -1205,15 +1184,17 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
         if (fabs(g) == inf)
             return -inf;
         if (beta < g){
-            register_hash(search_param.memo_lb, board, hash, g);
+            //register_hash(search_param.memo_lb, board, hash, g);
             return g;
         }
         alpha = max(alpha, g);
         v = max(v, g);
     }
+    /*
     if (v == alpha)
         register_hash(search_param.memo_lb, board, hash, v);
     register_hash(search_param.memo_ub, board, hash, v);
+    */
     return v;
 }
 
@@ -1226,7 +1207,7 @@ double nega_alpha_heavy(int *board, int depth, double alpha, double beta, int sk
     int i, j, canput = 0;
     board_priority lst[30];
     open_vals tmp_open_vals;
-    for (int cell = 0; cell < hw2; ++cell){
+    for (const int& cell : search_param.vacant_lst){
         for (i = 0; i < board_param.put_idx_num[cell]; ++i){
             if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
                 lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
@@ -1317,7 +1298,8 @@ double evaluate(int idx, bool passed, int n_stones){
     double value = 0.0;
     int i, j;
     if (n_stones >= hw2 - mcts_complete_stones){
-        int result = find_win(mcts_param.nodes[idx].board).first;
+        //int result = find_win(mcts_param.nodes[idx].board).first;
+        int result = nega_alpha_heavy(mcts_param.nodes[idx].board, search_param.max_depth, -1.1, 1.1, 0);
         mcts_param.nodes[idx].w += c_end * (double)result;
         ++mcts_param.nodes[idx].n;
         return c_end * (double)result;
@@ -1365,7 +1347,7 @@ double evaluate(int idx, bool passed, int n_stones){
             value = c_value * predict(mcts_param.nodes[idx].board).value;
             mcts_param.nodes[idx].w += value;
             ++mcts_param.nodes[idx].n;
-            return value;
+            return c_value * value;
         }
     }
     if (!mcts_param.nodes[idx].pass){
@@ -1375,12 +1357,12 @@ double evaluate(int idx, bool passed, int n_stones){
         value = -inf;
         double tmp_value;
         double t_sqrt = mcts_param.sqrt_arr[mcts_param.nodes[idx].n];
-        for (int cell = 0; cell < hw2; ++cell){
+        for (const int& cell : search_param.vacant_lst){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
-                tmp_value = 0.0;
                 if (mcts_param.nodes[idx].children[cell] != -1)
-                    tmp_value = -mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
-                tmp_value += c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n);
+                    tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n) - mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
+                else
+                    tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt;
                 if (value < tmp_value){
                     value = tmp_value;
                     a_cell = cell;
@@ -1527,7 +1509,7 @@ inline void complete(int *board){
 }
 
 int main(int argc, char* argv[]){
-    search_param.tl = 20;
+    search_param.tl = 100;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();
