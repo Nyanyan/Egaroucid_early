@@ -91,9 +91,12 @@ def reshape_data_test():
     tmp_data = []
     print('calculating score & additional data')
     for _, board in zip(trange(len(all_data)), all_data):
+        '''
         my_evaluate.stdin.write(board.encode('utf-8'))
         my_evaluate.stdin.flush()
         additional_data = my_evaluate.stdout.readline().decode().strip()
+        '''
+        additional_data = None
         tmp_data.append([board, additional_data])
     shuffle(tmp_data)
     ln = len(tmp_data)
@@ -113,25 +116,11 @@ def reshape_data_test():
         test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
-        test_param.append([float(i) for i in param.split()])
+        #test_param.append([float(i) for i in param.split()])
     test_board = np.array(test_board)
-    test_param = np.array(test_param)
-    test_param = (test_param - mean) / std
-    print('test', test_board.shape, test_param.shape)
-
-def step_decay(epoch):
-    x = 0.001
-    if epoch >= 50: x = 0.0005
-    if epoch >= 80: x = 0.00025
-    return x
-
-def policy_error(y_true, y_pred):
-    first_policy = np.argmax(y_true)
-    y_pred_policy = [[y_pred[i], i] for i in range(hw2)]
-    y_pred_policy.sort(reverse=True)
-    for i in range(hw2):
-        if y_pred_policy[i][1] == first_policy:
-            return i
+    #test_param = np.array(test_param)
+    #test_param = (test_param - mean) / std
+    #print('test', test_board.shape, test_param.shape)
 
 game_num = 10
 game_strt = 0
@@ -146,15 +135,14 @@ for i in trange(game_num):
 reshape_data_test()
 my_evaluate.kill()
 
-model_policy = load_model('param/policy.h5')
-model_value = load_model('param/value.h5')
+model = load_model('param/model.h5')
 #conv_out = Model(inputs=model.input, outputs=model.get_layer('conv2d').output)
 #pooling_out = Model(inputs=model.input, outputs=model.get_layer('global_average_pooling2d').output)
 
 test_num = 3
 test_num = min(test_board.shape[0], test_num)
-pred_policies = model_policy.predict(test_board[0:test_num])
-pred_value = model_value.predict(test_param[0:test_num])
+pred = model.predict(test_board[0:test_num])
+print(pred)
 #conv_outs = conv_out.predict([test_board[0:test_num], test_param[0:test_num]])
 #pooling_outs = pooling_out.predict([test_board[0:test_num], test_param[0:test_num]])
 print('')
@@ -173,7 +161,7 @@ for i in range(test_num):
     print(pooling_outs[i])
     print('')
     '''
-    print(np.argmax(pred_policies[i]), pred_policies[i][np.argmax(pred_policies[i])])
-    print(pred_value[i][0])
+    print(np.argmax(pred[0][i]), pred[0][i][np.argmax(pred[0][i])])
+    print(pred[1][i][0])
     print('')
     print('')

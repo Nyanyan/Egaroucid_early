@@ -44,12 +44,16 @@ using namespace std;
 #define kernel_size 3
 #define n_kernels 32
 #define n_residual 2
-#define n_dense1_policy 64
-#define n_dense1_value 32
-#define n_dense2_value 16
+#define n_dense_policy 64
 #define conv_size (hw_p1 - kernel_size)
 #define conv_padding (kernel_size / 2)
+#define div_pooling (hw2)
 #define conv_padding2 (conv_padding * 2)
+
+#define n_add_input 15
+#define n_dense_layers 3
+#define dense_mx 32
+constexpr int n_dense[n_dense_layers + 1] = {n_add_input, 32, 16, 16};
 
 #define n_div 1000000
 #define tanh_min -5.0
@@ -171,26 +175,27 @@ struct eval_param{
     double tanh_arr[n_div];
     double exp_arr[n_div];
 
-    double input_board[n_board_input][hw + conv_padding2][hw + conv_padding2];
-    double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
-    double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
-    double after_conv[n_kernels];
-    double hidden1[64];
-    double hidden2[64];
-
+    
+    double input_b[n_board_input][hw + conv_padding2][hw + conv_padding2];
     double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
-    double dense1_policy[n_kernels][n_dense1_policy];
-    double bias1_policy[n_dense1_policy];
-    double dense2_policy[n_dense1_policy][hw2];
-    double bias2_policy[hw2];
+    double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
+    double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
+    double hidden_policy1[n_kernels];
+    double hidden_policy2[n_dense_policy];
+    double dense_policy[n_kernels][n_dense_policy];
+    double bias_policy[n_dense_policy];
+    double dense_policy_final[n_dense_policy][hw2];
+    double bias_policy_final[hw2];
 
-    double dense1_value[n_kernels][n_dense1_value];
-    double bias1_value[n_dense1_value];
-    double dense2_value[n_dense1_value][n_dense2_value];
-    double bias2_value[n_dense2_value];
-    double dense3_value[n_dense2_value];
-    double bias3_value;
+    double mean[n_add_input];
+    double std[n_add_input];
+    double dense_value[n_dense_layers][dense_mx][dense_mx];
+    double bias_value[n_dense_layers][dense_mx];
+    double hidden_value1[dense_mx];
+    double hidden_value2[dense_mx];
+    double dense_value_final[n_dense[n_dense_layers - 1]];
+    double bias_value_final;
 };
 
 struct hash_pair {
@@ -252,11 +257,6 @@ struct mcts_param{
     mcts_node nodes[2 * evaluate_count];
     int used_idx;
     double sqrt_arr[100];
-};
-
-struct predictions{
-    double policies[hw2];
-    double value;
 };
 
 board_param board_param;
@@ -484,10 +484,11 @@ void init(){
             }
         }
     }
+
     FILE *fp;
     char cbuf[1024];
-    if ((fp = fopen("learn/param/param.txt", "r")) == NULL){
-        printf("param file not exist");
+    if ((fp = fopen("learn/param/policy.txt", "r")) == NULL){
+        printf("policy file not exist");
         exit(1);
     }
     for (i = 0; i < n_kernels; ++i){
@@ -495,7 +496,7 @@ void init(){
             for (k = 0; k < kernel_size; ++k){
                 for (l = 0; l < kernel_size; ++l){
                     if (!fgets(cbuf, 1024, fp)){
-                        printf("param file broken");
+                        printf("policy file broken");
                         exit(1);
                     }
                     eval_param.conv1[i][j][k][l] = atof(cbuf);
@@ -510,7 +511,7 @@ void init(){
                 for (k = 0; k < kernel_size; ++k){
                     for (l = 0; l < kernel_size; ++l){
                         if (!fgets(cbuf, 1024, fp)){
-                            printf("param file broken");
+                            printf("policy file broken");
                             exit(1);
                         }
                         eval_param.conv_residual[residual_i][i][j][k][l] = atof(cbuf);
@@ -520,82 +521,94 @@ void init(){
         }
     }
     for (i = 0; i < n_kernels; ++i){
-        for (j = 0; j < n_dense1_value; ++j){
+        for (j = 0; j < n_dense_policy; ++j){
             if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
+                printf("policy file broken");
                 exit(1);
             }
-            eval_param.dense1_value[i][j] = atof(cbuf);
+            eval_param.dense_policy[i][j] = atof(cbuf);
         }
     }
-    for (i = 0; i < n_dense1_value; ++i){
+    for (i = 0; i < n_dense_policy; ++i){
         if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
+            printf("policy file broken");
             exit(1);
         }
-        eval_param.bias1_value[i] = atof(cbuf);
+        eval_param.bias_policy[i] = atof(cbuf);
     }
-    for (i = 0; i < n_kernels; ++i){
-        for (j = 0; j < n_dense1_policy; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense1_policy[i][j] = atof(cbuf);
-        }
-    }
-    for (i = 0; i < n_dense1_policy; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias1_policy[i] = atof(cbuf);
-    }
-    for (i = 0; i < n_dense1_value; ++i){
-        for (j = 0; j < n_dense2_value; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense2_value[i][j] = atof(cbuf);
-        }
-    }
-    for (i = 0; i < n_dense2_value; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias2_value[i] = atof(cbuf);
-    }
-    for (i = 0; i < n_dense1_policy; ++i){
+    for (i = 0; i < n_dense_policy; ++i){
         for (j = 0; j < hw2; ++j){
             if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
+                printf("policy file broken");
                 exit(1);
             }
-            eval_param.dense2_policy[i][j] = atof(cbuf);
+            eval_param.dense_policy_final[i][j] = atof(cbuf);
         }
     }
     for (i = 0; i < hw2; ++i){
         if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
+            printf("policy file broken");
             exit(1);
         }
-        eval_param.bias2_policy[i] = atof(cbuf);
+        eval_param.bias_policy_final[i] = atof(cbuf);
     }
-    for (i = 0; i < n_dense2_value; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.dense3_value[i] = atof(cbuf);
-    }
-    if (!fgets(cbuf, 1024, fp)){
-        printf("param file broken");
+    
+    if ((fp = fopen("learn/param/value.txt", "r")) == NULL){
+        printf("value file not exist");
         exit(1);
     }
-    eval_param.bias3_value = atof(cbuf);
-
+    for (i = 0; i < n_dense_layers; ++i){
+        for (j = 0; j < n_dense[i]; ++j){
+            for (k = 0; k < n_dense[i + 1]; ++k){
+                if (!fgets(cbuf, 1024, fp)){
+                    printf("value file broken");
+                    exit(1);
+                }
+                eval_param.dense_value[i][j][k] = atof(cbuf);
+            }
+        }
+        for (j = 0; j < n_dense[i + 1]; ++j){
+            if (!fgets(cbuf, 1024, fp)){
+                printf("value file broken");
+                exit(1);
+            }
+            eval_param.bias_value[i][j] = atof(cbuf);
+        }
+    }
+    for (i = 0; i < n_dense[n_dense_layers]; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("value file broken");
+            exit(1);
+        }
+        eval_param.dense_value_final[i] = atof(cbuf);
+    }
+    if (!fgets(cbuf, 1024, fp)){
+        printf("value file broken");
+        exit(1);
+    }
+    eval_param.bias_value_final = atof(cbuf);
+    if ((fp = fopen("learn/param/mean.txt", "r")) == NULL){
+        printf("mean file not exist");
+        exit(1);
+    }
+    for (i = 0; i < n_add_input; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("mean file broken");
+            exit(1);
+        }
+        eval_param.mean[i] = atof(cbuf);
+    }
+    if ((fp = fopen("learn/param/std.txt", "r")) == NULL){
+        printf("std file not exist");
+        exit(1);
+    }
+    for (i = 0; i < n_add_input; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("std file broken");
+            exit(1);
+        }
+        eval_param.std[i] = atof(cbuf);
+    }
     /*
     if ((fp = fopen("book/param/book.txt", "r")) == NULL){
         printf("book file not exist");
@@ -832,27 +845,73 @@ inline double leaky_relu(double x){
     return max(x, 0.01 * x);
 }
 
-inline predictions predict(const int *board){
+inline double predict_value(const int *board){
+    int i, j, k;
+    // create input
+    for (i = 0; i < n_add_input; ++i)
+        eval_param.hidden_value1[i] = 0.0;
+    eval_param.hidden_value1[3] = eval_param.avg_canput[search_param.turn];
+    eval_param.hidden_value1[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
+    eval_param.hidden_value1[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
+    eval_param.hidden_value1[10] = search_param.turn;
+    eval_param.hidden_value1[11] = eval_param.x_corner_p[board[21]] + eval_param.x_corner_p[board[32]];
+    eval_param.hidden_value1[12] = eval_param.x_corner_o[board[21]] + eval_param.x_corner_o[board[32]];
+    eval_param.hidden_value1[13] = eval_param.c_a_b_p[board[0]] + eval_param.c_a_b_p[board[7]] + eval_param.c_a_b_p[board[8]] + eval_param.c_a_b_p[board[15]];
+    eval_param.hidden_value1[14] = eval_param.c_a_b_o[board[0]] + eval_param.c_a_b_o[board[7]] + eval_param.c_a_b_o[board[8]] + eval_param.c_a_b_o[board[15]];
+    for (i = 0; i < hw; ++i){
+        eval_param.hidden_value1[0] += eval_param.cnt_p[board[i]];
+        eval_param.hidden_value1[1] += eval_param.cnt_o[board[i]];
+        eval_param.hidden_value1[4] += eval_param.weight_p[i][board[i]];
+        eval_param.hidden_value1[5] += eval_param.weight_o[i][board[i]];
+    }
+    for (i = 0; i < board_index_num; ++i){
+        eval_param.hidden_value1[2] += eval_param.canput[board[i]];
+        eval_param.hidden_value1[8] += eval_param.pot_canput_p[board[i]];
+        eval_param.hidden_value1[9] += eval_param.pot_canput_o[board[i]];
+    }
+    for (i = 0; i < n_add_input; ++i){
+        eval_param.hidden_value1[i] -= eval_param.mean[i];
+        eval_param.hidden_value1[i] /= eval_param.std[i];
+    }
+    // value prediction
+    for (i = 0; i < n_dense_layers; ++i){
+        for (j = 0; j < n_dense[i + 1]; ++j)
+            eval_param.hidden_value2[j] = eval_param.bias_value[i][j];
+        for (j = 0; j < n_dense[i]; ++j){
+            for (k = 0; k < n_dense[i + 1]; ++k)
+                eval_param.hidden_value2[k] += eval_param.dense_value[i][j][k] * eval_param.hidden_value1[j];
+        }
+        for (j = 0; j < n_dense[i + 1]; ++j)
+            eval_param.hidden_value1[j] = leaky_relu(eval_param.hidden_value2[j]);
+    }
+    // final dense of value
+    double res = eval_param.bias_value_final;
+    for (i = 0; i < n_dense[n_dense_layers]; ++i)
+        res += eval_param.dense_value_final[i] * eval_param.hidden_value1[i];
+    res = eval_param.tanh_arr[map_liner(res, tanh_min, tanh_max)];
+    // return
+    return res;
+}
+
+inline void predict_policy(const int *board, double (&res)[hw2]){
     int i, j, k, sy, sx, y, x, residual_i;
-    predictions res;
-    // reshape input
+    // create input
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
-            eval_param.input_board[0][i + conv_padding][j + conv_padding] = board_param.restore_p[board[i]][j];
-            eval_param.input_board[1][i + conv_padding][j + conv_padding] = board_param.restore_o[board[i]][j];
-            eval_param.input_board[2][i + conv_padding][j + conv_padding] = board_param.restore_vacant[board[i]][j];
+            eval_param.input_b[0][i + conv_padding][j + conv_padding] = board_param.restore_p[board[i]][j];
+            eval_param.input_b[1][i + conv_padding][j + conv_padding] = board_param.restore_o[board[i]][j];
+            eval_param.input_b[2][i + conv_padding][j + conv_padding] = board_param.restore_vacant[board[i]][j];
         }
         for (j = 0; j < hw + conv_padding2; ++j){
-            for (k = 0; k < n_board_input; ++k){
-                eval_param.input_board[k][0][j] = 0.0;
-                eval_param.input_board[k][hw_m1 + conv_padding2][j] = 0.0;
-                eval_param.input_board[k][j][0] = 0.0;
-                eval_param.input_board[k][j][hw_m1 + conv_padding2] = 0.0;
+            for (k = 0; k < 3; ++k){
+                eval_param.input_b[k][0][j] = 0.0;
+                eval_param.input_b[k][hw_m1 + conv_padding2][j] = 0.0;
+                eval_param.input_b[k][j][0] = 0.0;
+                eval_param.input_b[k][j][hw_m1 + conv_padding2] = 0.0;
             }
         }
     }
-
-    // conv and normalization and leaky-relu
+    // conv and normalization and leaky-relu of policy
     for (i = 0; i < n_kernels; ++i){
         for (y = 0; y < hw + conv_padding2; ++y){
             for (x = 0; x < hw + conv_padding2; ++x)
@@ -863,7 +922,7 @@ inline predictions predict(const int *board){
                 for (sx = 0; sx < hw; ++sx){
                     for (y = 0; y < kernel_size; ++y){
                         for (x = 0; x < kernel_size; ++x)
-                            eval_param.hidden_conv1[i][sy + conv_padding][sx + conv_padding] += eval_param.conv1[i][j][y][x] * eval_param.input_board[j][sy + y][sx + x];
+                            eval_param.hidden_conv1[i][sy + conv_padding][sx + conv_padding] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y][sx + x];
                     }
                 }
             }
@@ -873,7 +932,7 @@ inline predictions predict(const int *board){
                 eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x]);
         }
     }
-    // residual-error-block
+    // residual-error-block of policy
     for (residual_i = 0; residual_i < n_residual; ++residual_i){
         for (i = 0; i < n_kernels; ++i){
             for (y = 0; y < hw + conv_padding2; ++y){
@@ -898,52 +957,31 @@ inline predictions predict(const int *board){
             }
         }
     }
-    // global-average-pooling
+    // global-average-pooling of policy
     for (i = 0; i < n_kernels; ++i){
-        eval_param.after_conv[i] = 0.0;
+        eval_param.hidden_policy1[i] = 0.0;
         for (y = 0; y < hw; ++y){
             for (x = 0; x < hw; ++x)
-                eval_param.after_conv[i] += eval_param.hidden_conv1[i][y + conv_padding][x + conv_padding];
+                eval_param.hidden_policy1[i] += eval_param.hidden_conv1[i][y + conv_padding][x + conv_padding];
         }
-        eval_param.after_conv[i] /= hw2;
+        eval_param.hidden_policy1[i] /= div_pooling;
     }
-
-    // dense1 for policy
-    for (j = 0; j < n_dense1_policy; ++j){
-        eval_param.hidden1[j] = eval_param.bias1_policy[j];
-        for (i = 0; i < n_kernels; ++i)
-            eval_param.hidden1[j] += eval_param.dense1_policy[i][j] * eval_param.after_conv[i];
-        eval_param.hidden1[j] = leaky_relu(eval_param.hidden1[j]);
+    // dense of policy
+    for (i = 0; i < n_dense_policy; ++i)
+        eval_param.hidden_policy2[i] = eval_param.bias_policy[i];
+    for (i = 0; i < n_kernels; ++i){
+        for (j = 0; j < hw2; ++j)
+            eval_param.hidden_policy2[j] += eval_param.dense_policy[i][j] * eval_param.hidden_policy1[i];
     }
-    // dense2 for policy
-    for (j = 0; j < hw2; ++j){
-        res.policies[j] = eval_param.bias2_policy[j];
-        for (i = 0; i < n_dense1_policy; ++i)
-            res.policies[j] += eval_param.dense2_policy[i][j] * eval_param.hidden1[i];
+    for (i = 0; i < n_dense_policy; ++i)
+        eval_param.hidden_policy2[i] = leaky_relu(eval_param.hidden_policy2[i]);
+    // final dense of policy
+    for (i = 0; i < hw2; ++i)
+        res[i] = eval_param.bias_policy_final[i];
+    for (i = 0; i < n_dense_policy; ++i){
+        for (j = 0; j < hw2; ++j)
+            res[j] += eval_param.dense_policy_final[i][j] * eval_param.hidden_policy2[i];
     }
-
-    // dense1 for value
-    for (j = 0; j < n_dense1_value; ++j){
-        eval_param.hidden2[j] = eval_param.bias1_value[j];
-        for (i = 0; i < n_kernels; ++i)
-            eval_param.hidden2[j] += eval_param.dense1_value[i][j] * eval_param.after_conv[i];
-        eval_param.hidden1[j] = leaky_relu(eval_param.hidden2[j]);
-    }
-    // dense2 for value
-    for (j = 0; j < n_dense2_value; ++j){
-        eval_param.hidden2[j] = eval_param.bias2_value[j];
-        for (i = 0; i < n_dense1_value; ++i)
-            eval_param.hidden2[j] += eval_param.dense2_value[i][j] * eval_param.hidden1[i];
-        eval_param.hidden2[j] = leaky_relu(eval_param.hidden2[j]);
-    }
-    // dense3 for value
-    res.value = eval_param.bias3_value;
-    for (i = 0; i < n_dense2_value; ++i)
-        res.value += eval_param.dense3_value[i] * eval_param.hidden2[i];
-    res.value = eval_param.tanh_arr[map_liner(res.value, tanh_min, tanh_max)];
-
-    // return
-    return res;
 }
 
 inline void move(int *board, int (&res)[board_index_num], int coord){
@@ -1271,29 +1309,25 @@ double evaluate(int idx, bool passed, int n_stones){
                 }
             }
             */
-            predictions pred = predict(mcts_param.nodes[idx].board);
-            mcts_param.nodes[idx].w += c_value * pred.value;
-            ++mcts_param.nodes[idx].n;
+            value = c_value * predict_value(mcts_param.nodes[idx].board);
+            predict_policy(mcts_param.nodes[idx].board, mcts_param.nodes[idx].p);
             double p_sum = 0.0;
             for (i = 0; i < hw2; ++i){
-                if (legal[i]){
-                    mcts_param.nodes[idx].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
+                if (legal[i])
                     p_sum += mcts_param.nodes[idx].p[i];
-                } else{
+                else
                     mcts_param.nodes[idx].p[i] = 0.0;
-                }
             }
             for (i = 0; i < hw2; ++i)
                 mcts_param.nodes[idx].p[i] /= p_sum;
-            return c_value * pred.value;
         } else{
             for (i = 0; i < hw2; ++i)
                 mcts_param.nodes[idx].p[i] = 0.0;
-            value = c_value * predict(mcts_param.nodes[idx].board).value;
-            mcts_param.nodes[idx].w += value;
-            ++mcts_param.nodes[idx].n;
-            return c_value * value;
+            value = c_value * predict_value(mcts_param.nodes[idx].board);
         }
+        mcts_param.nodes[idx].w += value;
+        ++mcts_param.nodes[idx].n;
+        return value;
     }
     if ((!mcts_param.nodes[idx].pass) && (!mcts_param.nodes[idx].end)){
         // children already expanded
@@ -1381,13 +1415,13 @@ inline int next_action(int *board){
         }
     }
     //predict and create policy array
-    predictions pred = predict(board);
-    mcts_param.nodes[0].w += pred.value;
+    predict_policy(board, mcts_param.nodes[0].p);
+    mcts_param.nodes[0].w += c_puct * predict_value(board);
     ++mcts_param.nodes[0].n;
     double p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         if (legal[i]){
-            mcts_param.nodes[0].p[i] = eval_param.exp_arr[map_liner(pred.policies[i], exp_min, exp_max)];
+            mcts_param.nodes[0].p[i] = eval_param.exp_arr[map_liner(mcts_param.nodes[0].p[i], exp_min, exp_max)];
             p_sum += mcts_param.nodes[0].p[i];
         } else{
             mcts_param.nodes[0].p[i] = 0.0;
@@ -1498,16 +1532,17 @@ int main(){
         */
         /*
         print_board(board);
-        predictions tmp = predict(board);
+        double policies[hw2];
+        predict_policy(board, policies);
         double mx = -1000.0;
         int mx_idx = -1;
         for (i = 0; i < hw2; ++i){
-            if (mx < tmp.policies[i]){
-                mx = tmp.policies[i];
+            if (mx < policies[i]){
+                mx = policies[i];
                 mx_idx = i;
             }
         }
-        cerr << mx_idx << " " << mx << " " << tmp.value << endl;
+        cerr << mx_idx << " " << mx << " " << predict_value(board) << endl;
         return 0;
         */
         if (n_stones < hw2 - complete_stones){

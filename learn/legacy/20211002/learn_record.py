@@ -259,7 +259,21 @@ def weighted_mse(y_true, y_pred):
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
-'''
+input_b = Input(shape=(hw, hw, n_boards,))
+input_p = Input(shape=(n_additional_param,))
+x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
+#x_b = BatchNormalization()(x_b)
+#x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+x_b = LeakyReLU(x_b)
+for _ in range(n_residual):
+    sc = x_b
+    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
+    x_b = Add()([x_b, sc])
+    #x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
+    x_b = LeakyReLU(x_b)
+x_b = GlobalAveragePooling2D()(x_b)
+x_b = Model(inputs=[input_b, input_p], outputs=x_b)
+
 x_p = Dense(16)(input_p)
 x_p = LeakyReLU(x_p)
 #x_p = Dropout(0.0625)(x_p)
@@ -267,7 +281,7 @@ x_p = LeakyReLU(x_p)
 #x_p = LeakyReLU(x_p)
 x_p = Model(inputs=[input_b, input_p], outputs=x_p)
 
-x_all = concatenate([x.output, x_p.output])
+x_all = concatenate([x_b.output, x_p.output])
 
 output_p = Dense(hw2)(x_all)
 output_p = Activation('softmax', name='policy')(output_p)
@@ -278,7 +292,6 @@ output_v = Activation('tanh', name='value')(output_v)
 model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
 #model = Model(inputs=[input_b], outputs=[output_p, output_v])
 model.summary()
-'''
 
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
@@ -301,57 +314,39 @@ for i in trange(game_strt + train_num, game_strt + game_num):
 reshape_data_test()
 my_evaluate.kill()
 
-inputs = Input(shape=(hw, hw, n_boards,))
-x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
-x = LeakyReLU(x)
-for _ in range(n_residual):
-    sc = x
-    x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x)
-    x = Add()([x, sc])
-    x = LeakyReLU(x)
-x = GlobalAveragePooling2D()(x)
-x = Dense(hw2)(x)
-x = LeakyReLU(x)
-x = Dense(hw2)(x)
-y = Activation('softmax', name='policy')(x)
-model = Model(inputs=inputs, outputs=y)
-model.summary()
-model.compile(loss='categorical_crossentropy', optimizer='adam')
+
+model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+#plot_model(model, show_shapes=True, show_layer_names=False)
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
-history = model.fit(train_board, train_policies, epochs=n_epochs, validation_data=(test_board, test_policies), callbacks=[early_stop])
-model.save('param/policy.h5')
-for key in ['loss', 'val_loss']:
-    plt.plot(history.history[key], label='policy_' + key)
+
+history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
+#history = model.fit([train_board], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board], [test_policies, test_value]), callbacks=[early_stop])
+'''
+with open('param/mean.txt', 'w') as f:
+    for i in mean:
+        f.write(str(i) + '\n')
+with open('param/std.txt', 'w') as f:
+    for i in std:
+        f.write(str(i) + '\n')
+'''
+model.save('param/model.h5')
+
+for key in ['policy_loss', 'val_policy_loss']:
+    plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
 plt.ylabel('policy loss')
 plt.legend(loc='best')
 plt.savefig('graph/small/policy_loss.png')
 plt.clf()
 
-inputs = Input(shape=(n_additional_param,))
-x = Dense(16)(inputs)
-x = LeakyReLU(x)
-x = Dense(16)(x)
-x = LeakyReLU(x)
-x = Dense(8)(x)
-x = LeakyReLU(x)
-x = Dense(1)(x)
-y = Activation('tanh', name='value')(x)
-model = Model(inputs=inputs, outputs=y)
-model.summary()
-model.compile(loss='mse', optimizer='adam')
-early_stop = EarlyStopping(monitor='val_loss', patience=10)
-history = model.fit(train_param, train_value, epochs=n_epochs, validation_data=(test_param, test_value), callbacks=[early_stop])
-model.save('param/value.h5')
-for key in ['loss', 'val_loss']:
-    plt.plot(history.history[key], label='value_' + key)
+for key in ['value_loss', 'val_value_loss']:
+    plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
 plt.ylabel('value loss')
 plt.legend(loc='best')
 plt.savefig('graph/small/value_loss.png')
 plt.clf()
 
-'''
 test_num = 10
 test_num = min(test_value.shape[0], test_num)
 test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
@@ -364,12 +359,14 @@ for i in range(test_num):
     #print('board', [[[ii for ii in jj] for jj in kk] for kk in test_board[i]])
     print('param', list(test_param[i]))
     print('raw_board', test_raw_board[i])
+    '''
     board_str = ''
     for ii in test_board[i]:
         for jj in ii:
             for kk in jj:
                 board_str += str(int(kk))
     print('board_str', board_str)
+    '''
     print('ans_policy', ans_policies[i])
     print('prd_policy', pred_policies[i])
     policies = [[ii, test_predictions[0][i][ii]] for ii in range(hw2)]
@@ -382,4 +379,3 @@ for i in range(test_num):
     print('ans_value', ans_value[i])
     print('prd_value', pred_value[i][0])
     print('')
-'''
