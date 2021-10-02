@@ -12,6 +12,7 @@ Procfile
 statistics
 learn/graph
 learn/learn_data
+learn/learn_data2
 learn/param
 learn/third_party
 book/param

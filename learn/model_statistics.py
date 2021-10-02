@@ -191,7 +191,7 @@ def policy_error(y_true, y_pred):
 def weighted_mse(y_true, y_pred):
     return 30.0 * ((y_true - y_pred) ** 2)
 
-game_num = 500
+game_num = 50000
 game_strt = 0
 use_ratio = 1.0
 see_rank = 1
@@ -200,7 +200,7 @@ if argv[1] == 'big':
     model = load_model('param/teacher.h5')
     dirc = 'big'
 else:
-    model = load_model('param/model.h5', custom_objects={'weighted_mse': weighted_mse})
+    model = load_model('param/model.h5')
     dirc = 'small'
 if argv[2] == 'record':
     model_mode = False
@@ -210,9 +210,22 @@ else:
 print('dirc', dirc, 'mode', model_mode)
 
 print('loading data from files')
+'''
 records = sample(list(range(65000)), game_num)
 for i in trange(game_num):
     collect_data(records[i], use_ratio)
+'''
+loaded_data = []
+data = None
+with open('learn_data2/data.txt', 'r') as f:
+    data = f.read().splitlines()
+for _, line in zip(trange(len(data)), data):
+    elem = line.split(' ')
+    loaded_data.append([elem[0], int(elem[2]), int(elem[1])])
+shuffle(loaded_data)
+print('all data loaded')
+all_data = loaded_data[:game_num]
+
 reshape_data_test()
 my_evaluate.kill()
 

@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 10000
+#define evaluate_count 50000
 #define c_puct 2.0
 #define c_end 1.0
 #define c_value 1.0
@@ -117,77 +117,6 @@ struct book_elem{
     double rate;
 };
 
-struct node_t{
-    int k[hw];
-    double v;
-    node_t* p_n_node;
-};
-
-inline int calc_hash(const int *p){
-    int seed = 0;
-    for (int i = 0; i < hw; ++i)
-        seed ^= p[i] << (i / 4);
-    return seed & hash_mask;
-}
-
-inline void hash_table_init(node_t** hash_table){
-    for(int i = 0; i < hash_table_size; ++i)
-        hash_table[i] = NULL;
-}
-
-inline node_t* node_init(const int *key, double val){
-    node_t* p_node = NULL;
-    p_node = (node_t*)malloc(sizeof(node_t));
-    for (int i = 0; i < hw; ++i)
-        p_node->k[i] = key[i];
-    p_node->v = val;
-    p_node->p_n_node = NULL;
-    return p_node;
-}
-
-inline bool compare_key(const int *a, const int *b){
-    for (int i = 0; i < hw; ++i){
-        if (a[i] != b[i])
-            return false;
-    }
-    return true;
-}
-
-inline void register_hash(node_t** hash_table, const int *key, int hash, double val){
-    if(hash_table[hash] == NULL){
-        hash_table[hash] = node_init(key, val);
-    } else {
-        node_t *p_node = p_node = hash_table[hash];
-        node_t *p_pre_node = NULL;
-        p_pre_node = p_node;
-        while(p_node != NULL){
-            if(compare_key(key, p_node->k)){
-                p_node->v = val;
-                return;
-            }
-            p_pre_node = p_node;
-            p_node = p_node->p_n_node;
-        }
-        p_pre_node->p_n_node = node_init(key, val);
-    }
-}
-
-inline double get_val_hash(node_t** hash_table, const int *key, int hash){
-    node_t *p_node = hash_table[hash];
-    while(p_node != NULL){
-        if(compare_key(key, p_node->k))
-            return p_node->v;
-        p_node = p_node->p_n_node;
-    }
-    return -inf;
-}
-
-inline void hash_table_copy(node_t** to_table, node_t** fr_table){
-    for(int i = 0; i < hash_table_size; ++i){
-        
-    }
-}
-
 struct hash_pair {
     static size_t m_hash_pair_random;
     template<class T1, class T2>
@@ -204,8 +133,6 @@ struct hash_pair {
 size_t hash_pair::m_hash_pair_random = (size_t) random_device()();
 
 struct search_param{
-    node_t *memo_lb[hash_table_size];
-    node_t *memo_ub[hash_table_size];
     int max_depth;
     long long strt, tl;
     int turn;
@@ -810,20 +737,12 @@ void init(){
     for (i = 0; i < 100; ++i)
         mcts_param.sqrt_arr[i] = sqrt((double)i);
     for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
+        for (j = 0; j < hw; ++j){
             board_param.turn_board[0][i * hw + j] = i * hw + j;
-    }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
             board_param.turn_board[1][i * hw + j] = j * hw + i;
-    }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
             board_param.turn_board[2][i * hw + j] = (hw_m1 - i) * hw + (hw_m1 - j);
-    }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
             board_param.turn_board[3][i * hw + j] = (hw_m1 - j) * hw + (hw_m1 - i);
+        }
     }
 }
 
@@ -1127,22 +1046,6 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
     ++search_param.searched_nodes;
     if (skip_cnt == 2)
         return end_game(board);
-    /*
-    int hash = calc_hash(board);
-    double lb, ub;
-    lb = get_val_hash(search_param.memo_lb, board, hash);
-    ub = get_val_hash(search_param.memo_ub, board, hash);
-    if (lb != -inf){
-        alpha = max(alpha, lb);
-        if (alpha >= beta)
-            return alpha;
-    }
-    if (ub != -inf){
-        beta = min(beta, ub);
-        if (alpha >= beta)
-            return beta;
-    }
-    */
     int i, j, k, canput = 0;
     double v = -1.5, g;
     board_priority lst[30];
@@ -1169,18 +1072,11 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
         g = -nega_alpha(lst[i].b, n_depth, -beta, -alpha, 0);
         if (fabs(g) == inf)
             return -inf;
-        if (beta < g){
-            //register_hash(search_param.memo_lb, board, hash, g);
+        if (beta < g)
             return g;
-        }
         alpha = max(alpha, g);
         v = max(v, g);
     }
-    /*
-    if (v == alpha)
-        register_hash(search_param.memo_lb, board, hash, v);
-    register_hash(search_param.memo_ub, board, hash, v);
-    */
     return v;
 }
 
@@ -1261,8 +1157,6 @@ inline pair<int, int> find_win(int *board){
     if (canput > 1)
         sort(lst.begin(), lst.end(), cmp_main);
     search_param.searched_nodes = 0;
-    hash_table_init(search_param.memo_lb);
-    hash_table_init(search_param.memo_ub);
     for (i = 0; i < canput; ++i){
         score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, 0.1, 0);
         if (score > 0.0)

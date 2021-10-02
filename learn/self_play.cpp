@@ -34,7 +34,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 10000
+#define evaluate_count 1000
 #define c_puct 2.0
 #define c_end 1.0
 #define c_value 1.0
@@ -129,77 +129,6 @@ struct book_elem{
     double rate;
 };
 
-struct node_t{
-    int k[hw];
-    double v;
-    node_t* p_n_node;
-};
-
-inline int calc_hash(const int *p){
-    int seed = 0;
-    for (int i = 0; i < hw; ++i)
-        seed ^= p[i] << (i / 4);
-    return seed & hash_mask;
-}
-
-inline void hash_table_init(node_t** hash_table){
-    for(int i = 0; i < hash_table_size; ++i)
-        hash_table[i] = NULL;
-}
-
-inline node_t* node_init(const int *key, double val){
-    node_t* p_node = NULL;
-    p_node = (node_t*)malloc(sizeof(node_t));
-    for (int i = 0; i < hw; ++i)
-        p_node->k[i] = key[i];
-    p_node->v = val;
-    p_node->p_n_node = NULL;
-    return p_node;
-}
-
-inline bool compare_key(const int *a, const int *b){
-    for (int i = 0; i < hw; ++i){
-        if (a[i] != b[i])
-            return false;
-    }
-    return true;
-}
-
-inline void register_hash(node_t** hash_table, const int *key, int hash, double val){
-    if(hash_table[hash] == NULL){
-        hash_table[hash] = node_init(key, val);
-    } else {
-        node_t *p_node = p_node = hash_table[hash];
-        node_t *p_pre_node = NULL;
-        p_pre_node = p_node;
-        while(p_node != NULL){
-            if(compare_key(key, p_node->k)){
-                p_node->v = val;
-                return;
-            }
-            p_pre_node = p_node;
-            p_node = p_node->p_n_node;
-        }
-        p_pre_node->p_n_node = node_init(key, val);
-    }
-}
-
-inline double get_val_hash(node_t** hash_table, const int *key, int hash){
-    node_t *p_node = hash_table[hash];
-    while(p_node != NULL){
-        if(compare_key(key, p_node->k))
-            return p_node->v;
-        p_node = p_node->p_n_node;
-    }
-    return -inf;
-}
-
-inline void hash_table_copy(node_t** to_table, node_t** fr_table){
-    for(int i = 0; i < hash_table_size; ++i){
-        
-    }
-}
-
 struct hash_pair {
     static size_t m_hash_pair_random;
     template<class T1, class T2>
@@ -216,8 +145,6 @@ struct hash_pair {
 size_t hash_pair::m_hash_pair_random = (size_t) random_device()();
 
 struct search_param{
-    node_t *memo_lb[hash_table_size];
-    node_t *memo_ub[hash_table_size];
     int max_depth;
     long long strt, tl;
     int turn;
@@ -1064,7 +991,7 @@ inline open_vals open_val_forward(int *board, int depth, bool player){
     res.o_open_val = inf;
     double open_val = -inf;
     bool passed = false;
-    for (const int& cell : search_param.vacant_lst){
+    for (int cell = 0; cell < hw2; ++cell){
         for (i = 0; i < board_param.put_idx_num[cell]; ++i){
             if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
                 passed = false;
@@ -1111,7 +1038,7 @@ double nega_alpha_light(int *board, const int depth, double alpha, double beta, 
     double v = -1.5, g;
     int n_board[board_index_num];
     int n_depth = depth - 1;
-    for (const int& cell : search_param.vacant_lst){
+    for (int cell = 0; cell < hw2; ++cell){
         for (i = 0; i < board_index_num; ++i){
             if (board_param.put[cell][i] != -1){
                 if (board_param.legal[board[i]][board_param.put[cell][i]]){
@@ -1141,26 +1068,10 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
     ++search_param.searched_nodes;
     if (skip_cnt == 2)
         return end_game(board);
-    /*
-    int hash = calc_hash(board);
-    double lb, ub;
-    lb = get_val_hash(search_param.memo_lb, board, hash);
-    ub = get_val_hash(search_param.memo_ub, board, hash);
-    if (lb != -inf){
-        alpha = max(alpha, lb);
-        if (alpha >= beta)
-            return alpha;
-    }
-    if (ub != -inf){
-        beta = min(beta, ub);
-        if (alpha >= beta)
-            return beta;
-    }
-    */
     int i, j, k, canput = 0;
     double v = -1.5, g;
     board_priority lst[30];
-    for (const int& cell : search_param.vacant_lst){
+    for (int cell = 0; cell < hw2; ++cell){
         for (i = 0; i < board_param.put_idx_num[cell]; ++i){
             if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
                 lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
@@ -1183,18 +1094,11 @@ double nega_alpha(int *board, const int depth, double alpha, double beta, const 
         g = -nega_alpha(lst[i].b, n_depth, -beta, -alpha, 0);
         if (fabs(g) == inf)
             return -inf;
-        if (beta < g){
-            //register_hash(search_param.memo_lb, board, hash, g);
+        if (beta < g)
             return g;
-        }
         alpha = max(alpha, g);
         v = max(v, g);
     }
-    /*
-    if (v == alpha)
-        register_hash(search_param.memo_lb, board, hash, v);
-    register_hash(search_param.memo_ub, board, hash, v);
-    */
     return v;
 }
 
@@ -1207,7 +1111,7 @@ double nega_alpha_heavy(int *board, int depth, double alpha, double beta, int sk
     int i, j, canput = 0;
     board_priority lst[30];
     open_vals tmp_open_vals;
-    for (const int& cell : search_param.vacant_lst){
+    for (int cell = 0; cell < hw2; ++cell){
         for (i = 0; i < board_param.put_idx_num[cell]; ++i){
             if (board_param.legal[board[board_param.put_idx[cell][i]]][board_param.put[cell][board_param.put_idx[cell][i]]]){
                 lst[canput].n_open_val = eval_param.open_eval[move_open(board, lst[canput].b, cell)];
@@ -1357,7 +1261,7 @@ double evaluate(int idx, bool passed, int n_stones){
         value = -inf;
         double tmp_value;
         double t_sqrt = mcts_param.sqrt_arr[mcts_param.nodes[idx].n];
-        for (const int& cell : search_param.vacant_lst){
+        for (int cell = 0; cell < hw2; ++cell){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
                 if (mcts_param.nodes[idx].children[cell] != -1)
                     tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n) - mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
@@ -1446,7 +1350,7 @@ inline int next_action(int *board, bool mode){
     int n_stones = 0;
     for (i = 0; i < hw; ++i)
         n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
-    int strt = tim();
+    long long strt = tim();
     for (i = 0; i < evaluate_count; ++i){
         evaluate(0, false, n_stones);
         if (tim() - strt > search_param.tl)
@@ -1566,7 +1470,7 @@ int main(int argc, char* argv[]){
             swap(board, tmp_board);
             player = 1 - player;
         }
-        for (steps = 3; steps < hw2 - mcts_complete_stones - 4; ++steps){
+        for (steps = 3; steps < 52; ++steps){
             if (myrandom() < 0.75)
                 mode = true;
             else
@@ -1585,7 +1489,7 @@ int main(int argc, char* argv[]){
                 passed = false;
                 record += alp[policy / hw] + to_string(policy % hw + 1);
             }
-            if (mode && steps >= self_play_param.random_step){
+            if (mode){
                 history tmp_hist;
                 tmp_hist.board = "";
                 for (i = 0; i < hw; ++i){
