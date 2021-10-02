@@ -451,6 +451,7 @@ void init(){
             eval_param.pattern[i][j] = patterns[all_idx++];
     }
     */
+    /*
     FILE *fp;
     char cbuf[1024];
     if ((fp = fopen("param/param.txt", "r")) == NULL){
@@ -536,6 +537,7 @@ void init(){
         }
         eval_param.std[i] = atof(cbuf);
     }
+    */
     int p, o, mobility, canput_num, rev;
     for (i = 0; i < 6561; ++i){
         board_param.reverse[i] = board_reverse(i);
@@ -687,6 +689,7 @@ int main(){
     int i, j;
     char elem;
     unsigned long long p, o;
+    int board_tmp;
     while (true){
         p = 0;
         o = 0;
@@ -698,7 +701,18 @@ int main(){
                 o |= (unsigned long long)(elem == '1') << i;
             }
         }
-        cout << p << " " << o << endl;
+        //cout << p << " " << o << endl;
+        for (i = 0; i < hw; ++i){
+            board_tmp = 0;
+            for (j = 0; j < board_param.pattern_space[i]; ++j){
+                if (1 & (p >> board_param.board_translate[i][j]))
+                    board_tmp += board_param.pow3[j];
+                else if (1 & (o >> board_param.board_translate[i][j]))
+                    board_tmp += 2 * board_param.pow3[j];
+            }
+            cout << board_tmp << " ";
+        }
+        cout << endl;
     }
     return 0;
 }

@@ -17,13 +17,13 @@ import sys
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
-if len(sys.argv) != 2:
+if len(sys.argv) != 3:
     print('arg err')
     exit()
 
 model = load_model('param/' + sys.argv[1])
 
-with open('param/param.txt', 'w') as f:
+with open('param/' + sys.argv[2], 'w') as f:
     i = 0
     while True:
         try:

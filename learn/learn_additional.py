@@ -12,13 +12,14 @@ from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
+import datetime
 
 hw = 8
 hw2 = 64
 
 all_data = []
 
-n_epochs = 1000
+n_epochs = 1
 game_num = 1000
 game_strt = 0
 use_ratio = 1.0
@@ -27,8 +28,8 @@ n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 30
-n_residual = 2
+n_kernels = 48
+n_residual = 1
 
 leakyrelu_alpha = 0.01
 n_train_data = int(game_num * (1.0 - test_ratio))
@@ -259,123 +260,76 @@ def weighted_mse(y_true, y_pred):
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
-input_b = Input(shape=(hw, hw, n_boards,))
-input_p = Input(shape=(n_additional_param,))
-x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(input_b)
-#x_b = BatchNormalization()(x_b)
-#x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-x_b = LeakyReLU(x_b)
-for _ in range(n_residual):
-    sc = x_b
-    x_b = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x_b)
-    x_b = Add()([x_b, sc])
-    #x_b = LeakyReLU(alpha=leakyrelu_alpha)(x_b)
-    x_b = LeakyReLU(x_b)
-x_b = GlobalAveragePooling2D()(x_b)
-x_b = Model(inputs=[input_b, input_p], outputs=x_b)
 
-x_p = Dense(16)(input_p)
-x_p = LeakyReLU(x_p)
-#x_p = Dropout(0.0625)(x_p)
-#x_p = Dense(16)(x_p)
-#x_p = LeakyReLU(x_p)
-x_p = Model(inputs=[input_b, input_p], outputs=x_p)
+while True:
+    test_num = int(game_num * test_ratio)
+    train_num = game_num - test_num
+    train_board = np.zeros((n_train_data * 60, hw, hw, n_boards))
+    train_param = np.zeros((n_train_data * 60, n_additional_param))
+    train_policies = np.zeros((n_train_data * 60, hw2))
+    train_value = np.zeros(n_train_data * 60)
 
-x_all = concatenate([x_b.output, x_p.output])
+    test_raw_board = []
+    test_board = []
+    test_param = []
+    test_policies = []
+    test_value = []
+    print('loading data from files')
+    range_lst = list(range(65000))
+    shuffle(range_lst)
+    records = range_lst[:game_num]
+    all_data = []
+    for i in trange(game_strt, game_strt + train_num):
+        try:
+            collect_data(records[i], use_ratio)
+        except:
+            continue
+    reshape_data_train()
+    all_data = []
+    for i in trange(game_strt + train_num, game_strt + game_num):
+        try:
+            collect_data(records[i], use_ratio)
+        except:
+            continue
+    reshape_data_test()
 
-output_p = Dense(hw2)(x_all)
-output_p = Activation('softmax', name='policy')(output_p)
+    model = load_model('param/best.h5')
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+    print(model.evaluate([train_board, train_param], [train_policies, train_value]))
+    early_stop = EarlyStopping(monitor='val_loss', patience=3)
+    history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
+    model.save('param/best.h5')
+    with open('param/param.txt', 'w') as f:
+        i = 0
+        while True:
+            try:
+                #print(i, model.layers[i])
+                dammy = model.layers[i]
+                j = 0
+                while True:
+                    try:
+                        print(model.layers[i].weights[j].shape)
+                        if len(model.layers[i].weights[j].shape) == 4:
+                            for ll in range(model.layers[i].weights[j].shape[3]):
+                                for kk in range(model.layers[i].weights[j].shape[2]):
+                                    for jj in range(model.layers[i].weights[j].shape[1]):
+                                        for ii in range(model.layers[i].weights[j].shape[0]):
+                                            f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
+                        elif len(model.layers[i].weights[j].shape) == 2:
+                            for ii in range(model.layers[i].weights[j].shape[0]):
+                                for jj in range(model.layers[i].weights[j].shape[1]):
+                                    f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
+                        elif len(model.layers[i].weights[j].shape) == 1:
+                            for ii in range(model.layers[i].weights[j].shape[0]):
+                                f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
+                        j += 1
+                    except:
+                        break
+                i += 1
+            except:
+                break
+    now = datetime.datetime.today()
+    print(str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2))
+    model.save('param/additional_learn_model/' + str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2) + '.h5')
 
-output_v = Dense(1)(x_all)
-output_v = Activation('tanh', name='value')(output_v)
-
-model = Model(inputs=[input_b, input_p], outputs=[output_p, output_v])
-#model = Model(inputs=[input_b], outputs=[output_p, output_v])
-model.summary()
-
-test_num = int(game_num * test_ratio)
-train_num = game_num - test_num
-print('loading data from files')
-range_lst = list(range(65000))
-shuffle(range_lst)
-records = range_lst[:game_num]
-for i in trange(game_strt, game_strt + train_num):
-    try:
-        collect_data(records[i], use_ratio)
-    except:
-        continue
-reshape_data_train()
-all_data = []
-for i in trange(game_strt + train_num, game_strt + game_num):
-    try:
-        collect_data(records[i], use_ratio)
-    except:
-        continue
-reshape_data_test()
 my_evaluate.kill()
-
-
-model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
-#plot_model(model, show_shapes=True, show_layer_names=False)
-early_stop = EarlyStopping(monitor='val_loss', patience=10)
-
-history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
-#history = model.fit([train_board], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board], [test_policies, test_value]), callbacks=[early_stop])
-'''
-with open('param/mean.txt', 'w') as f:
-    for i in mean:
-        f.write(str(i) + '\n')
-with open('param/std.txt', 'w') as f:
-    for i in std:
-        f.write(str(i) + '\n')
-'''
-model.save('param/model.h5')
-
-for key in ['policy_loss', 'val_policy_loss']:
-    plt.plot(history.history[key], label=key)
-plt.xlabel('epoch')
-plt.ylabel('policy loss')
-plt.legend(loc='best')
-plt.savefig('graph/small/policy_loss.png')
-plt.clf()
-
-for key in ['value_loss', 'val_value_loss']:
-    plt.plot(history.history[key], label=key)
-plt.xlabel('epoch')
-plt.ylabel('value loss')
-plt.legend(loc='best')
-plt.savefig('graph/small/value_loss.png')
-plt.clf()
-
-test_num = 10
-test_num = min(test_value.shape[0], test_num)
-test_predictions = model.predict([test_board[0:test_num], test_param[0:test_num]])
-#test_predictions = model.predict([test_board[0:test_num]])
-ans_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_policies[0:test_num]]
-ans_value = [round(i, 3) for i in test_value[0:test_num]]
-pred_policies = [(np.argmax(i), i[np.argmax(i)]) for i in test_predictions[0]]
-pred_value = test_predictions[1]
-for i in range(test_num):
-    #print('board', [[[ii for ii in jj] for jj in kk] for kk in test_board[i]])
-    print('param', list(test_param[i]))
-    print('raw_board', test_raw_board[i])
-    '''
-    board_str = ''
-    for ii in test_board[i]:
-        for jj in ii:
-            for kk in jj:
-                board_str += str(int(kk))
-    print('board_str', board_str)
-    '''
-    print('ans_policy', ans_policies[i])
-    print('prd_policy', pred_policies[i])
-    policies = [[ii, test_predictions[0][i][ii]] for ii in range(hw2)]
-    policies.sort(key=lambda x:x[1], reverse=True)
-    #print(policies)
-    for j in range(hw2):
-        if policies[j][0] == ans_policies[i][0]:
-            print('prd_policy_index', j)
-            break
-    print('ans_value', ans_value[i])
-    print('prd_value', pred_value[i][0])
-    print('')

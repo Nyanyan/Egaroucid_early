@@ -38,7 +38,7 @@ using namespace std;
 #define c_puct 2.0
 #define c_end 1.0
 #define c_value 1.0
-#define mcts_complete_stones 9
+#define mcts_complete_stones 8
 
 #define n_board_input 3
 #define n_add_input 15
@@ -70,6 +70,87 @@ struct self_play_param{
 };
 
 self_play_param self_play_param;
+
+struct node_t{
+    int k[hw];
+    int p;
+    double v;
+    node_t* p_n_node;
+};
+
+struct book_elem{
+    int p;
+    double v;
+};
+
+inline int calc_hash(const int *p){
+    int seed = 0;
+    for (int i = 0; i < hw; ++i)
+        seed ^= p[i] << (i / 4);
+    return seed & hash_mask;
+}
+
+inline void hash_table_init(node_t** hash_table){
+    for(int i = 0; i < hash_table_size; ++i)
+        hash_table[i] = NULL;
+}
+
+inline node_t* node_init(const int *key, double value, int policy){
+    node_t* p_node = NULL;
+    p_node = (node_t*)malloc(sizeof(node_t));
+    for (int i = 0; i < hw; ++i)
+        p_node->k[i] = key[i];
+    p_node->v = value;
+    p_node->p = policy;
+    p_node->p_n_node = NULL;
+    return p_node;
+}
+
+inline bool compare_key(const int *a, const int *b){
+    for (int i = 0; i < hw; ++i){
+        if (a[i] != b[i])
+            return false;
+    }
+    return true;
+}
+
+inline void register_hash(node_t** hash_table, const int *key, int hash, double value, int policy){
+    if(hash_table[hash] == NULL){
+        hash_table[hash] = node_init(key, value, policy);
+    } else {
+        node_t *p_node = p_node = hash_table[hash];
+        node_t *p_pre_node = NULL;
+        p_pre_node = p_node;
+        while(p_node != NULL){
+            if(compare_key(key, p_node->k)){
+                if (p_node->v < value){
+                    p_node->v = value;
+                    p_node->p = policy;
+                }
+                return;
+            }
+            p_pre_node = p_node;
+            p_node = p_node->p_n_node;
+        }
+        p_pre_node->p_n_node = node_init(key, value, policy);
+    }
+}
+
+inline book_elem get_val_hash(node_t** hash_table, const int *key, int hash){
+    node_t *p_node = hash_table[hash];
+    book_elem res;
+    while(p_node != NULL){
+        if(compare_key(key, p_node->k)){
+            res.p = p_node->p;
+            res.v = p_node->v;
+            return res;
+        }
+        p_node = p_node->p_n_node;
+    }
+    res.p = -1;
+    res.v = -inf;
+    return res;
+}
 
 struct board_param{
     unsigned long long trans[board_index_num][6561][hw];
@@ -124,11 +205,6 @@ struct eval_param{
     double exp_arr[n_div];
 };
 
-struct book_elem{
-    int policy;
-    double rate;
-};
-
 struct hash_pair {
     static size_t m_hash_pair_random;
     template<class T1, class T2>
@@ -151,7 +227,8 @@ struct search_param{
     int searched_nodes;
     vector<int> vacant_lst;
     int vacant_cnt;
-    unordered_map<pair<unsigned long long, unsigned long long>, book_elem, hash_pair> book;
+    //unordered_map<pair<unsigned long long, unsigned long long>, book_elem, hash_pair> book;
+    node_t *book[hash_table_size];
 };
 
 struct board_priority_move{
@@ -180,6 +257,7 @@ struct mcts_node{
     int n;
     bool pass;
     bool expanded;
+    bool end;
 };
 
 struct mcts_param{
@@ -525,42 +603,34 @@ void init(){
         printf("book file not exist");
         exit(1);
     }
-    if (!fgets(cbuf, 1024, fp)){
-        printf("book file broken");
-        exit(1);
-    }
-    int book_len = atoi(cbuf);
     int policy;
     double rate;
     unsigned long long up, uo;
-    pair<unsigned long long, unsigned long long> key;
-    for (i = 0; i < book_len; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("book file broken");
-            exit(1);
+    int key[hw2];
+    bool done = false;
+    int read_book = 0;
+    while (!done){
+        for (j = 0; j < hw; ++j){
+            if (!fgets(cbuf, 1024, fp)){
+                done = true;
+                break;
+            }
+            key[j] = atoi(cbuf);
         }
-        up = atoll(cbuf);
         if (!fgets(cbuf, 1024, fp)){
-            printf("book file broken");
-            exit(1);
-        }
-        uo = atoll(cbuf);
-        if (!fgets(cbuf, 1024, fp)){
-            printf("book file broken");
-            exit(1);
-        }
-        policy = atoi(cbuf);
-        if (!fgets(cbuf, 1024, fp)){
-            printf("book file broken");
-            exit(1);
+            done = true;
+            break;
         }
         rate = atof(cbuf);
-        //cerr << up << " " << uo << " " << policy << " " << rate << endl;
-        key.first = up;
-        key.second = uo;
-        search_param.book[key].policy = policy;
-        search_param.book[key].rate = rate;
+        if (!fgets(cbuf, 1024, fp)){
+            done = true;
+            break;
+        }
+        policy = atoi(cbuf);
+        register_hash(search_param.book, key, calc_hash(key), rate, policy);
+        ++read_book;
     }
+    cerr << read_book << " boards read as book" << endl;
     */
     int p, o, mobility, canput_num, rev;
     for (i = 0; i < 6561; ++i){
@@ -751,20 +821,12 @@ void init(){
     for (i = 0; i < 100; ++i)
         mcts_param.sqrt_arr[i] = sqrt((double)i);
     for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
+        for (j = 0; j < hw; ++j){
             board_param.turn_board[0][i * hw + j] = i * hw + j;
-    }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
             board_param.turn_board[1][i * hw + j] = j * hw + i;
-    }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
             board_param.turn_board[2][i * hw + j] = (hw_m1 - i) * hw + (hw_m1 - j);
-    }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < hw; ++j)
             board_param.turn_board[3][i * hw + j] = (hw_m1 - j) * hw + (hw_m1 - i);
+        }
     }
 }
 
@@ -1179,8 +1241,6 @@ inline pair<int, int> find_win(int *board){
     if (canput > 1)
         sort(lst.begin(), lst.end(), cmp_main);
     search_param.searched_nodes = 0;
-    hash_table_init(search_param.memo_lb);
-    hash_table_init(search_param.memo_ub);
     for (i = 0; i < canput; ++i){
         score = -nega_alpha_heavy(lst[i].b, search_param.max_depth, -1.1, 0.1, 0);
         if (score > 0.0)
@@ -1230,6 +1290,18 @@ double evaluate(int idx, bool passed, int n_stones){
         mcts_param.nodes[idx].children[hw2] = -1;
         if (!mcts_param.nodes[idx].pass){
             //predict and create policy array
+            /*
+            if (n_stones > 7){
+                book_elem pol_val = get_val_hash(search_param.book, mcts_param.nodes[idx].board, calc_hash(mcts_param.nodes[idx].board));
+                if (pol_val.v != -inf){
+                    cerr << ".";
+                    mcts_param.nodes[idx].w += c_value * pol_val.v;
+                    ++mcts_param.nodes[idx].n;
+                    mcts_param.nodes[idx].end = true;
+                    return c_value * pol_val.v;
+                }
+            }
+            */
             predictions pred = predict(mcts_param.nodes[idx].board);
             mcts_param.nodes[idx].w += c_value * pred.value;
             ++mcts_param.nodes[idx].n;
@@ -1254,7 +1326,7 @@ double evaluate(int idx, bool passed, int n_stones){
             return c_value * value;
         }
     }
-    if (!mcts_param.nodes[idx].pass){
+    if ((!mcts_param.nodes[idx].pass) && (!mcts_param.nodes[idx].end)){
         // children already expanded
         // select next move
         int a_cell = -1;
@@ -1279,27 +1351,35 @@ double evaluate(int idx, bool passed, int n_stones){
             mcts_param.nodes[mcts_param.used_idx].n = 0;
             mcts_param.nodes[mcts_param.used_idx].pass = true;
             mcts_param.nodes[mcts_param.used_idx].expanded = false;
+            mcts_param.nodes[mcts_param.used_idx].end = false;
             move(mcts_param.nodes[idx].board, mcts_param.nodes[mcts_param.used_idx++].board, a_cell);
         }
         value = -evaluate(mcts_param.nodes[idx].children[a_cell], false, n_stones + 1);
         mcts_param.nodes[idx].w += value;
         ++mcts_param.nodes[idx].n;
     } else{
-        // pass
-        if (mcts_param.nodes[idx].children[hw2] == -1){
-            mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
-            mcts_param.nodes[mcts_param.used_idx].w = 0.0;
-            mcts_param.nodes[mcts_param.used_idx].n = 0;
-            mcts_param.nodes[mcts_param.used_idx].pass = true;
-            mcts_param.nodes[mcts_param.used_idx].expanded = false;
-            for (i = 0; i < board_index_num; ++i)
-                mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
-            ++mcts_param.used_idx;
+        if (mcts_param.nodes[idx].end){
+            value = mcts_param.nodes[idx].w / mcts_param.nodes[idx].n;
+        } else{
+            // pass
+            if (mcts_param.nodes[idx].children[hw2] == -1){
+                mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
+                mcts_param.nodes[mcts_param.used_idx].w = 0.0;
+                mcts_param.nodes[mcts_param.used_idx].n = 0;
+                mcts_param.nodes[mcts_param.used_idx].pass = true;
+                mcts_param.nodes[mcts_param.used_idx].expanded = false;
+                mcts_param.nodes[mcts_param.used_idx].end = false;
+                for (i = 0; i < board_index_num; ++i)
+                    mcts_param.nodes[mcts_param.used_idx].board[i] = board_param.reverse[mcts_param.nodes[idx].board[i]];
+                ++mcts_param.used_idx;
+            }
+            if (passed){
+                value = end_game_evaluate(idx);
+                mcts_param.nodes[idx].end = true;
+            } else{
+                value = -evaluate(mcts_param.nodes[idx].children[hw2], true, n_stones);
+            }
         }
-        if (passed)
-            value = end_game_evaluate(idx);
-        else
-            value = -evaluate(mcts_param.nodes[idx].children[hw2], true, n_stones);
         mcts_param.nodes[idx].w += value;
         ++mcts_param.nodes[idx].n;
     }
@@ -1315,6 +1395,7 @@ inline int next_action(int *board, bool mode){
     mcts_param.nodes[0].n = 0;
     mcts_param.nodes[0].pass = true;
     mcts_param.nodes[0].expanded = true;
+    mcts_param.nodes[0].end = false;
     // expand children
     bool legal[hw2];
     for (cell = 0; cell < hw2; ++cell){
@@ -1330,8 +1411,6 @@ inline int next_action(int *board, bool mode){
             }
         }
     }
-    if (mcts_param.nodes[0].pass)
-        return -1;
     //predict and create policy array
     predictions pred = predict(board);
     mcts_param.nodes[0].w += pred.value;
@@ -1413,7 +1492,7 @@ inline void complete(int *board){
 }
 
 int main(int argc, char* argv[]){
-    search_param.tl = 100;
+    search_param.tl = 10;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();

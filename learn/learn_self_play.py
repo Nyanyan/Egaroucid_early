@@ -395,7 +395,7 @@ while True:
     #model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.001))
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
     print(model.evaluate([train_board, train_param], [train_policies, train_value]))
-    early_stop = EarlyStopping(monitor='val_loss', patience=5)
+    early_stop = EarlyStopping(monitor='val_loss', patience=3)
     history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
 
     print('saving')
