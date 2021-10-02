@@ -130,23 +130,6 @@ def reshape_data_test():
     ln = len(tmp_data)
     print('got', ln)
     print('creating test data & labels')
-    '''
-    for idx in trange(ln):
-        grid_str_no_rotate, score, additional_data = tmp_data[idx]
-        for rotation in range(4):
-            grid_str = ''
-            grid_space0 = ''
-            grid_space1 = ''
-            for i in range(hw):
-                for j in range(hw):
-                    idx = calc_idx(i, j, rotation)
-                    grid_str += grid_str_no_rotate[idx]
-                    grid_space0 += '1 ' if grid_str_no_rotate[idx] == '0' else '0 '
-                    grid_space1 += '1 ' if grid_str_no_rotate[idx] == '1' else '0 '
-            in_data = [float(i) for i in (grid_space0 + grid_space1 + additional_data).split()]
-            train_data.append(in_data)
-            train_labels.append(score)
-    '''
     for ii in trange(ln):
         board, param, policies, score = tmp_data[ii]
         grid_space0 = ''
@@ -191,7 +174,7 @@ def policy_error(y_true, y_pred):
 def weighted_mse(y_true, y_pred):
     return 30.0 * ((y_true - y_pred) ** 2)
 
-game_num = 50000
+game_num = 1000
 game_strt = 0
 use_ratio = 1.0
 see_rank = 1
@@ -200,7 +183,7 @@ if argv[1] == 'big':
     model = load_model('param/teacher.h5')
     dirc = 'big'
 else:
-    model = load_model('param/model.h5')
+    model = load_model('param/policy.h5')
     dirc = 'small'
 if argv[2] == 'record':
     model_mode = False
@@ -210,7 +193,7 @@ else:
 print('dirc', dirc, 'mode', model_mode)
 
 print('loading data from files')
-'''
+
 records = sample(list(range(65000)), game_num)
 for i in trange(game_num):
     collect_data(records[i], use_ratio)
@@ -225,11 +208,11 @@ for _, line in zip(trange(len(data)), data):
 shuffle(loaded_data)
 print('all data loaded')
 all_data = loaded_data[:game_num]
-
+'''
 reshape_data_test()
 my_evaluate.kill()
 
-policy_predictions = model.predict([test_board, test_param])[0]
+policy_predictions = model.predict(test_board)
 true_policies = [sorted([[j, test_policies[i][j]] for j in range(hw2)], key=lambda x:x[1], reverse=True) for i in range(len(test_policies))]
 avg_policy_error = [0 for _ in range(hw2)]
 policy_errors = [[0 for _ in range(hw2)] for _ in range(hw2)]
