@@ -20,10 +20,10 @@ hw2 = 64
 all_data = []
 
 n_epochs = 1000
-game_num = 10000
+game_num = 25000
 game_strt = 0
 use_ratio = 1.0
-test_ratio = 0.2
+test_ratio = 0.15
 n_additional_param = 15
 n_boards = 3
 
@@ -48,13 +48,13 @@ test_value = []
 
 mean = []
 std= []
-
+'''
 with open('param/mean.txt', 'r') as f:
     mean = np.array([float(i) for i in f.read().splitlines()])
 with open('param/std.txt', 'r') as f:
     std = np.array([float(i) for i in f.read().splitlines()])
-
-my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+'''
+#my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 def digit(n, r):
     n = str(n)
@@ -300,7 +300,7 @@ for i in trange(game_strt + train_num, game_strt + game_num):
     except:
         continue
 reshape_data_test()
-my_evaluate.kill()
+#my_evaluate.kill()
 
 
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')

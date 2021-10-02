@@ -183,7 +183,7 @@ if argv[1] == 'big':
     model = load_model('param/teacher.h5')
     dirc = 'big'
 else:
-    model = load_model('param/policy.h5')
+    model = load_model('param/model.h5')
     dirc = 'small'
 if argv[2] == 'record':
     model_mode = False
@@ -212,7 +212,7 @@ all_data = loaded_data[:game_num]
 reshape_data_test()
 my_evaluate.kill()
 
-policy_predictions = model.predict(test_board)
+policy_predictions = model.predict(test_board)[0]
 true_policies = [sorted([[j, test_policies[i][j]] for j in range(hw2)], key=lambda x:x[1], reverse=True) for i in range(len(test_policies))]
 avg_policy_error = [0 for _ in range(hw2)]
 policy_errors = [[0 for _ in range(hw2)] for _ in range(hw2)]

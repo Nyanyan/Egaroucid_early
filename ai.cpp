@@ -4,8 +4,6 @@
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,popcnt,abm,mmx")
 
 // Egaroucid2
-// Othello AI C++ version 6
-// use deep reinforcement learning
 
 #include <iostream>
 #include <algorithm>
@@ -37,7 +35,7 @@ using namespace std;
 #define evaluate_count 50000
 #define c_puct 2.0
 #define c_end 1.0
-#define c_value 1.0
+#define c_value 0.5
 #define mcts_complete_stones 8
 
 #define n_board_input 3
