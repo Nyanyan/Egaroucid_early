@@ -300,7 +300,7 @@ for i in trange(game_strt + train_num, game_strt + game_num):
         continue
 reshape_data_test()
 my_evaluate.kill()
-'''
+
 inputs = Input(shape=(hw, hw, n_boards,))
 x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
 x = LeakyReLU(x)
@@ -310,6 +310,8 @@ for _ in range(n_residual):
     x = Add()([x, sc])
     x = LeakyReLU(x)
 x = GlobalAveragePooling2D()(x)
+x = Dense(hw2)(x)
+x = LeakyReLU(x)
 x = Dense(hw2)(x)
 y = Activation('softmax', name='policy')(x)
 model = Model(inputs=inputs, outputs=y)
@@ -325,13 +327,13 @@ plt.ylabel('policy loss')
 plt.legend(loc='best')
 plt.savefig('graph/small/policy_loss.png')
 plt.clf()
-'''
+
 inputs = Input(shape=(n_additional_param,))
 x = Dense(16)(inputs)
 x = LeakyReLU(x)
-x = Dense(8)(x)
+x = Dense(16)(x)
 x = LeakyReLU(x)
-x = Dense(4)(x)
+x = Dense(8)(x)
 x = LeakyReLU(x)
 x = Dense(1)(x)
 y = Activation('tanh', name='value')(x)

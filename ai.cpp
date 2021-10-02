@@ -44,6 +44,7 @@ using namespace std;
 #define kernel_size 3
 #define n_kernels 30
 #define n_residual 2
+#define n_dense_policy 64
 #define conv_size (hw_p1 - kernel_size)
 #define conv_padding (kernel_size / 2)
 #define div_pooling (hw2)
@@ -52,7 +53,7 @@ using namespace std;
 #define n_add_input 15
 #define n_dense_layers 3
 #define dense_mx 16
-constexpr int n_dense[n_dense_layers + 1] = {n_add_input, 16, 8, 4};
+constexpr int n_dense[n_dense_layers + 1] = {n_add_input, 16, 16, 8};
 
 #define n_div 1000000
 #define tanh_min -5.0
@@ -180,9 +181,12 @@ struct eval_param{
     double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
     double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
     double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
-    double hidden_policy[n_kernels];
-    double dense_policy[n_kernels][hw2];
-    double bias_policy[hw2];
+    double hidden_policy1[n_kernels];
+    double hidden_policy2[n_dense_policy];
+    double dense_policy[n_kernels][n_dense_policy];
+    double bias_policy[n_dense_policy];
+    double dense_policy_final[n_dense_policy][hw2];
+    double bias_policy_final[hw2];
 
     double mean[n_add_input];
     double std[n_add_input];
@@ -522,7 +526,7 @@ void init(){
         }
     }
     for (i = 0; i < n_kernels; ++i){
-        for (j = 0; j < hw2; ++j){
+        for (j = 0; j < n_dense_policy; ++j){
             if (!fgets(cbuf, 1024, fp)){
                 printf("policy file broken");
                 exit(1);
@@ -530,12 +534,28 @@ void init(){
             eval_param.dense_policy[i][j] = atof(cbuf);
         }
     }
-    for (i = 0; i < hw2; ++i){
+    for (i = 0; i < n_dense_policy; ++i){
         if (!fgets(cbuf, 1024, fp)){
             printf("policy file broken");
             exit(1);
         }
         eval_param.bias_policy[i] = atof(cbuf);
+    }
+    for (i = 0; i < n_dense_policy; ++i){
+        for (j = 0; j < hw2; ++j){
+            if (!fgets(cbuf, 1024, fp)){
+                printf("policy file broken");
+                exit(1);
+            }
+            eval_param.dense_policy_final[i][j] = atof(cbuf);
+        }
+    }
+    for (i = 0; i < hw2; ++i){
+        if (!fgets(cbuf, 1024, fp)){
+            printf("policy file broken");
+            exit(1);
+        }
+        eval_param.bias_policy_final[i] = atof(cbuf);
     }
     
     if ((fp = fopen("learn/param/value.txt", "r")) == NULL){
@@ -919,19 +939,26 @@ inline predictions predict(const int *board){
     }
     // global-average-pooling of policy
     for (i = 0; i < n_kernels; ++i){
-        eval_param.hidden_policy[i] = 0.0;
+        eval_param.hidden_policy1[i] = 0.0;
         for (y = 0; y < hw; ++y){
             for (x = 0; x < hw; ++x)
-                eval_param.hidden_policy[i] += eval_param.hidden_conv1[i][y + conv_padding][x + conv_padding];
+                eval_param.hidden_policy1[i] += eval_param.hidden_conv1[i][y + conv_padding][x + conv_padding];
         }
-        eval_param.hidden_policy[i] /= div_pooling;
+        eval_param.hidden_policy1[i] /= div_pooling;
+    }
+    // dense of policy
+    for (i = 0; i < n_dense_policy; ++i)
+        eval_param.hidden_policy2[i] = eval_param.bias_policy[i];
+    for (i = 0; i < n_kernels; ++i){
+        for (j = 0; j < hw2; ++j)
+            eval_param.hidden_policy2[j] += eval_param.dense_policy[i][j] * eval_param.hidden_policy1[i];
     }
     // final dense of policy
     for (i = 0; i < hw2; ++i)
-        res.policies[i] = eval_param.bias_policy[i];
-    for (i = 0; i < n_kernels; ++i){
+        res.policies[i] = eval_param.bias_policy_final[i];
+    for (i = 0; i < n_dense_policy; ++i){
         for (j = 0; j < hw2; ++j)
-            res.policies[j] += eval_param.hidden_policy[i] * eval_param.dense_policy[i][j];
+            res.policies[j] += eval_param.dense_policy_final[i][j] * eval_param.hidden_policy2[i];
     }
     // value prediction
     for (i = 0; i < n_dense_layers; ++i){
