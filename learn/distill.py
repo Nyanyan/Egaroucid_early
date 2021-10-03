@@ -28,10 +28,10 @@ n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 16
+n_kernels = 28
 n_residual = 2
 
-teacher = load_model('param/model.h5')
+teacher = load_model('param/model_1002.h5')
 
 leakyrelu_alpha = 0.01
 n_train_data = int(game_num * (1.0 - test_ratio))
@@ -256,6 +256,7 @@ reshape_data_test()
 
 
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+model.save('param/model_small.h5')
 early_stop = EarlyStopping(monitor='val_loss', patience=10)
 history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])
 

@@ -32,7 +32,7 @@ using namespace std;
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 50000
+#define evaluate_count 10000
 #define c_puct 2.0
 #define c_end 1.0
 #define c_value 0.5
@@ -249,7 +249,7 @@ struct mcts_node{
 struct mcts_param{
     mcts_node nodes[2 * evaluate_count];
     int used_idx;
-    double sqrt_arr[100];
+    double sqrt_arr[10000];
 };
 
 struct predictions{
@@ -814,7 +814,7 @@ void init(){
         eval_param.tanh_arr[i] = tanh(rev_map_liner(i, tanh_min, tanh_max));
         eval_param.exp_arr[i] = exp(rev_map_liner(i, exp_min, exp_max));
     }
-    for (i = 0; i < 100; ++i)
+    for (i = 0; i < 10000; ++i)
         mcts_param.sqrt_arr[i] = sqrt((double)i);
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
