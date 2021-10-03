@@ -183,7 +183,7 @@ if argv[1] == 'big':
     model = load_model('param/teacher.h5')
     dirc = 'big'
 else:
-    model = load_model('param/model.h5')
+    model = load_model('param/model_small.h5')
     dirc = 'small'
 if argv[2] == 'record':
     model_mode = False
