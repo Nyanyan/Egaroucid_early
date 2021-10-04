@@ -1149,14 +1149,16 @@ inline double next_action(int *board, double (&res)[hw2]){
     p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         if (legal[i]){
-            res[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+            res[i] = (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n; //eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
             p_sum += res[i];
         } else{
             res[i] = 0.0;
         }
     }
-    for (i = 0; i < hw2; ++i)
-        res[i] /= p_sum;
+    if (p_sum > 0.0){
+        for (i = 0; i < hw2; ++i)
+            res[i] /= p_sum;
+    }
     //cerr << mcts_param.nodes[0].w << " " << mcts_param.nodes[0].n << endl;
     return mcts_param.nodes[0].w / mcts_param.nodes[0].n;
 }
@@ -1175,7 +1177,7 @@ struct self_play_param{
 self_play_param self_play_param;
 
 int main(int argc, char* argv[]){
-    search_param.evaluate_count = 400;
+    search_param.evaluate_count = 200;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();

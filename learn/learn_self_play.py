@@ -4,7 +4,7 @@ from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D,
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
-from keras.layers.advanced_activations import LeakyReLU
+#from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
 from tensorflow.python.keras.utils.vis_utils import plot_model
 import numpy as np
@@ -17,10 +17,14 @@ from os import rename, path, listdir
 from time import time
 import datetime
 
-selfplay_num = 10
-num_self_play_in_one_time_train = 200
+def LeakyReLU(x):
+    return tf.math.maximum(0.01 * x, x)
+
+selfplay_num = 5
+num_self_play_in_one_time_train = 500
 num_self_play_in_one_time_test = 100
-n_epochs = 100
+decide_num = 100 // 2
+n_epochs = 50
 
 hw = 8
 hw2 = 64
@@ -30,24 +34,13 @@ hw2 = 64
 all_data = []
 
 train_board = []
-train_param = []
 train_policies = []
 train_value = []
 
 test_raw_board = []
 test_board = []
-test_param = []
 test_policies = []
 test_value = []
-
-mean = []
-std = []
-
-with open('param/mean.txt', 'r') as f:
-    mean = np.array([float(i) for i in f.read().splitlines()])
-with open('param/std.txt', 'r') as f:
-    std = np.array([float(i) for i in f.read().splitlines()])
-
 
 early_stages = []
 
@@ -321,21 +314,20 @@ def decide_old():
 def decide():
     strt = time()
     sp = []
-    one_play_num = len(early_stages) // selfplay_num
+    one_play_num = decide_num // selfplay_num
     for i in range(selfplay_num):
-        stdin_str = str(one_play_num) + '\n'
-        for j in range(one_play_num):
-            stdin_str += early_stages[i * one_play_num + j] + '\n'
         sp.append(subprocess.Popen('python decide.py'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE))
-        sp[-1].stdin.write(stdin_str.encode('utf-8'))
-        sp[-1].stdin.flush()
+        stdin_str = str(one_play_num) + '\n'
+        sp[i].stdin.write(stdin_str.encode('utf-8'))
+        sp[i].stdin.flush()
     best_score = 0
     new_score = 0
     for i in range(selfplay_num):
         bp, np = [int(elem) for elem in sp[i].communicate()[0].decode().split()]
-        print(bp, np)
+        #print(bp, np)
         best_score += bp
         new_score += np
+    print('')
     print('best', best_score)
     print('new ', new_score)
     if new_score >= best_score:
@@ -363,7 +355,7 @@ def get_early_stages():
             '''
     print('len early stages', len(early_stages))
 
-get_early_stages()
+#get_early_stages()
 #print(decide())
 
 model_updated = True

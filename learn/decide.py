@@ -1,5 +1,6 @@
 import subprocess
 import sys
+from random import randint
 
 hw = 8
 hw2 = 64
@@ -126,6 +127,7 @@ class reversi:
 
 
 ln = int(input())
+'''
 raw_early_stages = [input() for _ in range(ln)]
 early_stages = []
 for grid_str in raw_early_stages:
@@ -134,20 +136,19 @@ for grid_str in raw_early_stages:
         for x in range(hw):
             grid[y][x] = 0 if grid_str[y * hw + x] == '0' else 1 if grid_str[y * hw + x] == '1' else -1
     early_stages.append(grid)
-
+'''
 ais = [subprocess.Popen('./decide.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
 ais[0].stdin.write('0\n'.encode('utf-8')) # best
 ais[1].stdin.write('1\n'.encode('utf-8')) # new
+for i in range(2):
+    ais[i].stdin.write((str(randint(1, 2000000000)) + '\n').encode('utf-8'))
 new_win = 0
 best_win = 0
-for game_idx in range(len(early_stages)):
+for game_idx in range(ln):
     for player2ai in [[0, 1], [1, 0]]:
         sys.stderr.write('=')
         sys.stderr.flush()
         rv = reversi()
-        for y in range(hw):
-            for x in range(hw):
-                rv.grid[y][x] = early_stages[game_idx][y][x]
         rv.player = 0
         while True:
             if rv.check_pass() and rv.check_pass():
@@ -175,4 +176,6 @@ for game_idx in range(len(early_stages)):
             best_win += 1
 for i in range(2):
     ais[i].kill()
+sys.stderr.write('end ' + str(best_win) + ' ' + str(new_win))
+sys.stderr.flush()
 print(best_win, new_win)

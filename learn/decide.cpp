@@ -55,6 +55,25 @@ using namespace std;
 #define exp_min -20.0
 #define exp_max 20.0
 
+int xorx=123456789, xory=362436069, xorz=521288629, xorw=88675123;
+inline double myrandom(){
+    int t = (xorx^(xorx<<11));
+    xorx = xory;
+    xory = xorz;
+    xorz = xorw;
+    xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
+    return (double)(xorw) / 2147483648.0;
+}
+
+inline int myrandom_int(){
+    int t = (xorx^(xorx<<11));
+    xorx = xory;
+    xory = xorz;
+    xorz = xorw;
+    xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
+    return xorw;
+}
+
 struct node_t{
     int k[hw];
     double v;
@@ -1137,14 +1156,27 @@ inline void mcts(int *board){
         mcts_param.nodes[0].p[i] /= p_sum;
     for (i = 0; i < search_param.evaluate_count; ++i)
         evaluate(0, false, board_param.n_stones);
-    int mx = -inf, policy;
+    double policies[hw2];
+    p_sum = 0.0;
     for (i = 0; i < hw2; ++i){
         if (mcts_param.nodes[0].children[i] != -1){
             //cerr << i << " " << mcts_param.nodes[mcts_param.nodes[0].children[i]].n << endl;
-            if (mx < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                mx = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                policy = i;
-            }
+            policies[i] = (double)mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
+            p_sum += policies[i];
+        } else{
+            policies[i] = 0.0;
+        }
+    }
+    for (i = 0; i < hw2; ++i)
+        policies[i] /= p_sum;
+    double rnd = myrandom();
+    p_sum = 0.0;
+    int policy = -1;
+    for (i = 0; i < hw2; ++i){
+        p_sum += policies[i];
+        if (rnd <= p_sum){
+            policy = i;
+            break;
         }
     }
     //cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
@@ -1167,7 +1199,8 @@ inline void complete(int *board){
 
 int main(){
     init();
-    search_param.evaluate_count = 200;
+    search_param.evaluate_count = 100;
+    cin >> xorw;
     //cerr << "initialized" << endl;
     int i, j, board_tmp, ai_player, policy;
     char elem;
