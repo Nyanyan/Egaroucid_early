@@ -40,11 +40,11 @@ using namespace std;
 
 #define n_board_input 3
 #define kernel_size 3
-#define n_kernels 28
+#define n_kernels 32
 #define n_residual 2
 #define n_dense1_policy 64
-#define n_dense1_value 16
-#define n_dense2_value 4
+#define n_dense1_value 32
+#define n_dense2_value 16
 #define conv_size (hw_p1 - kernel_size)
 #define conv_padding (kernel_size / 2)
 #define conv_padding2 (conv_padding * 2)
@@ -359,7 +359,6 @@ inline double get_element(char *cbuf, FILE *fp){
 }
 
 inline void init(){
-    cerr << "start init" << endl;
     long long strt = tim();
     int i, j, k, l;
     static int translate[hw2] = {
