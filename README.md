@@ -8,7 +8,7 @@ You can play with this AI at [Egaroucid on the Web (in Japanese)](https://www.eg
 
 This AI got 10th in [Codingame Othello](https://www.codingame.com/multiplayer/bot-programming/othello-1/leaderboard) in June, 2021.
 
-You cannot see parameters of this AI, but can see a lot of [game records](https://github.com/Nyanyan/Web_Egaroucid/tree/main/learn/self_play) of this AI.
+You cannot see parameters of this AI, but can see a lot of [game records](https://github.com/Nyanyan/Egaroucid/tree/main/learn/self_play) of this AI.
 
 
 
