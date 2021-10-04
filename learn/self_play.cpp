@@ -4,8 +4,6 @@
 #pragma GCC target("sse,sse2,sse3,ssse3,sse4,popcnt,abm,mmx")
 
 // Egaroucid2
-// Othello AI C++ version 6
-// use deep reinforcement learning
 
 #include <iostream>
 #include <algorithm>
@@ -29,28 +27,26 @@ using namespace std;
 #define inf 100000.0
 #define board_index_num 38
 
-#define complete_stones 12
+#define complete_stones 11
 #define simple_threshold 3
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
 
-#define evaluate_count 1000
 #define c_puct 2.0
 #define c_end 1.0
-#define c_value 1.0
+#define c_value 0.75
+#define c_prev 0.75
 #define mcts_complete_stones 8
 
 #define n_board_input 3
-#define n_add_input 15
 #define kernel_size 3
-#define n_kernels 25
+#define n_kernels 32
 #define n_residual 2
-#define n_dense1 8
-#define n_dense2 0
-#define n_joined (n_kernels + n_dense1)
+#define n_dense1_policy 64
+#define n_dense1_value 32
+#define n_dense2_value 16
 #define conv_size (hw_p1 - kernel_size)
 #define conv_padding (kernel_size / 2)
-#define div_pooling (hw2)
 #define conv_padding2 (conv_padding * 2)
 
 #define n_div 1000000
@@ -59,28 +55,29 @@ using namespace std;
 #define exp_min -20.0
 #define exp_max 20.0
 
-struct history{
-    string board;
-    int policy;
-};
+int xorx=123456789, xory=362436069, xorz=521288629, xorw=88675123;
+inline double myrandom(){
+    int t = (xorx^(xorx<<11));
+    xorx = xory;
+    xory = xorz;
+    xorz = xorw;
+    xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
+    return (double)(xorw) / 2147483648.0;
+}
 
-struct self_play_param{
-    int random_step;
-    double random_rate;
-};
-
-self_play_param self_play_param;
+inline int myrandom_int(){
+    int t = (xorx^(xorx<<11));
+    xorx = xory;
+    xory = xorz;
+    xorz = xorw;
+    xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
+    return xorw;
+}
 
 struct node_t{
     int k[hw];
-    int p;
     double v;
     node_t* p_n_node;
-};
-
-struct book_elem{
-    int p;
-    double v;
 };
 
 inline int calc_hash(const int *p){
@@ -95,13 +92,12 @@ inline void hash_table_init(node_t** hash_table){
         hash_table[i] = NULL;
 }
 
-inline node_t* node_init(const int *key, double value, int policy){
+inline node_t* node_init(const int *key, double val){
     node_t* p_node = NULL;
     p_node = (node_t*)malloc(sizeof(node_t));
     for (int i = 0; i < hw; ++i)
         p_node->k[i] = key[i];
-    p_node->v = value;
-    p_node->p = policy;
+    p_node->v = val;
     p_node->p_n_node = NULL;
     return p_node;
 }
@@ -114,42 +110,33 @@ inline bool compare_key(const int *a, const int *b){
     return true;
 }
 
-inline void register_hash(node_t** hash_table, const int *key, int hash, double value, int policy){
+inline void register_hash(node_t** hash_table, const int *key, int hash, double val){
     if(hash_table[hash] == NULL){
-        hash_table[hash] = node_init(key, value, policy);
+        hash_table[hash] = node_init(key, val);
     } else {
         node_t *p_node = p_node = hash_table[hash];
         node_t *p_pre_node = NULL;
         p_pre_node = p_node;
         while(p_node != NULL){
             if(compare_key(key, p_node->k)){
-                if (p_node->v < value){
-                    p_node->v = value;
-                    p_node->p = policy;
-                }
+                p_node->v = val;
                 return;
             }
             p_pre_node = p_node;
             p_node = p_node->p_n_node;
         }
-        p_pre_node->p_n_node = node_init(key, value, policy);
+        p_pre_node->p_n_node = node_init(key, val);
     }
 }
 
-inline book_elem get_val_hash(node_t** hash_table, const int *key, int hash){
+inline double get_val_hash(node_t** hash_table, const int *key, int hash){
     node_t *p_node = hash_table[hash];
-    book_elem res;
     while(p_node != NULL){
-        if(compare_key(key, p_node->k)){
-            res.p = p_node->p;
-            res.v = p_node->v;
-            return res;
-        }
+        if(compare_key(key, p_node->k))
+            return p_node->v;
         p_node = p_node->p_n_node;
     }
-    res.p = -1;
-    res.v = -inf;
-    return res;
+    return -inf;
 }
 
 struct board_param{
@@ -169,56 +156,33 @@ struct board_param{
     int put_idx_num[hw2];
     int restore_p[6561][hw], restore_o[6561][hw], restore_vacant[6561][hw];
     int turn_board[4][hw2];
+    int direction;
+    int board[board_index_num];
+    int n_stones;
 };
 
 struct eval_param{
     double weight[hw2];
-    double avg_canput[hw2];
     int canput[6561];
     int cnt_p[6561], cnt_o[6561];
-    double weight_p[hw][6561], weight_o[hw][6561];
-    int confirm_p[6561], confirm_o[6561];
-    int pot_canput_p[6561], pot_canput_o[6561];
     double open_eval[40];
-    double x_corner_p[6561], x_corner_o[6561];
-    double c_a_b_p[6561], c_a_b_o[6561];
-
-    double mean[n_add_input];
-    double std[n_add_input];
-    double input_b[n_board_input][hw + conv_padding2][hw + conv_padding2];
-    double input_p[n_add_input];
-    double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
-    double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
-    double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
-    double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
-    double hidden_joined[n_joined];
-    double dense1[n_add_input][n_dense1];
-    double bias1[n_dense1];
-    double hidden_dense1[n_dense1];
-    double dense2[n_dense1][n_dense2];
-    double bias2[n_dense2];
-    double dense3[n_joined][hw2];
-    double bias3[hw2];
-    double dense4[n_joined];
-    double bias4;
     double tanh_arr[n_div];
     double exp_arr[n_div];
-};
 
-struct hash_pair {
-    static size_t m_hash_pair_random;
-    template<class T1, class T2>
-    size_t operator()(const pair<T1, T2> &p) const {
-        auto hash1 = hash<T1>{}(p.first);
-        auto hash2 = hash<T2>{}(p.second);
-        size_t seed = 0;
-        seed ^= hash1 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        seed ^= hash2 + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        seed ^= m_hash_pair_random + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        return seed;
-    }
+    double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
+    double conv_residual[n_residual][n_kernels][n_kernels][kernel_size][kernel_size];
+    double dense1_policy[n_kernels][n_dense1_policy];
+    double bias1_policy[n_dense1_policy];
+    double dense2_policy[n_dense1_policy][hw2];
+    double bias2_policy[hw2];
+
+    double dense1_value[n_kernels][n_dense1_value];
+    double bias1_value[n_dense1_value];
+    double dense2_value[n_dense1_value][n_dense2_value];
+    double bias2_value[n_dense2_value];
+    double dense3_value[n_dense2_value];
+    double bias3_value;
 };
-size_t hash_pair::m_hash_pair_random = (size_t) random_device()();
 
 struct search_param{
     int max_depth;
@@ -227,8 +191,7 @@ struct search_param{
     int searched_nodes;
     vector<int> vacant_lst;
     int vacant_cnt;
-    //unordered_map<pair<unsigned long long, unsigned long long>, book_elem, hash_pair> book;
-    node_t *book[hash_table_size];
+    int evaluate_count;
 };
 
 struct board_priority_move{
@@ -254,6 +217,7 @@ struct mcts_node{
     int children[hw2_p1];
     double p[hw2];
     double w;
+    double pv;
     int n;
     bool pass;
     bool expanded;
@@ -261,9 +225,10 @@ struct mcts_node{
 };
 
 struct mcts_param{
-    mcts_node nodes[2 * evaluate_count];
+    mcts_node nodes[2000];
+    node_t *prev_nodes[hash_table_size];
     int used_idx;
-    double sqrt_arr[100];
+    double sqrt_arr[2000];
 };
 
 struct predictions{
@@ -275,25 +240,6 @@ board_param board_param;
 eval_param eval_param;
 search_param search_param;
 mcts_param mcts_param;
-
-int xorx=123456789, xory=362436069, xorz=521288629, xorw=88675123;
-inline double myrandom(){
-    int t = (xorx^(xorx<<11));
-    xorx = xory;
-    xory = xorz;
-    xorz = xorw;
-    xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
-    return (double)(xorw) / 2147483648.0;
-}
-
-inline int myrandom_int(){
-    int t = (xorx^(xorx<<11));
-    xorx = xory;
-    xory = xorz;
-    xorz = xorw;
-    xorw = xorw=(xorw^(xorw>>19))^(t^(t>>8));
-    return xorw;
-}
 
 inline long long tim(){
     //return static_cast<int>(chrono::duration_cast<chrono::milliseconds>(chrono::steady_clock::now().time_since_epoch()).count());
@@ -423,7 +369,15 @@ int board_reverse(int idx){
     return res;
 }
 
-void init(){
+inline double get_element(char *cbuf, FILE *fp){
+    if (!fgets(cbuf, 1024, fp)){
+        cerr << "param file broken" << endl;
+        exit(1);
+    }
+    return atof(cbuf);
+}
+
+inline void init(){
     long long strt = tim();
     int i, j, k, l;
     static int translate[hw2] = {
@@ -436,12 +390,6 @@ void init(){
         1, 4, 5, 6, 6, 5, 4, 1,
         0, 1, 2, 3, 3, 2, 1, 0
     };
-    const double params[10] = {
-        0.2880, -0.1150, 0.0000, -0.0096,
-                -0.1542, -0.0288, -0.0288,
-                        0.0000, -0.0096,
-                                -0.0096,
-    };
     const int consts[476] = {
         8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
         62, 63, 0, 8, 16, 24, 32, 40, 48, 56, 1, 9, 17, 25, 33, 41, 49, 57, 2, 10, 18, 26, 34, 42, 50, 58, 3, 11, 19, 27, 35, 43, 51, 59, 4, 12, 20, 28, 36, 44, 52, 60, 5, 13, 21, 29, 37, 45, 53, 61, 6, 14, 22, 30, 38, 46, 54, 62, 7, 15, 23, 31, 39, 47, 55, 63, 5, 14, 23, 4, 13, 22, 31, 3, 12, 21, 30, 39, 2, 11, 20, 29, 38, 47, 1, 10, 19, 28, 37, 46, 55, 0, 9, 18, 27, 36, 45, 54, 63, 8,
@@ -449,23 +397,7 @@ void init(){
         56, 49, 49, 56, 48, 40, 32, 24, 16, 8, 0, 9, 9, 0, 1, 2, 3, 4, 5, 6, 7, 14, 14, 7, 15, 23, 31, 39, 47, 55, 63, 54, 3, 2, 1, 0, 9, 8, 16, 24, 4, 5, 6, 7, 14, 15, 23, 31, 60, 61, 62, 63, 54, 55, 47, 39, 59, 58, 57, 56, 49, 48, 40, 32, 0, 1, 2, 3, 8, 9, 10, 11, 0, 8, 16, 24, 1, 9, 17, 25, 7, 6, 5, 4, 15, 14, 13, 12, 7, 15, 23, 31, 6, 14, 22, 30, 63, 62, 61, 60,
         55, 54, 53, 52, 63, 55, 47, 39, 62, 54, 46, 38, 56, 57, 58, 59, 48, 49, 50, 51, 56, 48, 40, 32, 57, 49, 41, 33, 0, 9, 18, 27, 36, 45, 54, 63, 7, 14, 21, 28, 35, 42, 49, 56, 0, 1, 2, 3, 4, 5, 6, 7, 7, 15, 23, 31, 39, 47, 55, 63, 63, 62, 61, 60, 59, 58, 57, 56, 56, 48, 40, 32, 24, 26, 8, 0
     };
-    //const string super_compress_pattern = "";
-    //const double compress_vals[char_e - char_s + 1] = 
-    //    {-0.99191575, -0.955417, -0.925217, -0.87192775, -0.8353087499999999, -0.79376225, -0.7521912222222222, -0.7211734999999999, -0.6842236666666666, -0.6495354444444446, -0.6066062333333334, -0.5705911935483873, -0.5333852142857143, -0.4977529599999999, -0.4617034339622642, -0.4280493521126759, -0.3930658846153848, -0.3562839680851063, -0.32210842748091595, -0.28638591366906474, -0.25082044382022484, -0.2177653593073593, -0.18336263157894744, -0.14849799452054788, -0.11322629255319143, -0.07861064571428576, -0.044194587947882745, -0.009447826356589157, 0.0, 0.02449980906148867, 0.058887281355932165, 0.09310184199134201, 0.1286132636103152, 0.16182661875000015, 0.19795722314049594, 0.23227418264840172, 0.267653596153846, 0.30229703875969, 0.33605759829059817, 0.3711898414634147, 0.40819006249999995, 0.44264849206349216, 0.4775844999999999, 0.5102675952380951, 0.54893288, 0.5832057878787877, 0.6154508, 0.6539295789473684, 0.6925377777777778, 0.734762625, 0.7674997500000001, 0.7988967777777778, 0.83530875, 0.87192775, 0.9324133333333333, 0.9774676666666666, 0.999644};
-    const double avg_canput[hw2] = {
-        0.00, 0.00, 0.00, 0.00, 4.00, 3.00, 4.00, 2.00,
-        9.00, 5.00, 6.00, 6.00, 5.00, 8.38, 5.69, 9.13,
-        5.45, 6.98, 6.66, 9.38, 6.98, 9.29, 7.29, 9.32, 
-        7.37, 9.94, 7.14, 9.78, 7.31, 10.95, 7.18, 9.78, 
-        7.76, 9.21, 7.33, 8.81, 7.20, 8.48, 7.23, 8.00, 
-        6.92, 7.57, 6.62, 7.13, 6.38, 6.54, 5.96, 6.18, 
-        5.62, 5.64, 5.18, 5.18, 4.60, 4.48, 4.06, 3.67, 
-        3.39, 3.11, 2.66, 2.30, 1.98, 1.53, 1.78, 0.67
-    };
-    for (i = 0; i < hw2; ++i)
-        eval_param.avg_canput[i] = avg_canput[i];
-    for (i = 0; i < hw2; i++)
-        eval_param.weight[i] = params[translate[i]];
+
     int all_idx = 0;
     for (i = 0; i < board_index_num; ++i)
         board_param.pattern_space[i] = consts[all_idx++];
@@ -496,6 +428,7 @@ void init(){
             }
         }
     }
+
     FILE *fp;
     char cbuf[1024];
     if ((fp = fopen("param/param.txt", "r")) == NULL){
@@ -506,11 +439,7 @@ void init(){
         for (j = 0; j < n_board_input; ++j){
             for (k = 0; k < kernel_size; ++k){
                 for (l = 0; l < kernel_size; ++l){
-                    if (!fgets(cbuf, 1024, fp)){
-                        printf("param file broken");
-                        exit(1);
-                    }
-                    eval_param.conv1[i][j][k][l] = atof(cbuf);
+                    eval_param.conv1[i][j][k][l] = get_element(cbuf, fp);
                 }
             }
         }
@@ -521,117 +450,49 @@ void init(){
             for (j = 0; j < n_kernels; ++j){
                 for (k = 0; k < kernel_size; ++k){
                     for (l = 0; l < kernel_size; ++l){
-                        if (!fgets(cbuf, 1024, fp)){
-                            printf("param file broken");
-                            exit(1);
-                        }
-                        eval_param.conv_residual[residual_i][i][j][k][l] = atof(cbuf);
+                        eval_param.conv_residual[residual_i][i][j][k][l] = get_element(cbuf, fp);
                     }
                 }
             }
         }
     }
-    
-    for (i = 0; i < n_add_input; ++i){
-        for (j = 0; j < n_dense1; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense1[i][j] = atof(cbuf);
+    for (i = 0; i < n_kernels; ++i){
+        for (j = 0; j < n_dense1_value; ++j){
+            eval_param.dense1_value[i][j] = get_element(cbuf, fp);
         }
     }
-    for (i = 0; i < n_dense1; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias1[i] = atof(cbuf);
+    for (i = 0; i < n_dense1_value; ++i){
+        eval_param.bias1_value[i] = get_element(cbuf, fp);
     }
-    for (i = 0; i < n_joined; ++i){
+    for (i = 0; i < n_kernels; ++i){
+        for (j = 0; j < n_dense1_policy; ++j){
+            eval_param.dense1_policy[i][j] = get_element(cbuf, fp);
+        }
+    }
+    for (i = 0; i < n_dense1_policy; ++i){
+        eval_param.bias1_policy[i] = get_element(cbuf, fp);
+    }
+    for (i = 0; i < n_dense1_value; ++i){
+        for (j = 0; j < n_dense2_value; ++j){
+            eval_param.dense2_value[i][j] = get_element(cbuf, fp);
+        }
+    }
+    for (i = 0; i < n_dense2_value; ++i){
+        eval_param.bias2_value[i] = get_element(cbuf, fp);
+    }
+    for (i = 0; i < n_dense1_policy; ++i){
         for (j = 0; j < hw2; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                printf("param file broken");
-                exit(1);
-            }
-            eval_param.dense3[i][j] = atof(cbuf);
+            eval_param.dense2_policy[i][j] = get_element(cbuf, fp);
         }
     }
     for (i = 0; i < hw2; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.bias3[i] = atof(cbuf);
+        eval_param.bias2_policy[i] = get_element(cbuf, fp);
     }
-    for (i = 0; i < n_joined; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("param file broken");
-            exit(1);
-        }
-        eval_param.dense4[i] = atof(cbuf);
+    for (i = 0; i < n_dense2_value; ++i){
+        eval_param.dense3_value[i] = get_element(cbuf, fp);
     }
-    if (!fgets(cbuf, 1024, fp)){
-        printf("param file broken");
-        exit(1);
-    }
-    eval_param.bias4 = atof(cbuf);
-    if ((fp = fopen("param/mean.txt", "r")) == NULL){
-        printf("mean file not exist");
-        exit(1);
-    }
-    for (i = 0; i < n_add_input; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("mean file broken");
-            exit(1);
-        }
-        eval_param.mean[i] = atof(cbuf);
-    }
-    if ((fp = fopen("param/std.txt", "r")) == NULL){
-        printf("std file not exist");
-        exit(1);
-    }
-    for (i = 0; i < n_add_input; ++i){
-        if (!fgets(cbuf, 1024, fp)){
-            printf("std file broken");
-            exit(1);
-        }
-        eval_param.std[i] = atof(cbuf);
-    }
-    /*
-    if ((fp = fopen("book/param/book.txt", "r")) == NULL){
-        printf("book file not exist");
-        exit(1);
-    }
-    int policy;
-    double rate;
-    unsigned long long up, uo;
-    int key[hw2];
-    bool done = false;
-    int read_book = 0;
-    while (!done){
-        for (j = 0; j < hw; ++j){
-            if (!fgets(cbuf, 1024, fp)){
-                done = true;
-                break;
-            }
-            key[j] = atoi(cbuf);
-        }
-        if (!fgets(cbuf, 1024, fp)){
-            done = true;
-            break;
-        }
-        rate = atof(cbuf);
-        if (!fgets(cbuf, 1024, fp)){
-            done = true;
-            break;
-        }
-        policy = atoi(cbuf);
-        register_hash(search_param.book, key, calc_hash(key), rate, policy);
-        ++read_book;
-    }
-    cerr << read_book << " boards read as book" << endl;
-    */
+    eval_param.bias3_value = get_element(cbuf, fp);
+
     int p, o, mobility, canput_num, rev;
     for (i = 0; i < 6561; ++i){
         board_param.reverse[i] = board_reverse(i);
@@ -645,42 +506,6 @@ void init(){
             board_param.restore_vacant[i][j] = 1 & ((~(p | o)) >> (hw_m1 - j));
             eval_param.cnt_p[i] += board_param.restore_p[i][j];
             eval_param.cnt_o[i] += board_param.restore_o[i][j];
-        }
-        eval_param.x_corner_p[i] = 0.0;
-        if (((~p & 1) & ((p >> 1) & 1)) & 1)
-            eval_param.x_corner_p[i] += 1.0;
-        if (((~(p >> 7) & 1) & ((p >> 6) & 1)) & 1)
-            eval_param.x_corner_p[i] += 1.0;
-        eval_param.x_corner_o[i] = 0.0;
-        if (((~o & 1) & ((o >> 1) & 1)) & 1)
-            eval_param.x_corner_o[i] += 1.0;
-        if (((~(o >> 7) & 1) & ((o >> 6) & 1)) & 1)
-            eval_param.x_corner_o[i] += 1.0;
-        eval_param.c_a_b_p[i] = 0.0;
-        if (((~p & 1) & ((p >> 1) & 1)) & 1){
-            if (~(p >> 2) & 1)
-                eval_param.c_a_b_p[i] += 1.0;
-            if (~(p >> 3) & 1)
-                eval_param.c_a_b_p[i] += 1.0;
-        }
-        if (((~(p >> 7) & 1) & ((p >> 6) & 1)) & 1){
-            if (~(p >> 5) & 1)
-                eval_param.c_a_b_p[i] += 1.0;
-            if (~(p >> 4) & 1)
-                eval_param.c_a_b_p[i] += 1.0;
-        }
-        eval_param.c_a_b_o[i] = 0.0;
-        if (((~o & 1) & ((o >> 1) & 1)) & 1){
-            if (~(o >> 2) & 1)
-                eval_param.c_a_b_o[i] += 1.0;
-            if (~(o >> 3) & 1)
-                eval_param.c_a_b_o[i] += 1.0;
-        }
-        if (((~(o >> 7) & 1) & ((o >> 6) & 1)) & 1){
-            if (~(o >> 5) & 1)
-                eval_param.c_a_b_o[i] += 1.0;
-            if (~(o >> 4) & 1)
-                eval_param.c_a_b_o[i] += 1.0;
         }
         mobility = check_mobility(p, o);
         canput_num = 0;
@@ -707,7 +532,6 @@ void init(){
             } else
                 board_param.legal[i][j] = false;
         }
-        eval_param.canput[i] = canput_num;
     }
     for (i = 0; i < hw2; ++i){
         board_param.put_idx_num[i] = 0;
@@ -724,90 +548,6 @@ void init(){
             board_param.pop_digit[i][j] = i / board_param.pow3[j] % 3;
         }
     }
-    for (i = 0; i < hw; ++i){
-        for (j = 0; j < 6561; ++j){
-            eval_param.weight_p[i][j] = 0.0;
-            eval_param.weight_o[i][j] = 0.0;
-            for (k = 0; k < 8; ++k){
-                if (board_param.pop_digit[j][k] == 1)
-                    eval_param.weight_p[i][j] += eval_param.weight[i * hw + k];
-                else if (board_param.pop_digit[j][k] == 2)
-                    eval_param.weight_o[i][j] += eval_param.weight[i * hw + k];
-            }
-        }
-    }
-    bool flag;
-    for (i = 0; i < 6561; ++i){
-        eval_param.confirm_p[i] = 0;
-        eval_param.confirm_o[i] = 0;
-        flag = true;
-        for (j = 0; j < hw; ++j)
-            if (!board_param.pop_digit[i][j])
-                flag = false;
-        if (flag){
-            for (j = 0; j < hw; ++j){
-                if (board_param.pop_digit[i][j] == 1)
-                    ++eval_param.confirm_p[i];
-                else
-                    ++eval_param.confirm_o[i];
-            }
-        } else {
-            flag = true;
-            for (j = 0; j < hw; ++j){
-                if (board_param.pop_digit[i][j] != 1)
-                    break;
-                ++eval_param.confirm_p[i];
-                if (k == hw_m1)
-                    flag = false;
-            }
-            if (flag){
-                for (j = hw_m1; j >= 0; --j){
-                    if (board_param.pop_digit[i][j] != 1)
-                        break;
-                    ++eval_param.confirm_p[i];
-                    if (k == hw_m1)
-                        flag = false;
-                }
-            }
-            flag = true;
-            for (j = 0; j < hw; ++j){
-                if (board_param.pop_digit[i][j] != 2)
-                    break;
-                ++eval_param.confirm_o[i];
-                if (k == hw_m1)
-                    flag = false;
-            }
-            if (flag){
-                for (j = hw_m1; j >= 0; --j){
-                    if (board_param.pop_digit[i][j] != 2)
-                        break;
-                    ++eval_param.confirm_o[i];
-                    if (k == hw_m1)
-                        flag = false;
-                }
-            }
-        }
-    }
-    for (i = 0; i < 6561; ++i){
-        eval_param.pot_canput_p[i] = 0;
-        eval_param.pot_canput_o[i] = 0;
-        for (j = 0; j < hw_m1; ++j){
-            if (board_param.pop_digit[i][j] == 0){
-                if (board_param.pop_digit[i][j + 1] == 2)
-                    ++eval_param.pot_canput_p[i];
-                else if (board_param.pop_digit[i][j + 1] == 1)
-                    ++eval_param.pot_canput_o[i];
-            }
-        }
-        for (j = 1; j < hw; ++j){
-            if (board_param.pop_digit[i][j] == 0){
-                if (board_param.pop_digit[i][j - 1] == 2)
-                    ++eval_param.pot_canput_p[i];
-                else if (board_param.pop_digit[i][j - 1] == 1)
-                    ++eval_param.pot_canput_o[i];
-            }
-        }
-    }
     for (i = 0; i < 3; ++i){
         for (j = 0; j < 10; ++j)
             board_param.digit_pow[i][j] = i * board_param.pow3[j];
@@ -818,7 +558,7 @@ void init(){
         eval_param.tanh_arr[i] = tanh(rev_map_liner(i, tanh_min, tanh_max));
         eval_param.exp_arr[i] = exp(rev_map_liner(i, exp_min, exp_max));
     }
-    for (i = 0; i < 100; ++i)
+    for (i = 0; i < 2000; ++i)
         mcts_param.sqrt_arr[i] = sqrt((double)i);
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
@@ -828,6 +568,8 @@ void init(){
             board_param.turn_board[3][i * hw + j] = (hw_m1 - j) * hw + (hw_m1 - i);
         }
     }
+    board_param.direction = -1;
+    mcts_param.used_idx = 0;
 }
 
 inline double leaky_relu(double x){
@@ -835,80 +577,64 @@ inline double leaky_relu(double x){
 }
 
 inline predictions predict(const int *board){
-    int i, j, sy, sx, y, x, residual_i;
+    int i, j, k, sy, sx, y, x, coord1, coord2, residual_i;
     predictions res;
+    double input_board[n_board_input][hw + conv_padding2][hw + conv_padding2];
+    double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
+    double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
+    double after_conv[n_kernels];
+    double hidden1[64];
+    double hidden2[64];
+    // reshape input
     for (i = 0; i < hw; ++i){
         for (j = 0; j < hw; ++j){
-            eval_param.input_b[0][i + conv_padding][j + conv_padding] = board_param.restore_p[board[i]][j];
-            eval_param.input_b[1][i + conv_padding][j + conv_padding] = board_param.restore_o[board[i]][j];
-            eval_param.input_b[2][i + conv_padding][j + conv_padding] = board_param.restore_vacant[board[i]][j];
+            input_board[0][i + conv_padding][j + conv_padding] = board_param.restore_p[board[i]][j];
+            input_board[1][i + conv_padding][j + conv_padding] = board_param.restore_o[board[i]][j];
+            input_board[2][i + conv_padding][j + conv_padding] = board_param.restore_vacant[board[i]][j];
         }
         for (j = 0; j < hw + conv_padding2; ++j){
-            eval_param.input_b[0][0][j] = 0.0;
-            eval_param.input_b[0][hw_m1 + conv_padding2][j] = 0.0;
-            eval_param.input_b[0][j][0] = 0.0;
-            eval_param.input_b[0][j][hw_m1 + conv_padding2] = 0.0;
+            for (k = 0; k < n_board_input; ++k){
+                input_board[k][0][j] = 0.0;
+                input_board[k][hw_m1 + conv_padding2][j] = 0.0;
+                input_board[k][j][0] = 0.0;
+                input_board[k][j][hw_m1 + conv_padding2] = 0.0;
+            }
         }
     }
-    for (i = 0; i < n_add_input; ++i)
-        eval_param.input_p[i] = 0.0;
-    eval_param.input_p[3] = eval_param.avg_canput[search_param.turn];
-    eval_param.input_p[6] = eval_param.confirm_p[board[0]] + eval_param.confirm_p[board[7]] + eval_param.confirm_p[board[8]] + eval_param.confirm_p[board[15]];
-    eval_param.input_p[7] = eval_param.confirm_o[board[0]] + eval_param.confirm_o[board[7]] + eval_param.confirm_o[board[8]] + eval_param.confirm_o[board[15]];
-    eval_param.input_p[10] = search_param.turn;
-    eval_param.input_p[11] = eval_param.x_corner_p[board[21]] + eval_param.x_corner_p[board[32]];
-    eval_param.input_p[12] = eval_param.x_corner_o[board[21]] + eval_param.x_corner_o[board[32]];
-    eval_param.input_p[13] = eval_param.c_a_b_p[board[0]] + eval_param.c_a_b_p[board[7]] + eval_param.c_a_b_p[board[8]] + eval_param.c_a_b_p[board[15]];
-    eval_param.input_p[14] = eval_param.c_a_b_o[board[0]] + eval_param.c_a_b_o[board[7]] + eval_param.c_a_b_o[board[8]] + eval_param.c_a_b_o[board[15]];
-    for (i = 0; i < hw; ++i){
-        eval_param.input_p[0] += eval_param.cnt_p[board[i]];
-        eval_param.input_p[1] += eval_param.cnt_o[board[i]];
-        eval_param.input_p[4] += eval_param.weight_p[i][board[i]];
-        eval_param.input_p[5] += eval_param.weight_o[i][board[i]];
-    }
-    for (i = 0; i < board_index_num; ++i){
-        eval_param.input_p[2] += eval_param.canput[board[i]];
-        eval_param.input_p[8] += eval_param.pot_canput_p[board[i]];
-        eval_param.input_p[9] += eval_param.pot_canput_o[board[i]];
-    }
-    for (i = 0; i < n_add_input; ++i){
-        eval_param.input_p[i] -= eval_param.mean[i];
-        eval_param.input_p[i] /= eval_param.std[i];
-    }
-    // conv and normalization and leaky-relu for input_b
+    // conv and normalization and leaky-relu
     for (i = 0; i < n_kernels; ++i){
         for (y = 0; y < hw + conv_padding2; ++y){
             for (x = 0; x < hw + conv_padding2; ++x)
-                eval_param.hidden_conv1[i][y][x] = 0.0;
+                hidden_conv1[i][y][x] = 0.0;
         }
         for (j = 0; j < n_board_input; ++j){
             for (sy = 0; sy < hw; ++sy){
                 for (sx = 0; sx < hw; ++sx){
                     for (y = 0; y < kernel_size; ++y){
                         for (x = 0; x < kernel_size; ++x)
-                            eval_param.hidden_conv1[i][sy + conv_padding][sx + conv_padding] += eval_param.conv1[i][j][y][x] * eval_param.input_b[j][sy + y][sx + x];
+                            hidden_conv1[i][sy + conv_padding][sx + conv_padding] += eval_param.conv1[i][j][y][x] * input_board[j][sy + y][sx + x];
                     }
                 }
             }
         }
         for (y = conv_padding; y < hw + conv_padding; ++y){
             for (x = conv_padding; x < hw + conv_padding; ++x)
-                eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x]);
+                hidden_conv1[i][y][x] = leaky_relu(hidden_conv1[i][y][x]);
         }
     }
-    // residual-error-block for input_b
+    // residual-error-block
     for (residual_i = 0; residual_i < n_residual; ++residual_i){
         for (i = 0; i < n_kernels; ++i){
             for (y = 0; y < hw + conv_padding2; ++y){
                 for (x = 0; x < hw + conv_padding2; ++x)
-                    eval_param.hidden_conv2[i][y][x] = 0.0;
+                    hidden_conv2[i][y][x] = 0.0;
             }
             for (j = 0; j < n_kernels; ++j){
                 for (sy = 0; sy < hw; ++sy){
                     for (sx = 0; sx < hw; ++sx){
                         for (y = 0; y < kernel_size; ++y){
                             for (x = 0; x < kernel_size; ++x)
-                                eval_param.hidden_conv2[i][sy + conv_padding][sx + conv_padding] += eval_param.conv_residual[residual_i][i][j][y][x] * eval_param.hidden_conv1[j][sy + y][sx + x];
+                                hidden_conv2[i][sy + conv_padding][sx + conv_padding] += eval_param.conv_residual[residual_i][i][j][y][x] * hidden_conv1[j][sy + y][sx + x];
                         }
                     }
                 }
@@ -917,62 +643,54 @@ inline predictions predict(const int *board){
         for (i = 0; i < n_kernels; ++i){
             for (y = conv_padding; y < hw + conv_padding; ++y){
                 for (x = conv_padding; x < hw + conv_padding; ++x)
-                    eval_param.hidden_conv1[i][y][x] = leaky_relu(eval_param.hidden_conv1[i][y][x] + eval_param.hidden_conv2[i][y][x]);
+                    hidden_conv1[i][y][x] = leaky_relu(hidden_conv1[i][y][x] + hidden_conv2[i][y][x]);
             }
         }
     }
-    // global-average-pooling for input_b
+    // global-average-pooling
     for (i = 0; i < n_kernels; ++i){
-        eval_param.hidden_joined[i] = 0.0;
+        after_conv[i] = 0.0;
         for (y = 0; y < hw; ++y){
             for (x = 0; x < hw; ++x)
-                eval_param.hidden_joined[i] += eval_param.hidden_conv1[i][y + conv_padding][x + conv_padding];
+                after_conv[i] += hidden_conv1[i][y + conv_padding][x + conv_padding];
         }
-        eval_param.hidden_joined[i] /= div_pooling;
+        after_conv[i] /= hw2;
     }
-    // dense1 and bias and leaky-relu for input_p
-    for (i = 0; i < n_dense1; ++i)
-        eval_param.hidden_joined[n_kernels + i] = 0.0;
-    for (i = 0; i < n_add_input; ++i){
-        for (j = 0; j < n_dense1; ++j)
-            eval_param.hidden_joined[n_kernels + j] += eval_param.dense1[i][j] * eval_param.input_p[i];
+
+    // dense1 for policy
+    for (j = 0; j < n_dense1_policy; ++j){
+        hidden1[j] = eval_param.bias1_policy[j];
+        for (i = 0; i < n_kernels; ++i)
+            hidden1[j] += eval_param.dense1_policy[i][j] * after_conv[i];
+        hidden1[j] = leaky_relu(hidden1[j]);
     }
-    for (i = 0; i < n_dense1; ++i)
-        eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias1[i]);
-    /*
-    // dense1 and bias and leaky-relu for input_p
-    for (i = 0; i < n_dense1; ++i)
-        eval_param.hidden_dense1[i] = 0.0;
-    for (i = 0; i < n_add_input; ++i){
-        for (j = 0; j < n_dense1; ++j)
-            eval_param.hidden_dense1[j] += eval_param.dense1[i][j] * eval_param.input_p[i];
+    // dense2 for policy
+    for (j = 0; j < hw2; ++j){
+        res.policies[j] = eval_param.bias2_policy[j];
+        for (i = 0; i < n_dense1_policy; ++i)
+            res.policies[j] += eval_param.dense2_policy[i][j] * hidden1[i];
     }
-    for (i = 0; i < n_dense1; ++i)
-        eval_param.hidden_dense1[i] = leaky_relu(eval_param.hidden_dense1[i] + eval_param.bias1[i]);
-    // dense2 and bias and leaky-relu and join for input_p
-    for (i = 0; i < n_dense2; ++i)
-        eval_param.hidden_joined[n_kernels + i] = 0.0;
-    for (i = 0; i < n_dense1; ++i){
-        for (j = 0; j < n_dense2; ++j)
-            eval_param.hidden_joined[n_kernels + j] += eval_param.hidden_dense1[i] * eval_param.dense2[i][j];
+
+    // dense1 for value
+    for (j = 0; j < n_dense1_value; ++j){
+        hidden2[j] = eval_param.bias1_value[j];
+        for (i = 0; i < n_kernels; ++i)
+            hidden2[j] += eval_param.dense1_value[i][j] * after_conv[i];
+        hidden1[j] = leaky_relu(hidden2[j]);
     }
-    for (i = 0; i < n_dense2; ++i)
-        eval_param.hidden_joined[n_kernels + i] = leaky_relu(eval_param.hidden_joined[n_kernels + i] + eval_param.bias2[i]);
-    */
-    // dense and bias for policy output *don't need softmax because use softmax later
-    for (i = 0; i < hw2; ++i)
-        res.policies[i] = 0.0;
-    for (i = 0; i < n_joined; ++i){
-        for (j = 0; j < hw2; ++j)
-            res.policies[j] += eval_param.hidden_joined[i] * eval_param.dense3[i][j];
+    // dense2 for value
+    for (j = 0; j < n_dense2_value; ++j){
+        hidden2[j] = eval_param.bias2_value[j];
+        for (i = 0; i < n_dense1_value; ++i)
+            hidden2[j] += eval_param.dense2_value[i][j] * hidden1[i];
+        hidden2[j] = leaky_relu(hidden2[j]);
     }
-    for (i = 0; i < hw2; ++i)
-        res.policies[i] += eval_param.bias3[i];
-    // dense and bias and tanh for value output
-    res.value = 0.0;
-    for (i = 0; i < n_joined; ++i)
-        res.value += eval_param.hidden_joined[i] * eval_param.dense4[i];
-    res.value = eval_param.tanh_arr[map_liner(res.value + eval_param.bias4, tanh_min, tanh_max)];
+    // dense3 for value
+    res.value = eval_param.bias3_value;
+    for (i = 0; i < n_dense2_value; ++i)
+        res.value += eval_param.dense3_value[i] * hidden2[i];
+    res.value = eval_param.tanh_arr[map_liner(res.value, tanh_min, tanh_max)];
+
     // return
     return res;
 }
@@ -1262,11 +980,10 @@ double evaluate(int idx, bool passed, int n_stones){
     double value = 0.0;
     int i, j;
     if (n_stones >= hw2 - mcts_complete_stones){
-        //int result = find_win(mcts_param.nodes[idx].board).first;
-        int result = nega_alpha_heavy(mcts_param.nodes[idx].board, search_param.max_depth, -1.1, 1.1, 0);
-        mcts_param.nodes[idx].w += c_end * (double)result;
+        double result = c_end * (double)nega_alpha_heavy(mcts_param.nodes[idx].board, search_param.max_depth, -1.1, 1.1, 0);
+        mcts_param.nodes[idx].w += result;
         ++mcts_param.nodes[idx].n;
-        return c_end * (double)result;
+        return result;
     }
     if (!mcts_param.nodes[idx].expanded){
         // when children not expanded
@@ -1290,18 +1007,6 @@ double evaluate(int idx, bool passed, int n_stones){
         mcts_param.nodes[idx].children[hw2] = -1;
         if (!mcts_param.nodes[idx].pass){
             //predict and create policy array
-            /*
-            if (n_stones > 7){
-                book_elem pol_val = get_val_hash(search_param.book, mcts_param.nodes[idx].board, calc_hash(mcts_param.nodes[idx].board));
-                if (pol_val.v != -inf){
-                    cerr << ".";
-                    mcts_param.nodes[idx].w += c_value * pol_val.v;
-                    ++mcts_param.nodes[idx].n;
-                    mcts_param.nodes[idx].end = true;
-                    return c_value * pol_val.v;
-                }
-            }
-            */
             predictions pred = predict(mcts_param.nodes[idx].board);
             mcts_param.nodes[idx].w += c_value * pred.value;
             ++mcts_param.nodes[idx].n;
@@ -1316,6 +1021,9 @@ double evaluate(int idx, bool passed, int n_stones){
             }
             for (i = 0; i < hw2; ++i)
                 mcts_param.nodes[idx].p[i] /= p_sum;
+            double prev_value = get_val_hash(mcts_param.prev_nodes, mcts_param.nodes[idx].board, calc_hash(mcts_param.nodes[idx].board));
+            if (prev_value != -inf)
+                mcts_param.nodes[idx].pv = c_prev * prev_value;
             return c_value * pred.value;
         } else{
             for (i = 0; i < hw2; ++i)
@@ -1323,12 +1031,11 @@ double evaluate(int idx, bool passed, int n_stones){
             value = c_value * predict(mcts_param.nodes[idx].board).value;
             mcts_param.nodes[idx].w += value;
             ++mcts_param.nodes[idx].n;
-            return c_value * value;
+            return value;
         }
     }
     if ((!mcts_param.nodes[idx].pass) && (!mcts_param.nodes[idx].end)){
         // children already expanded
-        // select next move
         int a_cell = -1;
         value = -inf;
         double tmp_value;
@@ -1336,7 +1043,7 @@ double evaluate(int idx, bool passed, int n_stones){
         for (int cell = 0; cell < hw2; ++cell){
             if (mcts_param.nodes[idx].p[cell] != 0.0){
                 if (mcts_param.nodes[idx].children[cell] != -1)
-                    tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n) - mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
+                    tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt / (1 + mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n) - mcts_param.nodes[mcts_param.nodes[idx].children[cell]].w / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n - mcts_param.nodes[mcts_param.nodes[idx].children[cell]].pv / mcts_param.nodes[mcts_param.nodes[idx].children[cell]].n;
                 else
                     tmp_value = c_puct * mcts_param.nodes[idx].p[cell] * t_sqrt;
                 if (value < tmp_value){
@@ -1349,6 +1056,7 @@ double evaluate(int idx, bool passed, int n_stones){
             mcts_param.nodes[idx].children[a_cell] = mcts_param.used_idx;
             mcts_param.nodes[mcts_param.used_idx].w = 0.0;
             mcts_param.nodes[mcts_param.used_idx].n = 0;
+            mcts_param.nodes[mcts_param.used_idx].pv = 0.5;
             mcts_param.nodes[mcts_param.used_idx].pass = true;
             mcts_param.nodes[mcts_param.used_idx].expanded = false;
             mcts_param.nodes[mcts_param.used_idx].end = false;
@@ -1366,6 +1074,7 @@ double evaluate(int idx, bool passed, int n_stones){
                 mcts_param.nodes[idx].children[hw2] = mcts_param.used_idx;
                 mcts_param.nodes[mcts_param.used_idx].w = 0.0;
                 mcts_param.nodes[mcts_param.used_idx].n = 0;
+                mcts_param.nodes[mcts_param.used_idx].pv = 0.5;
                 mcts_param.nodes[mcts_param.used_idx].pass = true;
                 mcts_param.nodes[mcts_param.used_idx].expanded = false;
                 mcts_param.nodes[mcts_param.used_idx].end = false;
@@ -1386,13 +1095,22 @@ double evaluate(int idx, bool passed, int n_stones){
     return value;
 }
 
-inline int next_action(int *board, bool mode){
-    int i, cell, mx = 0, res = -1;
+inline double next_action(int *board, double (&res)[hw2]){
+    int i, cell;
+    hash_table_init(mcts_param.prev_nodes);
+    int num_registered = 0;
+    for (i = 0; i < mcts_param.used_idx; ++i){
+        if (mcts_param.nodes[i].n > 10){
+            ++num_registered;
+            register_hash(mcts_param.prev_nodes, mcts_param.nodes[i].board, calc_hash(mcts_param.nodes[i].board), mcts_param.nodes[i].w / mcts_param.nodes[i].n);
+        }
+    }
     mcts_param.used_idx = 1;
     for (i = 0; i < board_index_num; ++i)
         mcts_param.nodes[0].board[i] = board[i];
     mcts_param.nodes[0].w = 0.0;
     mcts_param.nodes[0].n = 0;
+    mcts_param.nodes[0].pv = 0.5;
     mcts_param.nodes[0].pass = true;
     mcts_param.nodes[0].expanded = true;
     mcts_param.nodes[0].end = false;
@@ -1426,73 +1144,38 @@ inline int next_action(int *board, bool mode){
     }
     for (i = 0; i < hw2; ++i)
         mcts_param.nodes[0].p[i] /= p_sum;
-    int n_stones = 0;
-    for (i = 0; i < hw; ++i)
-        n_stones += eval_param.cnt_p[board[i]] + eval_param.cnt_o[board[i]];
-    long long strt = tim();
-    for (i = 0; i < evaluate_count; ++i){
-        evaluate(0, false, n_stones);
-        if (tim() - strt > search_param.tl)
-            break;
-    }
-    if (!mode){
-        double policies[hw2];
-        p_sum = 0.0;
-        for (i = 0; i < hw2; ++i){
-            policies[i] = 0.0;
-            if (legal[i]){
-                if (mcts_param.nodes[0].children[i] != -1){
-                    policies[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
-                    p_sum += policies[i];
-                }
-            }
-        }
-        for (i = 0; i < hw2; ++i)
-            policies[i] /= p_sum;
-        double rnd = myrandom();
-        p_sum = 0.0;
-        for (i = 0; i < hw2; ++i){
-            p_sum += policies[i];
-            if (rnd <= p_sum){
-                res = i;
-                break;
-            }
-        }
-    } else{
-        int mx_n = -1;
-        for (i = 0; i < hw2; ++i){
-            if (legal[i]){
-                if (mcts_param.nodes[0].children[i] != -1){
-                    if (mx_n < mcts_param.nodes[mcts_param.nodes[0].children[i]].n){
-                        mx_n = mcts_param.nodes[mcts_param.nodes[0].children[i]].n;
-                        res = i;
-                    }
-                }
-            }
+    for (i = 0; i < search_param.evaluate_count; ++i)
+        evaluate(0, false, board_param.n_stones);
+    p_sum = 0.0;
+    for (i = 0; i < hw2; ++i){
+        if (legal[i]){
+            res[i] = eval_param.exp_arr[map_liner(0.01 * mcts_param.nodes[mcts_param.nodes[0].children[i]].n, exp_min, exp_max)];
+            p_sum += res[i];
+        } else{
+            res[i] = 0.0;
         }
     }
-    return res;
+    for (i = 0; i < hw2; ++i)
+        res[i] /= p_sum;
+    //cerr << mcts_param.nodes[0].w << " " << mcts_param.nodes[0].n << endl;
+    return mcts_param.nodes[0].w / mcts_param.nodes[0].n;
 }
 
-inline void mcts(int *board){
-    int policy = next_action(board, true);
-    cerr << "SEARCH " << mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << " " << mcts_param.used_idx << endl;
-    cout << policy / hw << " " << policy % hw << " " << 50.0 - 50.0 * (double)mcts_param.nodes[mcts_param.nodes[0].children[policy]].w / mcts_param.nodes[mcts_param.nodes[0].children[policy]].n << endl;
-}
+struct history{
+    string board;
+    double policies[hw2];
+    double value;
+};
 
-inline void complete(int *board){
-    pair<int, int> result = find_win(board);
-    if (result.first == 1)
-        cerr << "WIN" << endl;
-    else if (result.first == 0)
-        cerr << "DRAW" << endl;
-    else
-        cerr << "LOSE" << endl;
-    cout << result.second / hw << " " << result.second % hw << " " << 50.0 + 50.0 * result.first << endl;
-}
+struct self_play_param{
+    int random_step;
+    double random_rate;
+};
+
+self_play_param self_play_param;
 
 int main(int argc, char* argv[]){
-    search_param.tl = 10;
+    search_param.evaluate_count = 400;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();
@@ -1504,13 +1187,11 @@ int main(int argc, char* argv[]){
     int start_board[board_index_num] = {0, 0, 0, 189, 702, 0, 0, 0, 0, 0, 0, 189, 216, 162, 0, 0, 0, 0, 0, 0, 216, 189, 54, 0, 0, 0, 0, 0, 0, 0, 0, 27, 216, 54, 18, 0, 0, 0};
     int board[board_index_num];
     int tmp_board[board_index_num];
-    double scores[hw2];
     double rnd, sm;
     int i, j, tmp, cell, cnt0, cnt1;
     int policy;
     bool passed;
     int player, steps;
-    double value;
     int legal_places[hw2];
     int legal_steps, random_step;
     double ratio, ratio_sum;
@@ -1518,9 +1199,11 @@ int main(int argc, char* argv[]){
     string output_str;
     string record;
     string alp = "abcdefgh";
-    bool mode;
     int legal[hw2];
     int legal_idx;
+    double policies[hw2];
+    double value;
+    double p_sum;
     for (int tim = 0; tim < num; ++tim){
         cerr << "=";
         hist0 = {};
@@ -1550,11 +1233,17 @@ int main(int argc, char* argv[]){
             player = 1 - player;
         }
         for (steps = 3; steps < 52; ++steps){
-            if (myrandom() < 0.75)
-                mode = true;
-            else
-                mode = false;
-            policy = next_action(board, mode);
+            value = next_action(board, policies);
+            policy = -1;
+            rnd = myrandom();
+            p_sum = 0.0;
+            for (i = 0; i < hw2; ++i){
+                p_sum += policies[i];
+                if (rnd <= p_sum){
+                    policy = i;
+                    break;
+                }
+            }
             if (policy == -1){
                 if (passed)
                     break;
@@ -1568,28 +1257,28 @@ int main(int argc, char* argv[]){
                 passed = false;
                 record += alp[policy / hw] + to_string(policy % hw + 1);
             }
-            if (mode){
-                history tmp_hist;
-                tmp_hist.board = "";
-                for (i = 0; i < hw; ++i){
-                    tmp = board[i];
-                    for (j = 0; j < hw; ++j){
-                        if (tmp % 3 == 0){
-                            tmp_hist.board += ".";
-                        } else if (tmp % 3 == 1){
-                            tmp_hist.board += "0";
-                        } else{
-                            tmp_hist.board += "1";
-                        }
-                        tmp /= 3;
+            history tmp_hist;
+            tmp_hist.board = "";
+            for (i = 0; i < hw; ++i){
+                tmp = board[i];
+                for (j = 0; j < hw; ++j){
+                    if (tmp % 3 == 0){
+                        tmp_hist.board += ".";
+                    } else if (tmp % 3 == 1){
+                        tmp_hist.board += "0";
+                    } else{
+                        tmp_hist.board += "1";
                     }
+                    tmp /= 3;
                 }
-                tmp_hist.policy = policy;
-                if (player == 0)
-                    hist0.push_back(tmp_hist);
-                else
-                    hist1.push_back(tmp_hist);
             }
+            for (i = 0; i < hw2; ++i)
+                tmp_hist.policies[i] = policies[i];
+            tmp_hist.value = value;
+            if (player == 0)
+                hist0.push_back(tmp_hist);
+            else
+                hist1.push_back(tmp_hist);
             move(board, tmp_board, policy);
             swap(board, tmp_board);
             player = 1 - player;
@@ -1604,18 +1293,21 @@ int main(int argc, char* argv[]){
         if (player)
             win0 = -win0;
         record += " " + to_string(win0) + "\n";
-        value = (double)win0;
         output_str += to_string(hist0.size()) + "\n";
-        output_str += to_string(value) + "\n";
         for (i = 0; i < hist0.size(); ++i){
             output_str += hist0[i].board + "\n";
-            output_str += to_string(hist0[i].policy) + "\n";
+            for (j = 0; j < hw2; ++j)
+                output_str += to_string(hist0[i].policies[j]) + " ";
+            output_str += "\n";
+            output_str += to_string(hist0[i].value) + "\n";
         }
         output_str += to_string(hist1.size()) + "\n";
-        output_str += to_string(-value) + "\n";
         for (i = 0; i < hist1.size(); ++i){
             output_str += hist1[i].board + "\n";
-            output_str += to_string(hist1[i].policy) + "\n";
+            for (j = 0; j < hw2; ++j)
+                output_str += to_string(hist1[i].policies[j]) + " ";
+            output_str += "\n";
+            output_str += to_string(hist1[i].value) + "\n";
         }
     }
     //string filename("self_play/record.txt");

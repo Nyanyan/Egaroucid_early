@@ -18,15 +18,14 @@ from time import time
 import datetime
 
 selfplay_num = 10
-num_self_play_in_one_time_train = 500
+num_self_play_in_one_time_train = 200
 num_self_play_in_one_time_test = 100
-num_of_decide = 200
 n_epochs = 100
 
 hw = 8
 hw2 = 64
 
-my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+#my_evaluate = subprocess.Popen('./evaluation.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
 all_data = []
 
@@ -75,14 +74,14 @@ def self_play(num_self_play_in_one_time):
         for num in range(one_play_num * 2):
             ln = int(result[idx])
             idx += 1
-            score = float(result[idx])
-            idx += 1
             for _ in range(ln):
                 board = result[idx]
                 idx += 1
-                policy = int(result[idx])
+                policies = [float(elem) for elem in result[idx].split()]
                 idx += 1
-                all_data.append([board, policy, score])
+                score = float(result[idx])
+                idx += 1
+                all_data.append([board, policies, score])
         records.extend(result[idx:])
         sp[i].kill()
     with open('self_play/records/' + digit(n_record + i, 7) + '.txt', 'w') as f:
@@ -91,21 +90,13 @@ def self_play(num_self_play_in_one_time):
     print(time() - strt)
 
 def reshape_data_train():
-    global train_board, train_param, train_policies, train_value, mean, std
-    tmp_data = []
-    print('calculating score & additional data')
-    for i in trange(len(all_data)):
-        board, policy, score = all_data[i]
-        my_evaluate.stdin.write(board.encode('utf-8'))
-        my_evaluate.stdin.flush()
-        additional_data = my_evaluate.stdout.readline().decode().strip()
-        tmp_data.append([board, additional_data, policy, score])
-    shuffle(tmp_data)
-    ln = len(tmp_data)
+    global train_board, train_param, train_policies, train_value
+    shuffle(all_data)
+    ln = len(all_data)
     print('got', ln)
     print('creating train data & labels')
     for ii in trange(ln):
-        board, param, policy, score = tmp_data[ii]
+        board, policies, score = all_data[ii]
         grid_space0 = ''
         grid_space1 = ''
         grid_space_vacant = ''
@@ -117,36 +108,21 @@ def reshape_data_train():
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
-        train_param.append([float(i) for i in param.split()])
-        policies = [0.0 for _ in range(hw2)]
-        policies[policy] = 1.0
         train_policies.append(policies)
         train_value.append(score)
     train_board = np.array(train_board)
-    train_param = np.array(train_param)
     train_policies = np.array(train_policies)
     train_value = np.array(train_value)
-    #mean = train_param.mean(axis=0)
-    #std = train_param.std(axis=0)
-    train_param = (train_param - mean) / std
-    print('train', train_board.shape, train_param.shape, train_policies.shape, train_value.shape)
+    print('train', train_board.shape, train_policies.shape, train_value.shape)
 
 def reshape_data_test():
-    global test_board, test_param, test_policies, test_value, test_raw_board
-    tmp_data = []
-    print('calculating score & additional data')
-    for i in trange(len(all_data)):
-        board, policy, score = all_data[i]
-        my_evaluate.stdin.write(board.encode('utf-8'))
-        my_evaluate.stdin.flush()
-        additional_data = my_evaluate.stdout.readline().decode().strip()
-        tmp_data.append([board, additional_data, policy, score])
-    shuffle(tmp_data)
-    ln = len(tmp_data)
+    global test_board, test_param, test_policies, test_value
+    shuffle(all_data)
+    ln = len(all_data)
     print('got', ln)
     print('creating train data & labels')
     for ii in trange(ln):
-        board, param, policy, score = tmp_data[ii]
+        board, policies, score = all_data[ii]
         grid_space0 = ''
         grid_space1 = ''
         grid_space_vacant = ''
@@ -156,20 +132,14 @@ def reshape_data_test():
                 grid_space0 += '1 ' if board[idx] == '0' else '0 '
                 grid_space1 += '1 ' if board[idx] == '1' else '0 '
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
-        test_raw_board.append(board)
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
         test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
-        test_param.append([float(i) for i in param.split()])
-        policies = [0.0 for _ in range(hw2)]
-        policies[policy] = 1.0
         test_policies.append(policies)
         test_value.append(score)
     test_board = np.array(test_board)
-    test_param = np.array(test_param)
     test_policies = np.array(test_policies)
     test_value = np.array(test_value)
-    test_param = (test_param - mean) / std
-    print('test', test_board.shape, test_param.shape, test_policies.shape, test_value.shape)
+    print('test', test_board.shape, test_policies.shape, test_value.shape)
 
 hw = 8
 dy = [0, 1, 0, -1, 1, 1, -1, -1]
@@ -291,7 +261,7 @@ class reversi:
         else:
             print('Draw!', self.nums[0], '-', self.nums[1])
 
-def decide(num):
+def decide_old():
     ais = [subprocess.Popen('./decide.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
     ais[0].stdin.write('0\n'.encode('utf-8')) # best
     ais[1].stdin.write('1\n'.encode('utf-8')) # 
@@ -348,6 +318,31 @@ def decide(num):
     else:
         return 0
 
+def decide():
+    strt = time()
+    sp = []
+    one_play_num = len(early_stages) // selfplay_num
+    for i in range(selfplay_num):
+        stdin_str = str(one_play_num) + '\n'
+        for j in range(one_play_num):
+            stdin_str += early_stages[i * one_play_num + j] + '\n'
+        sp.append(subprocess.Popen('python decide.py'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE))
+        sp[-1].stdin.write(stdin_str.encode('utf-8'))
+        sp[-1].stdin.flush()
+    best_score = 0
+    new_score = 0
+    for i in range(selfplay_num):
+        bp, np = [int(elem) for elem in sp[i].communicate()[0].decode().split()]
+        print(bp, np)
+        best_score += bp
+        new_score += np
+    print('best', best_score)
+    print('new ', new_score)
+    if new_score >= best_score:
+        return 1
+    else:
+        return 0
+
 def get_early_stages():
     global early_stages
     all_data = None
@@ -358,14 +353,18 @@ def get_early_stages():
         for elem in grid_str:
             n_stones += elem != '.'
         if n_stones == 8:
+            early_stages.append(grid_str)
+            '''
             grid = [[-1 for _ in range(hw)] for _ in range(hw)]
             for y in range(hw):
                 for x in range(hw):
                     grid[y][x] = 0 if grid_str[y * hw + x] == '0' else 1 if grid_str[y * hw + x] == '1' else -1
             early_stages.append(grid)
+            '''
     print('len early stages', len(early_stages))
 
 get_early_stages()
+#print(decide())
 
 model_updated = True
 
@@ -394,28 +393,19 @@ while True:
     model = load_model('param/best.h5')
     #model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.001))
     model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
-    print(model.evaluate([train_board, train_param], [train_policies, train_value]))
-    early_stop = EarlyStopping(monitor='val_loss', patience=3)
-    history = model.fit([train_board, train_param], [train_policies, train_value], epochs=n_epochs, validation_data=([test_board, test_param], [test_policies, test_value]), callbacks=[early_stop])
+    print(model.evaluate(train_board, [train_policies, train_value]))
+    early_stop = EarlyStopping(monitor='val_loss', patience=5)
+    history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])
 
     print('saving')
-    #model.save('param/model_new.h5')
-    model.save('param/best.h5')
-    '''
-    with open('param/mean_new.txt', 'w') as f:
-        for i in range(mean.shape[0]):
-            f.write(str(mean[i]) + '\n')
-    with open('param/std_new.txt', 'w') as f:
-        for i in range(std.shape[0]):
-            f.write(str(std[i]) + '\n')
-    '''
-    '''
+    model.save('param/model_new.h5')
+    #model.save('param/best.h5')
+    
     with open('param/param_new.txt', 'w') as f:
         i = 0
         while True:
             try:
-                #print(i, model.layers[i])
-                dammy = model.layers[i]
+                print(i, model.layers[i])
                 j = 0
                 while True:
                     try:
@@ -425,14 +415,14 @@ while True:
                                 for kk in range(model.layers[i].weights[j].shape[2]):
                                     for jj in range(model.layers[i].weights[j].shape[1]):
                                         for ii in range(model.layers[i].weights[j].shape[0]):
-                                            f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
+                                            f.write('{:.5f}'.format(model.layers[i].weights[j].numpy()[ii][jj][kk][ll]) + '\n')
                         elif len(model.layers[i].weights[j].shape) == 2:
                             for ii in range(model.layers[i].weights[j].shape[0]):
                                 for jj in range(model.layers[i].weights[j].shape[1]):
-                                    f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
+                                    f.write('{:.5f}'.format(model.layers[i].weights[j].numpy()[ii][jj]) + '\n')
                         elif len(model.layers[i].weights[j].shape) == 1:
                             for ii in range(model.layers[i].weights[j].shape[0]):
-                                f.write('{:.14f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
+                                f.write('{:.5f}'.format(model.layers[i].weights[j].numpy()[ii]) + '\n')
                         j += 1
                     except:
                         break
@@ -474,7 +464,7 @@ while True:
     model.save('param/selfplay_model/' + str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2) + '.h5')
     '''
     print('decision')
-    decision = decide(num_of_decide)
+    decision = decide()
     if decision == 0:
         print('best won')
         model_updated = False
@@ -489,6 +479,6 @@ while True:
             new_params = f.read()
         with open('param/param.txt', 'w') as f:
             f.write(new_params)
-    '''
+    
 
 my_evaluate.kill()
