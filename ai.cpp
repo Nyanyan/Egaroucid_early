@@ -1178,6 +1178,7 @@ int main(){
         cin >> search_param.tl;
         cin >> board_param.direction;
         if (board_param.direction == -1){
+            board_param.direction = 0;
             for (i = 0; i < hw2; ++i)
                 cin >> elem;
             cerr << "FIRST" << endl;

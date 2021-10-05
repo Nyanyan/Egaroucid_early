@@ -1156,8 +1156,11 @@ inline double next_action(int *board, double (&res)[hw2]){
         }
     }
     if (p_sum > 0.0){
-        for (i = 0; i < hw2; ++i)
+        for (i = 0; i < hw2; ++i){
             res[i] /= p_sum;
+            //cerr << res[i] << " ";
+        }
+        //cerr << endl;
     }
     //cerr << mcts_param.nodes[0].w << " " << mcts_param.nodes[0].n << endl;
     return mcts_param.nodes[0].w / mcts_param.nodes[0].n;
@@ -1169,20 +1172,11 @@ struct history{
     double value;
 };
 
-struct self_play_param{
-    int random_step;
-    double random_rate;
-};
-
-self_play_param self_play_param;
-
 int main(int argc, char* argv[]){
-    search_param.evaluate_count = 200;
+    search_param.evaluate_count = 400;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();
-    self_play_param.random_step = 5;
-    self_play_param.random_rate = 0.05;
     //cerr << "initialized" << endl;
     //int board[board_index_num] = {0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 135, 189, 0, 0, 0, 0, 0, 0, 0, 27, 216, 27, 0, 0, 0, 0, 0, 0, 0, 0, 54, 108, 54, 0, 0, 0, 0};
     //int start_board[board_index_num] = {0, 0, 54, 216, 135, 0, 0, 0, 0, 0, 0, 234, 135, 0, 0, 0, 0, 0, 0, 0, 72, 135, 54, 0, 0, 0, 0, 0, 0, 0, 18, 54, 216, 27, 0, 0, 0, 0};
@@ -1215,26 +1209,7 @@ int main(int argc, char* argv[]){
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
         record += "f5";
-        for (steps = 0; steps < 3; ++steps){
-            legal_idx = 0;
-            for (cell = 0; cell < hw2; ++cell){
-                for (i = 0; i < board_index_num; ++i){
-                    if (board_param.put[cell][i] != -1){
-                        if (board_param.legal[board[i]][board_param.put[cell][i]]){
-                            mcts_param.nodes[0].pass = false;
-                            legal[legal_idx++] = cell;
-                            break;
-                        }
-                    }
-                }
-            }
-            policy = legal[(int)(myrandom() * legal_idx)];
-            record += alp[policy / hw] + to_string(policy % hw + 1);
-            move(board, tmp_board, policy);
-            swap(board, tmp_board);
-            player = 1 - player;
-        }
-        for (steps = 3; steps < 52; ++steps){
+        for (steps = 0; steps < 54; ++steps){
             value = next_action(board, policies);
             policy = -1;
             rnd = myrandom();
@@ -1246,6 +1221,7 @@ int main(int argc, char* argv[]){
                     break;
                 }
             }
+            //cerr << policy << " ";
             if (policy == -1){
                 if (passed)
                     break;
@@ -1257,7 +1233,7 @@ int main(int argc, char* argv[]){
                 continue;
             } else{
                 passed = false;
-                record += alp[policy / hw] + to_string(policy % hw + 1);
+                record += alp[policy % hw] + to_string(policy / hw + 1);
             }
             history tmp_hist;
             tmp_hist.board = "";
