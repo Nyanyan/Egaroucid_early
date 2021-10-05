@@ -20,10 +20,10 @@ import datetime
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
-selfplay_num = 5
-num_self_play_in_one_time_train = 2000
-num_self_play_in_one_time_test = 100
-decide_num = 100 // 2
+selfplay_num = 8
+num_self_play_in_one_time_train = 2400
+num_self_play_in_one_time_test = 160
+decide_num = 160 // 2
 n_epochs = 50
 
 hw = 8
