@@ -1199,7 +1199,7 @@ inline void complete(int *board){
 
 int main(){
     init();
-    search_param.evaluate_count = 100;
+    search_param.evaluate_count = 50;
     cin >> xorw;
     //cerr << "initialized" << endl;
     int i, j, board_tmp, ai_player, policy;

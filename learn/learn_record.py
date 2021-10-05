@@ -260,7 +260,7 @@ def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
 
-
+'''
 inputs = Input(shape=(hw, hw, n_boards,))
 x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
 x = LeakyReLU(x)
@@ -281,6 +281,8 @@ yv = LeakyReLU(yv)
 yv = Dense(1)(yv)
 yv = Activation('tanh', name='value')(yv)
 model = Model(inputs=inputs, outputs=[yp, yv])
+'''
+model = load_model('param/model_1002.h5')
 model.summary()
 
 test_num = int(game_num * test_ratio)
