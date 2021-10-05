@@ -1218,13 +1218,6 @@ int main(){
         //cin >> ai_player;
         //cin >> search_param.tl;
         //cin >> board_param.direction;
-        if (board_param.direction == -1){
-            for (i = 0; i < hw2; ++i)
-                cin >> elem;
-            //cerr << "FIRST" << endl;
-            cout << 4 << " " << 5 << " " << 50.0 << endl;
-            continue;
-        }
         for (i = 0; i < hw2; ++i){
             cin >> elem;
             if (elem != '.'){
@@ -1252,29 +1245,6 @@ int main(){
             }
             board[i] = board_tmp;
         }
-        //print_board(board);
-        /*
-        book_elem pol_val = get_val_hash(search_param.book, board, calc_hash(board));
-        if (pol_val.v >= 0.0){
-            cerr << "BOOK " << pol_val.p << " " << pol_val.v << endl;
-            cout << pol_val.p / hw << " " << pol_val.p % hw << " " << 50.0 << endl;
-            continue;
-        }
-        */
-        /*
-        print_board(board);
-        predictions tmp = predict(board);
-        double mx = -1000.0;
-        int mx_idx = -1;
-        for (i = 0; i < hw2; ++i){
-            if (mx < tmp.policies[i]){
-                mx = tmp.policies[i];
-                mx_idx = i;
-            }
-        }
-        cerr << mx_idx << " " << mx << " " << tmp.value << endl;
-        return 0;
-        */
         if (board_param.n_stones < hw2 - complete_stones){
             search_param.max_depth = mcts_complete_stones + 1;
             mcts(board);

@@ -149,7 +149,12 @@ for game_idx in range(ln):
         sys.stderr.write('=')
         sys.stderr.flush()
         rv = reversi()
-        rv.player = 0
+        rv.grid[3][3] = 1
+        rv.grid[3][4] = 0
+        rv.grid[4][3] = 0
+        rv.grid[4][4] = 0
+        rv.grid[4][5] = 0
+        rv.player = 1
         while True:
             if rv.check_pass() and rv.check_pass():
                 break

@@ -1173,7 +1173,7 @@ struct history{
 };
 
 int main(int argc, char* argv[]){
-    search_param.evaluate_count = 400;
+    search_param.evaluate_count = 200;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();
@@ -1209,7 +1209,39 @@ int main(int argc, char* argv[]){
         for (i = 0; i < board_index_num; ++i)
             board[i] = start_board[i];
         record += "f5";
-        for (steps = 0; steps < 54; ++steps){
+        for (steps = 0; steps < 3; ++steps){
+            legal_idx = 0;
+            for (cell = 0; cell < hw2; ++cell){
+                for (i = 0; i < board_index_num; ++i){
+                    if (board_param.put[cell][i] != -1){
+                        if (board_param.legal[board[i]][board_param.put[cell][i]]){
+                            legal[legal_idx++] = cell;
+                            break;
+                        }
+                    }
+                }
+            }
+            policy = legal[(int)(myrandom() * legal_idx)];
+            //cerr << policy << " ";
+            if (policy == -1){
+                if (passed)
+                    break;
+                passed = true;
+                for (i = 0; i < board_index_num; ++i)
+                    board[i] = board_param.reverse[board[i]];
+                player = 1 - player;
+                --steps;
+                continue;
+            } else{
+                passed = false;
+                record += alp[policy % hw] + to_string(policy / hw + 1);
+            }
+            move(board, tmp_board, policy);
+            swap(board, tmp_board);
+            player = 1 - player;
+            //print_board(board);
+        }
+        for (steps = 3; steps < 54; ++steps){
             value = next_action(board, policies);
             policy = -1;
             rnd = myrandom();
