@@ -956,6 +956,8 @@ inline pair<int, int> find_win(int *board){
             }
         }
     }
+    if (canput == 0)
+        return make_pair(-2, -2);
     if (canput > 1)
         sort(lst.begin(), lst.end(), cmp_main);
     search_param.searched_nodes = 0;
@@ -1173,7 +1175,7 @@ struct history{
 };
 
 int main(int argc, char* argv[]){
-    search_param.evaluate_count = 200;
+    search_param.evaluate_count = 100;
     xorw = atoi(argv[1]);
     int num = atoi(argv[2]);
     init();
@@ -1200,6 +1202,8 @@ int main(int argc, char* argv[]){
     double policies[hw2];
     double value;
     double p_sum;
+    double value_avg;
+    int avg_num = 14 / 2;
     for (int tim = 0; tim < num; ++tim){
         cerr << "=";
         hist0 = {};
@@ -1241,7 +1245,7 @@ int main(int argc, char* argv[]){
             player = 1 - player;
             //print_board(board);
         }
-        for (steps = 3; steps < 54; ++steps){
+        while (true){
             value = next_action(board, policies);
             policy = -1;
             rnd = myrandom();
@@ -1261,7 +1265,7 @@ int main(int argc, char* argv[]){
                 for (i = 0; i < board_index_num; ++i)
                     board[i] = board_param.reverse[board[i]];
                 player = 1 - player;
-                --steps;
+                //--steps;
                 continue;
             } else{
                 passed = false;
@@ -1294,14 +1298,52 @@ int main(int argc, char* argv[]){
             player = 1 - player;
             //print_board(board);
         }
+        /*
         int win0 = find_win(board).first;
         if (win0 == -2){
             for (i = 0; i < board_index_num; ++i)
                 board[i] = board_param.reverse[board[i]];
+            player = 1 - player;
             win0 = find_win(board).first;
         }
         if (player)
             win0 = -win0;
+        */
+        int win0 = end_game(board);
+        if (player != 0)
+            win0 = -win0;
+        for (i = 0; i < hist0.size() - avg_num; ++i){
+            value_avg = 0.0;
+            for (j = 0; j < avg_num; ++j)
+                value_avg += hist0[i + j].value;
+            value_avg /= avg_num;
+            hist0[i].value = value_avg;
+        }
+        for (i = hist0.size() - avg_num; i < hist0.size(); ++i){
+            value_avg = 0.0;
+            for (j = 0; j < hist0.size() - i; ++j)
+                value_avg += hist0[i + j].value;
+            for (j = hist0.size() - i; j < avg_num; ++j)
+                value_avg += win0;
+            value_avg /= avg_num;
+        }
+
+        for (i = 0; i < hist1.size() - avg_num; ++i){
+            value_avg = 0.0;
+            for (j = 0; j < avg_num; ++j)
+                value_avg += hist1[i + j].value;
+            value_avg /= avg_num;
+            hist1[i].value = value_avg;
+        }
+        for (i = hist1.size() - avg_num; i < hist1.size(); ++i){
+            value_avg = 0.0;
+            for (j = 0; j < hist1.size() - i; ++j)
+                value_avg += hist1[i + j].value;
+            for (j = hist1.size() - i; j < avg_num; ++j)
+                value_avg -= win0;
+            value_avg /= avg_num;
+        }
+
         record += " " + to_string(win0) + "\n";
         output_str += to_string(hist0.size()) + "\n";
         for (i = 0; i < hist0.size(); ++i){

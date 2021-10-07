@@ -1,18 +1,24 @@
 import tensorflow as tf
 from tensorflow.keras.datasets import boston_housing
-from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input, concatenate, Flatten, Dropout
+from tensorflow.keras.layers import Activation, Add, BatchNormalization, Conv2D, Dense, GlobalAveragePooling2D, Input, concatenate, Flatten
 from tensorflow.keras.models import Sequential, Model, load_model
 from tensorflow.keras.callbacks import EarlyStopping, LearningRateScheduler, LambdaCallback
 from tensorflow.keras.optimizers import Adam
 #from keras.layers.advanced_activations import LeakyReLU
 from tensorflow.keras.regularizers import l2
+from tensorflow.python.keras.utils.vis_utils import plot_model
 import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
 from math import exp
-import sys
+from os import rename, path, listdir
+from time import time
+import datetime
+
+def LeakyReLU(x):
+    return tf.math.maximum(0.01 * x, x)
 
 hw = 8
 hw2 = 64
@@ -20,7 +26,8 @@ hw2 = 64
 all_data = []
 
 n_epochs = 1000
-game_num = 10000
+max_learn_data = 1000
+game_num = 1000
 game_strt = 0
 use_ratio = 1.0
 test_ratio = 0.15
@@ -28,7 +35,7 @@ n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 20
+n_kernels = 32
 n_residual = 2
 
 leakyrelu_alpha = 0.01
@@ -239,25 +246,7 @@ def reshape_data_test():
     '''
     #print('test', test_board.shape, test_param.shape, test_policies.shape, test_value.shape)
 
-def step_decay(epoch):
-    x = 0.001
-    if epoch >= 50: x = 0.0005
-    if epoch >= 80: x = 0.00025
-    return x
 
-def policy_error(y_true, y_pred):
-    first_policy = np.argmax(y_true)
-    y_pred_policy = [[y_pred[i], i] for i in range(hw2)]
-    y_pred_policy.sort(reverse=True)
-    for i in range(hw2):
-        if y_pred_policy[i][1] == first_policy:
-            return i
-
-def weighted_mse(y_true, y_pred):
-    return 10.0 * ((y_true - y_pred) ** 2)
-
-def LeakyReLU(x):
-    return tf.math.maximum(0.01 * x, x)
 
 
 '''
@@ -274,7 +263,7 @@ yp = Dense(64)(x)
 yp = LeakyReLU(yp)
 yp = Dense(hw2)(yp)
 yp = Activation('softmax', name='policy')(yp)
-yv = Dense(16)(x)
+yv = Dense(32)(x)
 yv = LeakyReLU(yv)
 yv = Dense(16)(yv)
 yv = LeakyReLU(yv)
@@ -282,13 +271,16 @@ yv = Dense(1)(yv)
 yv = Activation('tanh', name='value')(yv)
 model = Model(inputs=inputs, outputs=[yp, yv])
 '''
-model = load_model('param/model_1002.h5')
-model.summary()
+
+model = load_model('param/best.h5')
+model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+model.save('a.h5')
+exit()
 
 test_num = int(game_num * test_ratio)
 train_num = game_num - test_num
 print('loading data from files')
-range_lst = list(range(65000))
+range_lst = list(range(max_learn_data))
 shuffle(range_lst)
 records = range_lst[:game_num]
 for i in trange(game_strt, game_strt + train_num):

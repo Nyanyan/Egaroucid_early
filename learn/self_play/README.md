@@ -29,7 +29,7 @@ Records don’t have the information about which player to play, but you can gue
 
 All records start with ```f5``` move.
 
-These records end in 51 moves because I can read the result of the game when both player do the best.
+~~These records end in 51 moves because I can read the result of the game when both player do the best.~~
 
 following number -1, 0, or 1 shows the result of the game. Each number shows:
 

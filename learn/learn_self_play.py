@@ -21,10 +21,10 @@ def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
 selfplay_num = 8
-num_self_play_in_one_time_train = 2400
+num_self_play_in_one_time_train = 240
 num_self_play_in_one_time_test = 160
 decide_num = 160 // 2
-n_epochs = 50
+n_epochs = 10
 
 hw = 8
 hw2 = 64
@@ -185,6 +185,7 @@ model_updated = True
 while True:
     
     #if model_updated:
+    
     all_data = []
     train_board = []
     train_param = []
@@ -205,8 +206,8 @@ while True:
 
     print('start learning')
     model = load_model('param/best.h5')
-    #model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.001))
-    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+    model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(lr=0.0001))
+    #model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
     print(model.evaluate(train_board, [train_policies, train_value]))
     early_stop = EarlyStopping(monitor='val_loss', patience=5)
     history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])

@@ -11,6 +11,8 @@ dx = [1, 0, -1, 0, 1, -1, 1, -1]
 #edax = subprocess.Popen('third_party\\edax-reversi\\bin\\wEdax-x86.exe -eval-file third_party/edax-reversi/bin/data/eval.dat -book-file third_party/edax-reversi/bin/data/book.dat -book-randomness 5 -q', shell=True, stdin=subprocess.PIPE) #, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 #sleep(1)
 
+#"third_party/edax-reversi/bin/wEdax-x86.exe" -eval-file third_party/edax-reversi/bin/data/eval.dat -book-file third_party/edax-reversi/bin/data/book.dat -book-randomness 2 -q -auto-start on -t 1 > third_party/edax_records/0000000.txt
+
 def digit(n, r):
     n = str(n)
     l = len(n)
@@ -195,8 +197,9 @@ def collect_data(s, strt_idx, num):
     return idx
 
 
+strt_num = 131
 
-with open('third_party/edax_out.txt', 'r') as f:
+with open('third_party/edax_records/0000001.txt', 'r') as f:
     raw_data = f.read().splitlines()
 games = ''
 alp = {'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'}
@@ -210,7 +213,7 @@ for line in raw_data:
                 games += tmp
 #print(games)
 idx = 0
-i = 0
+i = strt_num
 while True:
     idx = collect_data(games, idx, i)
     print(i, idx)

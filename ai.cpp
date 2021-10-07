@@ -1220,20 +1220,22 @@ int main(){
             continue;
         }
         */
-        /*
+        
         print_board(board);
         predictions tmp = predict(board);
         double mx = -1000.0;
         int mx_idx = -1;
         for (i = 0; i < hw2; ++i){
+            cerr << tmp.policies[i] << " ";
             if (mx < tmp.policies[i]){
                 mx = tmp.policies[i];
                 mx_idx = i;
             }
         }
+        cerr << endl;
         cerr << mx_idx << " " << mx << " " << tmp.value << endl;
         return 0;
-        */
+        
         if (board_param.n_stones < hw2 - complete_stones){
             search_param.max_depth = mcts_complete_stones + 1;
             mcts(board);
