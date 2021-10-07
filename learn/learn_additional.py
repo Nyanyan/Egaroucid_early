@@ -25,8 +25,8 @@ n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 32
-n_residual = 2
+n_kernels = 128
+n_residual = 0
 
 leakyrelu_alpha = 0.01
 
@@ -213,16 +213,17 @@ def LeakyReLU(x):
 
 inputs = Input(shape=(hw, hw, n_boards,))
 x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
-x = LeakyReLU(x)
+#x = LeakyReLU(x)
+x = Activation('tanh')(x)
 for _ in range(n_residual):
     sc = x
     x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x)
     x = Add()([x, sc])
     x = LeakyReLU(x)
 x = GlobalAveragePooling2D()(x)
-yp = Dense(64)(x)
-yp = Activation('tanh')(yp)
-yp = Dense(hw2)(yp)
+#yp = Dense(64)(x)
+#yp = Activation('tanh')(yp)
+yp = Dense(hw2)(x)
 yp = Activation('softmax', name='policy')(yp)
 yv = Dense(32)(x)
 yv = LeakyReLU(yv)
@@ -255,7 +256,7 @@ reshape_data_test(n_train_data, game_num - 100)
 
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
 print(model.evaluate([train_board], [train_policies, train_value]))
-early_stop = EarlyStopping(monitor='val_loss', patience=3)
+early_stop = EarlyStopping(monitor='val_loss', patience=7)
 history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])
 with open('param/param.txt', 'w') as f:
     i = 0

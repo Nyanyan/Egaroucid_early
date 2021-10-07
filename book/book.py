@@ -1,214 +1,6 @@
-from tqdm import trange
 import subprocess
-
-book_num = 7
-
-early_stages = [[] for _ in range(book_num)]
-
-hw = 8
-dy = [0, 1, 0, -1, 1, 1, -1, -1]
-dx = [1, 0, -1, 0, 1, -1, 1, -1]
-
-
-def empty(grid, y, x):
-    return grid[y][x] == -1 or grid[y][x] == 2
-
-
-def inside(y, x):
-    return 0 <= y < hw and 0 <= x < hw
-
-
-def check(grid, player, y, x):
-    res_grid = [[False for _ in range(hw)] for _ in range(hw)]
-    res = 0
-    for dr in range(8):
-        ny = y + dy[dr]
-        nx = x + dx[dr]
-        if not inside(ny, nx):
-            continue
-        if empty(grid, ny, nx):
-            continue
-        if grid[ny][nx] == player:
-            continue
-        #print(y, x, dr, ny, nx)
-        plus = 0
-        flag = False
-        for d in range(hw):
-            nny = ny + d * dy[dr]
-            nnx = nx + d * dx[dr]
-            if not inside(nny, nnx):
-                break
-            if empty(grid, nny, nnx):
-                break
-            if grid[nny][nnx] == player:
-                flag = True
-                break
-            #print(y, x, dr, nny, nnx)
-            plus += 1
-        if flag:
-            res += plus
-            for d in range(plus):
-                nny = ny + d * dy[dr]
-                nnx = nx + d * dx[dr]
-                res_grid[nny][nnx] = True
-    return res, res_grid
-
-
-class reversi:
-    def __init__(self):
-        self.grid = [[-1 for _ in range(hw)] for _ in range(hw)]
-        self.grid[3][3] = 1
-        self.grid[3][4] = 0
-        self.grid[4][3] = 0
-        self.grid[4][4] = 1
-        self.player = 0  # 0: 黒 1: 白
-        self.nums = [2, 2]
-
-    def move(self, y, x):
-        plus, plus_grid = check(self.grid, self.player, y, x)
-        if (not empty(self.grid, y, x)) or (not inside(y, x)) or not plus:
-            print('Please input a correct move')
-            return
-        self.grid[y][x] = self.player
-        for ny in range(hw):
-            for nx in range(hw):
-                if plus_grid[ny][nx]:
-                    self.grid[ny][nx] = self.player
-        self.nums[self.player] += 1 + plus
-        self.nums[1 - self.player] -= plus
-        self.player = 1 - self.player
-
-    def check_pass(self):
-        for y in range(hw):
-            for x in range(hw):
-                if self.grid[y][x] == 2:
-                    self.grid[y][x] = -1
-        res = True
-        for y in range(hw):
-            for x in range(hw):
-                if not empty(self.grid, y, x):
-                    continue
-                plus, _ = check(self.grid, self.player, y, x)
-                if plus:
-                    res = False
-                    self.grid[y][x] = 2
-        if res:
-            #print('Pass!')
-            self.player = 1 - self.player
-        return res
-
-    def output(self):
-        print('  ', end='')
-        for i in range(hw):
-            print(chr(ord('a') + i), end=' ')
-        print('')
-        for y in range(hw):
-            print(str(y + 1) + ' ', end='')
-            for x in range(hw):
-                print('O ' if self.grid[y][x] == 0 else 'X ' if self.grid[y]
-                      [x] == 1 else '* ' if self.grid[y][x] == 2 else '. ', end='')
-            print('')
-
-    def end(self):
-        res = True
-        for y in range(hw):
-            for x in range(hw):
-                if self.grid[y][x] == -1 or self.grid[y][x] == 2:
-                    res = False
-        return res
-
-    def judge(self):
-        if self.nums[0] > self.nums[1]:
-            print('Black won!', self.nums[0], '-', self.nums[1])
-        elif self.nums[1] > self.nums[0]:
-            print('White won!', self.nums[0], '-', self.nums[1])
-        else:
-            print('Draw!', self.nums[0], '-', self.nums[1])
-
-def decide(num):
-    ais = [subprocess.Popen('./ai_probability.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
-    win0 = 0
-    for game_idx in trange(num):
-        rv = reversi()
-        player2ai = [0, 1] if game_idx % 2 == 0 else [1, 0]
-        '''
-        rnd = randint(0, len(early_stages) - 1)
-        for y in range(hw):
-            for x in range(hw):
-                rv.grid[y][x] = early_stages[rnd][y][x]
-        '''
-        for y in range(hw):
-            for x in range(hw):
-                rv.grid[y][x] = -1
-        rv.grid[3][3] = 1
-        rv.grid[3][4] = 0
-        rv.grid[4][3] = 0
-        rv.grid[4][4] = 0
-        rv.grid[4][5] = 0
-        rv.player = 1
-        while True:
-            if rv.check_pass() and rv.check_pass():
-                break
-            stdin = ''
-            for y in range(hw):
-                for x in range(hw):
-                    stdin += '0' if rv.grid[y][x] == rv.player else '1' if rv.grid[y][x] == 1 - rv.player else '.'
-            stdin += '\n'
-            #print(stdin)
-            ais[player2ai[rv.player]].stdin.write(stdin.encode('utf-8'))
-            ais[player2ai[rv.player]].stdin.flush()
-            y, x, _ = [int(i) for i in ais[player2ai[rv.player]].stdout.readline().decode().strip().split()]
-            rv.move(y, x)
-            if rv.end():
-                break
-        rv.check_pass()
-        #rv.output()
-        if rv.nums[player2ai[0]] > rv.nums[player2ai[1]]:
-            win0 += 1
-        elif rv.nums[player2ai[0]] < rv.nums[player2ai[1]]:
-            win0 -= 1
-    for i in range(2):
-        ais[i].kill()
-    print('score of best player', best_win)
-    if best_win > 0:
-        return 0
-    else:
-        return 1
-
-def get_early_stages():
-    global early_stages
-    all_data = None
-    with open('param/early_stage.txt', 'r') as f:
-        all_data = f.read().splitlines()
-    for grid_str in all_data[1:]:
-        n_stones = 0
-        for elem in grid_str:
-            n_stones += elem != '.'
-        grid = [[-1 for _ in range(hw)] for _ in range(hw)]
-        for y in range(hw):
-            for x in range(hw):
-                grid[y][x] = 0 if grid_str[y * hw + x] == '0' else 1 if grid_str[y * hw + x] == '1' else -1
-        early_stages[n_stones - 4].append(grid)
-    print('len early stages', len(early_stages))
-
-get_early_stages()
-
-
-
-
-
-book_num = 10
-
-data_dict = {}
-data_proc = []
-
-hw = 8
-hw2 = 64
-board_index_num = 38
-dy = [0, 1, 0, -1, 1, 1, -1, -1]
-dx = [1, 0, -1, 0, 1, -1, 1, -1]
-
-board_maker = subprocess.Popen('./make_board.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+from tqdm import trange
+from copy import deepcopy
 
 def digit(n, r):
     n = str(n)
@@ -217,84 +9,144 @@ def digit(n, r):
         n = '0' + n
     return n
 
-def join_yx(y, x):
-    return y * hw + x
+hw = 8
+hw2 = 64
 
-def calc_idx(i, j, rnd):
-    if rnd == 0:
-        return join_yx(i, j)
-    elif rnd == 1:
-        return join_yx(j, hw - 1 - i)
-    elif rnd == 2:
-        return join_yx(hw - 1 - i, hw - 1 - j)
-    else:
-        return join_yx(hw - 1 - j, i)
+n_digit = 6
 
-def collect_data(num):
-    global data_dict
-    score = -1000
-    grids = []
-    with open('learn_data/' + digit(num, 7) + '.txt', 'r') as f:
-        point = float(f.readline())
-        result = 100.0 if point > 0.0 else 0.0 if point < 0.0 else 50.0
-        rev_result = 0.0 if point > 0.0 else 100.0 if point < 0.0 else 50.0
-        #result = 1 if score > 0 else 0 # if score == 0 else -1
-        all_ln = int(f.readline())
-        ln = min(book_num // 2, all_ln)
-        for _ in range(ln):
-            s, y, x = f.readline().split()
-            y = int(y)
-            x = int(x)
-            coord = y * hw + x
-            if not s in data_dict:
-                data_dict[s] = [[0, 0] for _ in range(hw2)]
-            data_dict[s][coord][0] += result
-            data_dict[s][coord][1] += 1
-        for _ in range(ln, all_ln):
-            f.readline()
-        ln = min(book_num // 2, int(f.readline()))
-        for _ in range(ln):
-            s, y, x = f.readline().split()
-            y = int(y)
-            x = int(x)
-            coord = y * hw + x
-            if not s in data_dict:
-                data_dict[s] = [[0, 0] for _ in range(hw2)]
-            data_dict[s][coord][0] += rev_result
-            data_dict[s][coord][1] += 1
+#all_chars = ['!', '#', '$', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~']
 
-def make_board():
-    global data_proc
-    for key in data_dict:
-        board_maker.stdin.write(key.encode('utf-8'))
-        board_maker.stdin.flush()
-        board = board_maker.stdout.readline().decode().strip()
-        policy = -1
-        rate = -100.0
-        for i in range(hw2):
-            if data_dict[key][i][1] < 2:
-                continue
-            tmp = data_dict[key][i][0] / data_dict[key][i][1]
-            if rate < tmp:
-                rate = tmp
-                policy = i
-        if policy == -1:
-            continue
-        data_proc.append([board, policy, rate])
+all_chars = ['!', '#', '$', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~']
 
-game_num = 65000
-game_strt = 0
-print('loading data from files')
-for i in trange(game_strt, game_strt + game_num):
-    collect_data(i)
-print(len(data_dict))
-make_board()
-board_maker.kill()
-print(len(data_proc))
+all_chars = all_chars[:hw2]
+
+print('const string digit_chars = "', ''.join(all_chars), '";', sep='')
+
+file = 'records.txt'
+
+with open('third_party/' + file, 'r') as f:
+    line_count = line_count = sum([1 for _ in f])
+
+print('lines', line_count)
+
+board_tree = [[37, [-1 for _ in range(hw2)], 50]]
+
+with open('third_party/' + file, 'r') as f:
+    for _ in trange(line_count):
+        line = f.readline().split(' ; ')
+        record = line[0]
+        str_score = digit(min(99, max(0, round((float(line[1]) + 64) * 100 / 128))), 2)
+        str_rev_score = digit(min(99, max(0, round((-float(line[1]) + 64) * 100 / 128))), 2)
+        #print(str_score)
+        if len(record) < 24:
+            idx = 2
+            tree_idx = 0
+            player = 1
+            while idx + 2 < len(record):
+                coord_str = record[idx:idx + 2]
+                coord = hw - 1 - (ord(coord_str[0]) - ord('A')) + (hw - 1 - (int(coord_str[1]) - 1)) * hw
+                if board_tree[tree_idx][1][coord] == -1:
+                    ln = len(board_tree)
+                    board_tree[tree_idx][1][coord] = ln
+                    tree_idx = ln
+                    if player == 0:
+                        board_tree.append([coord, [-1 for _ in range(hw2)], str_score])
+                    else:
+                        board_tree.append([coord, [-1 for _ in range(hw2)], str_rev_score])
+                else:
+                    tree_idx = board_tree[tree_idx][1][coord]
+                idx += 2
+                player = 1 - player
+
+print('#define len_book', len(board_tree))
+
+def to_str(num):
+    return digit(num, 4)
+
+raw_ans = ''
+for i in trange(len(board_tree)):
+    #raw_ans += str(i) + ' ' + str(board_tree[i][2])
+    raw_ans += str(board_tree[i][2])
+    for j in range(hw2):
+        if board_tree[i][1][j] != -1:
+            raw_ans += all_chars[j] + to_str(board_tree[i][1][j])
+    raw_ans += ' '
+
+#raw_ans += 'END'
+
+print('len raw ans', len(raw_ans))
+
 with open('param/book.txt', 'w') as f:
-    f.write(str(len(data_proc)) + '\n')
-    for board_str, policy, rate in data_proc:
-        for elem in board_str.split():
-            f.write(elem + '\n')
-        f.write(str(policy) + '\n')
-        f.write(str(rate) + '\n')
+    f.write(raw_ans)
+
+exit()
+
+replace_from_str = ''
+replace_nums = []
+replace_to_str = ''
+
+set_chars = [i for i in digit_chars]
+for i in trange(len(chars_add)):
+    concat_dict = {}
+    for concat_num in range(2, 7):
+        for j in range(len(ans) - concat_num):
+            concat_char = ans[j:j + concat_num]
+            if concat_char in concat_dict:
+                concat_dict[concat_char] += concat_num - 1
+            else:
+                concat_dict[concat_char] = concat_num - 1
+    change = None
+    mx = 0
+    for key in concat_dict.keys():
+        if mx < concat_dict[key]:
+            mx = concat_dict[key]
+            change = key
+    ln_change = len(change)
+    ln_ans = len(ans)
+    replace_from_str = change + replace_from_str
+    replace_nums.insert(0, ln_change)
+    replace_to_str = chars_add[i] + replace_to_str
+    #print(i, change, chars_add[i], ln_change, mx)
+    new_ans = ''
+    j = 0
+    while True:
+        if j >= ln_ans - ln_change:
+            if j >= ln_ans:
+                break
+            new_ans += ans[j]
+            j += 1
+        elif ans[j:j + ln_change] == change:
+            new_ans += chars_add[i]
+            j += ln_change
+        else:
+            new_ans += ans[j]
+            j += 1
+    ans = deepcopy(new_ans)
+    set_chars.append(chars_add[i])
+
+print('// len', len(ans))
+print('const string replace_from_str = "', replace_from_str, '";', sep='')
+print('const string replace_to_str = "', replace_to_str, '";', sep='')
+print('const int replace_nums[ln_repair] = {', sep='', end='')
+for i in replace_nums[:len(replace_nums) - 1]:
+    print(i, ', ', sep='', end='')
+print(replace_nums[len(replace_nums) - 1], '};', sep='')
+
+if input('sure?: ') != 'yes':
+    exit()
+
+with open(sys.argv[1], 'w') as f:
+    flag = False
+    for i in range(len(ans)):
+        if i % 300 == 0:
+            flag = False
+            f.write('"')
+        f.write(ans[i])
+        if i % 300 == 299:
+            flag = True
+            f.write('"\n')
+    if not flag:
+        f.write('"')
+    f.write(';\n')
+
+print('done')
