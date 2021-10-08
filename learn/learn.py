@@ -213,7 +213,7 @@ def reshape_data_test():
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
-
+'''
 inputs = Input(shape=(hw, hw, n_boards,))
 x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
 x = LeakyReLU(x)
@@ -240,8 +240,8 @@ yv = Dense(1)(yv)
 yv = Activation('tanh', name='value')(yv)
 
 model = Model(inputs=inputs, outputs=[yp, yv])
-
-#model = load_model('param/model_1007.h5')
+'''
+model = load_model('param/model.h5')
 
 model.summary()
 
@@ -250,9 +250,13 @@ print('collecting data')
 n_train_data = int(game_num * (1.0 - test_ratio))
 n_test_data = int(game_num * test_ratio)
 
+idxes = list(range(game_num + 100))
+shuffle(idxes)
+
+
 all_data = []
 for i in trange(n_train_data):
-    collect_data(i)
+    collect_data(idxes[i])
 train_board = np.zeros((len(all_data), hw, hw, n_boards))
 train_policies = np.zeros((len(all_data), hw2))
 train_value = np.zeros(len(all_data))
@@ -260,7 +264,7 @@ reshape_data_train()
 
 all_data = []
 for i in trange(n_train_data, game_num):
-    collect_data(i)
+    collect_data(idxes[i])
 test_raw_board = []
 test_board = []
 test_policies = []
@@ -325,7 +329,7 @@ plt.clf()
 
 all_data = []
 for i in trange(game_num, game_num + 100):
-    collect_data(i)
+    collect_data(idxes[i])
 test_raw_board = []
 test_board = []
 test_policies = []

@@ -183,7 +183,8 @@ def collect_data(num, s):
             break
     rv.check_pass()
     #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
-    score = min(1, max(-1, rv.nums[0] - rv.nums[1]))
+    result = rv.nums[0] - rv.nums[1]
+    score = 1 if result > 0 else -1 if result < 0 else 0
     with open('learn_data/' + digit(num, 7) + '.txt', 'w') as f:
         for grid, policy in grids[0]:
             f.write(grid + ' ' + policy + ' ' + str(score) + '\n')
