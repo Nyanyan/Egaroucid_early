@@ -20,7 +20,7 @@ hw2 = 64
 all_data = {}
 
 n_epochs = 200
-game_num = 2500
+game_num = 10000
 test_ratio = 0.1
 n_boards = 3
 
@@ -213,35 +213,29 @@ def reshape_data_test():
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
-'''
+
 inputs = Input(shape=(hw, hw, n_boards,))
 x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
 x = LeakyReLU(x)
-#x = Activation('tanh')(x)
 for _ in range(n_residual):
     sc = x
     x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x)
     x = Add()([x, sc])
     x = LeakyReLU(x)
-    #x = Activation('tanh')(x)
 x = GlobalAveragePooling2D()(x)
 
-#yp = Dense(64)(x)
 yp = Activation('tanh')(x)
 yp = Dense(hw2)(yp)
 yp = Activation('softmax', name='policy')(yp)
 
 yv = Dense(16)(x)
 yv = LeakyReLU(yv)
-#yv = Activation('tanh')(yv)
-#yv = Dense(8)(yv)
-#yv = LeakyReLU(yv)
 yv = Dense(1)(yv)
 yv = Activation('tanh', name='value')(yv)
 
 model = Model(inputs=inputs, outputs=[yp, yv])
-'''
-model = load_model('param/model.h5')
+
+#model = load_model('param/model.h5')
 
 model.summary()
 
