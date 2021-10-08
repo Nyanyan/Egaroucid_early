@@ -17,16 +17,16 @@ import datetime
 hw = 8
 hw2 = 64
 
-all_data = []
+all_data = {}
 
 n_epochs = 200
+game_num = 2500
 test_ratio = 0.1
-n_additional_param = 15
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 128
-n_residual = 0
+n_kernels = 40
+n_residual = 1
 
 leakyrelu_alpha = 0.01
 
@@ -36,7 +36,6 @@ train_value = None
 
 test_raw_board = []
 test_board = []
-#test_param = []
 test_policies = []
 test_value = []
 
@@ -63,8 +62,11 @@ def calc_idx(i, j, rnd):
 
 def collect_data(num):
     global all_data
-    with open('learn_data2/' + digit(num, 7) + '.txt', 'r') as f:
-        data = list(f.read().splitlines())
+    try:
+        with open('learn_data/' + digit(num, 7) + '.txt', 'r') as f:
+            data = list(f.read().splitlines())
+    except:
+        return
     for datum in data:
         board, policy, score = datum.split()
         policy = int(policy)
@@ -72,11 +74,11 @@ def collect_data(num):
         #print(board, policy, score)
         all_data.append([board, policy, score])
 
-def reshape_data_train(read_strt, train_read_num):
+def reshape_data_train():
     global train_board, train_policies, train_value, mean, std
     tmp_data = []
     print('calculating score & additional data')
-    for itr in trange(read_strt, train_read_num):
+    for itr in trange(len(all_data)):
         board, policy, score = all_data[itr]
         policies = [0.0 for _ in range(hw2)]
         policies[policy] = 1.0
@@ -147,11 +149,11 @@ def reshape_data_train(read_strt, train_read_num):
     '''
     print('train', train_board.shape, train_policies.shape, train_value.shape)
 
-def reshape_data_test(read_strt, test_read_num):
+def reshape_data_test():
     global test_board, test_policies, test_value, test_raw_board
     tmp_data = []
     print('calculating score & additional data')
-    for itr in trange(read_strt, test_read_num):
+    for itr in trange(len(all_data)):
         board, policy, score = all_data[itr]
         policies = [0.0 for _ in range(hw2)]
         policies[policy] = 1.0
@@ -211,53 +213,66 @@ def reshape_data_test(read_strt, test_read_num):
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
+
 inputs = Input(shape=(hw, hw, n_boards,))
 x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
-#x = LeakyReLU(x)
-x = Activation('tanh')(x)
+x = LeakyReLU(x)
+#x = Activation('tanh')(x)
 for _ in range(n_residual):
     sc = x
     x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x)
     x = Add()([x, sc])
     x = LeakyReLU(x)
+    #x = Activation('tanh')(x)
 x = GlobalAveragePooling2D()(x)
+
 #yp = Dense(64)(x)
-#yp = Activation('tanh')(yp)
-yp = Dense(hw2)(x)
+yp = Activation('tanh')(x)
+yp = Dense(hw2)(yp)
 yp = Activation('softmax', name='policy')(yp)
-yv = Dense(32)(x)
+
+yv = Dense(16)(x)
 yv = LeakyReLU(yv)
-yv = Dense(16)(yv)
-yv = LeakyReLU(yv)
+#yv = Activation('tanh')(yv)
+#yv = Dense(8)(yv)
+#yv = LeakyReLU(yv)
 yv = Dense(1)(yv)
 yv = Activation('tanh', name='value')(yv)
+
 model = Model(inputs=inputs, outputs=[yp, yv])
 
-for i in range(4):
-    collect_data(i)
+#model = load_model('param/model_1007.h5')
 
-game_num = len(all_data)
+model.summary()
+
+print('collecting data')
+
 n_train_data = int(game_num * (1.0 - test_ratio))
 n_test_data = int(game_num * test_ratio)
 
-train_board = np.zeros((n_train_data, hw, hw, n_boards))
-train_policies = np.zeros((n_train_data, hw2))
-train_value = np.zeros(n_train_data)
+all_data = []
+for i in trange(n_train_data):
+    collect_data(i)
+train_board = np.zeros((len(all_data), hw, hw, n_boards))
+train_policies = np.zeros((len(all_data), hw2))
+train_value = np.zeros(len(all_data))
+reshape_data_train()
 
+all_data = []
+for i in trange(n_train_data, game_num):
+    collect_data(i)
 test_raw_board = []
 test_board = []
 test_policies = []
 test_value = []
-
-model.summary()
-
-reshape_data_train(0, n_train_data)
-reshape_data_test(n_train_data, game_num - 100)
+reshape_data_test()
 
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+
 print(model.evaluate([train_board], [train_policies, train_value]))
-early_stop = EarlyStopping(monitor='val_loss', patience=7)
+early_stop = EarlyStopping(monitor='val_loss', patience=5)
 history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])
+
 with open('param/param.txt', 'w') as f:
     i = 0
     while True:
@@ -308,12 +323,14 @@ plt.legend(loc='best')
 plt.savefig('graph/value_loss.png')
 plt.clf()
 
-
+all_data = []
+for i in trange(game_num, game_num + 100):
+    collect_data(i)
 test_raw_board = []
 test_board = []
 test_policies = []
 test_value = []
-reshape_data_test(game_num - 100, game_num)
+reshape_data_test()
 
 print(model.evaluate(test_board, [test_policies, test_value]))
 

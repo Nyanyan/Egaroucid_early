@@ -35,28 +35,30 @@ with open('third_party/' + file, 'r') as f:
     for _ in trange(line_count):
         line = f.readline().split(' ; ')
         record = line[0]
+        score = float(line[1])
         str_score = digit(min(99, max(0, round((float(line[1]) + 64) * 100 / 128))), 2)
         str_rev_score = digit(min(99, max(0, round((-float(line[1]) + 64) * 100 / 128))), 2)
         #print(str_score)
-        if len(record) < 24:
-            idx = 2
-            tree_idx = 0
-            player = 1
-            while idx + 2 < len(record):
-                coord_str = record[idx:idx + 2]
-                coord = hw - 1 - (ord(coord_str[0]) - ord('A')) + (hw - 1 - (int(coord_str[1]) - 1)) * hw
-                if board_tree[tree_idx][1][coord] == -1:
-                    ln = len(board_tree)
-                    board_tree[tree_idx][1][coord] = ln
-                    tree_idx = ln
-                    if player == 0:
-                        board_tree.append([coord, [-1 for _ in range(hw2)], str_score])
-                    else:
-                        board_tree.append([coord, [-1 for _ in range(hw2)], str_rev_score])
+        turn = 0
+        idx = 2
+        tree_idx = 0
+        player = 1
+        while idx + 2 < len(record) and turn < 9:
+            coord_str = record[idx:idx + 2]
+            coord = hw - 1 - (ord(coord_str[0]) - ord('A')) + (hw - 1 - (int(coord_str[1]) - 1)) * hw
+            if board_tree[tree_idx][1][coord] == -1:
+                ln = len(board_tree)
+                board_tree[tree_idx][1][coord] = ln
+                tree_idx = ln
+                if player == 0:
+                    board_tree.append([coord, [-1 for _ in range(hw2)], str_score])
                 else:
-                    tree_idx = board_tree[tree_idx][1][coord]
-                idx += 2
-                player = 1 - player
+                    board_tree.append([coord, [-1 for _ in range(hw2)], str_rev_score])
+            else:
+                tree_idx = board_tree[tree_idx][1][coord]
+            idx += 2
+            player = 1 - player
+            turn += 1
 
 print('#define len_book', len(board_tree))
 

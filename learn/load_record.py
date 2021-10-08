@@ -160,6 +160,7 @@ def collect_data(num, s):
     grids = [[], []]
     rv = reversi()
     idx = 0
+    turn = 0
     while True:
         if idx >= len(s):
             return
@@ -168,29 +169,30 @@ def collect_data(num, s):
         x = ord(s[idx]) - ord('a')
         y = int(s[idx + 1]) - 1
         idx += 2
-        grid_str = ''
-        for i in range(hw):
-            for j in range(hw):
-                grid_str += '0' if rv.grid[i][j] == rv.player else '1' if rv.grid[i][j] == 1 - rv.player else '.' # 0 to move
-        grids[rv.player].append([grid_str, str(y), str(x)])
+        if turn < 52:
+            grid_str = ''
+            for i in range(hw):
+                for j in range(hw):
+                    grid_str += '0' if rv.grid[i][j] == rv.player else '1' if rv.grid[i][j] == 1 - rv.player else '.' # 0 to move
+            grids[rv.player].append([grid_str, str(y * hw + x)])
         if rv.move(y, x):
             print('error')
-            break
+            exit()
+        turn += 1
         if rv.end():
             break
     rv.check_pass()
     #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
-    score = rv.nums[0] - rv.nums[1]
+    score = min(1, max(-1, rv.nums[0] - rv.nums[1]))
     with open('learn_data/' + digit(num, 7) + '.txt', 'w') as f:
-        f.write(str(score) + '\n')
-        for turn in range(2):
-            f.write(str(len(grids[turn])) + '\n')
-            for grid, y, x in grids[turn]:
-                f.write(grid + ' ' + y + ' ' + x + '\n')
+        for grid, policy in grids[0]:
+            f.write(grid + ' ' + policy + ' ' + str(score) + '\n')
+        for grid, policy in grids[1]:
+            f.write(grid + ' ' + policy + ' ' + str(-score) + '\n')
 
 
 games = []
-for year in reversed(range(2008, 2019 + 1)):
+for year in reversed(range(2018, 2019 + 1)):
     raw_data = ''
     with open('third_party/records/' + str(year) + '.csv', 'r', encoding='utf-8-sig') as f:
         raw_data = f.read()
