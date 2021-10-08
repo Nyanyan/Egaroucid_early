@@ -43,7 +43,7 @@ with open('third_party/' + file, 'r') as f:
         idx = 2
         tree_idx = 0
         player = 1
-        while idx + 2 < len(record) and turn < 9:
+        while idx + 2 < len(record) and round(score) == 0 and turn < 11:
             coord_str = record[idx:idx + 2]
             coord = hw - 1 - (ord(coord_str[0]) - ord('A')) + (hw - 1 - (int(coord_str[1]) - 1)) * hw
             if board_tree[tree_idx][1][coord] == -1:
