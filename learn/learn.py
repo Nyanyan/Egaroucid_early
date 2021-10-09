@@ -20,7 +20,7 @@ hw2 = 64
 all_data = {}
 
 n_epochs = 200
-game_num = 10000
+game_num = 40000
 test_ratio = 0.1
 n_boards = 3
 
