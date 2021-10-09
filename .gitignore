@@ -7,6 +7,13 @@ learn/self_play.out
 book/make_board.out
 book/ai_probability.out
 book/early_stage.out
+book/early_stage.txt
+book/boards.txt
+book/val.txt
+book/one_board.txt
+book/some_boards.txt
+book/cmd.txt
+book/cmd2.txt
 learn/decide.out
 learn/early_stage.out
 Procfile

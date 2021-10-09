@@ -425,6 +425,7 @@ void init(){
             eval_param.pattern[i][j] = patterns[all_idx++];
     }
     */
+   /*
     FILE *fp;
     char cbuf[1024];
     if ((fp = fopen("param/param.txt", "r")) == NULL){
@@ -598,6 +599,7 @@ void init(){
         search_param.book[key].policy = policy;
         search_param.book[key].rate = rate;
     }
+    */
     int p, o, mobility, canput_num, rev;
     for (i = 0; i < 6561; ++i){
         board_param.reverse[i] = board_reverse(i);
@@ -1126,26 +1128,14 @@ struct history{
 
 set<string> seen_boards;
 
-void dfs(int *board, int depth, bool passed){
-    if (depth >= 6)
+#define mx_ln (8 - 1)
+
+void dfs(int *board, int depth, bool passed, string record){
+    if (depth >= mx_ln)
         return;
     int stone_count = 0;
     int i, j, idx, tmp;
-    string grid_str;
-    for (i = 0; i < hw; ++i){
-        tmp = board[i];
-        for (j = 0; j < hw; ++j){
-            if (tmp % 3 == 0){
-                grid_str += ".";
-            }else if (tmp % 3 == 1){
-                grid_str += "0";
-            }else{
-                grid_str += "1";
-            }
-            tmp /= 3;
-        }
-    }
-    if (seen_boards.count(grid_str))
+    if (seen_boards.count(record))
         return;
     int legal_places[hw2];
     int n_legal_move = 0;
@@ -1162,24 +1152,30 @@ void dfs(int *board, int depth, bool passed){
         }
     }
     int n_board[board_index_num];
+    string n_record;
     if (n_legal_move == 0 && !passed){
         for (i = 0; i < board_index_num; ++i)
             n_board[i] = board_param.reverse[board[i]];
-        dfs(n_board, depth + 1, true);
+        n_record = record;
+        dfs(n_board, depth + 1, true, n_record);
     }
     for (i = 0; i < n_legal_move; ++i){
         move(board, n_board, legal_places[i]);
-        dfs(n_board, depth + 1, false);
+        n_record = record;
+        n_record += {(char)(legal_places[i] % hw + 'A')};
+        n_record += {(char)(legal_places[i] / hw + '1')};
+        dfs(n_board, depth + 1, false, n_record);
     }
-    seen_boards.insert(grid_str);
+    seen_boards.insert(record);
     //if (depth < 4)
     //    cerr << seen_boards.size() << " ";
 }
 
 int main(){
     init();
-    int board[board_index_num] = {0, 0, 54, 216, 135, 0, 0, 0, 0, 0, 0, 234, 135, 0, 0, 0, 0, 0, 0, 0, 72, 135, 54, 0, 0, 0, 0, 0, 0, 0, 18, 54, 216, 27, 0, 0, 0, 0};
-    dfs(board, 0, false);
+    int board[board_index_num] = {0, 0, 0, 189, 702, 0, 0, 0, 0, 0, 0, 189, 216, 162, 0, 0, 0, 0, 0, 0, 216, 189, 54, 0, 0, 0, 0, 0, 0, 0, 0, 27, 216, 54, 18, 0, 0, 0};
+    //print_board(board);
+    dfs(board, 0, false, "F5");
     //cerr << "done" << endl;
     int size = seen_boards.size();
     cout << size << endl;
