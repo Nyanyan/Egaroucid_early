@@ -233,7 +233,7 @@ def exe_que(ln):
         val_idx += 1
     return res
 
-mx_ln = 10
+mx_ln = 12
 
 book = {to_str_record([37]): 45}
 for player in range(2):
