@@ -4,11 +4,24 @@
 
 ## About
 
-You can play with this AI at [Egaroucid on the Web (in Japanese)](https://www.egaroucid.nyanyan.dev/). As of October, 2021, the AI on the web is weaker than the AI on this repository.
+**You can play with this AI at [Egaroucid on the Web (in Japanese)](https://www.egaroucid.nyanyan.dev/).**
 
 This AI got 10th in [Codingame Othello](https://www.codingame.com/multiplayer/bot-programming/othello-1/leaderboard) in June, 2021.
 
 You cannot see parameters of this AI, but can see a lot of [game records](https://github.com/Nyanyan/Egaroucid/tree/main/learn/self_play) of this AI.
+
+
+
+## How to play
+
+**It's a lot better to play at [Egaroucid on the Web (in Japanese)](https://www.egaroucid.nyanyan.dev/).**
+
+If you really want to play with console,
+
+```
+python3 compile.py ai.cpp ai.out
+python3 main.py
+```
 
 
 
