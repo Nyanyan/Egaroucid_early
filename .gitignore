@@ -28,3 +28,5 @@ learn/third_party
 book/param
 book/third_party
 codingame
+self_play/param
+self_play/learn_data
