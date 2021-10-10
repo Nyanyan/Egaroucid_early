@@ -16,14 +16,7 @@ You cannot see parameters of this AI, but can see a lot of [game records](https:
 
 **It's a lot better to play at [Egaroucid on the Web (in Japanese)](https://www.egaroucid.nyanyan.dev/).**
 
-If you really want to play with console,
-
-```
-python3 compile.py ai.cpp ai.out
-python3 main.py
-```
-
-
+If you really want to play with your console, you have to create parameter files. These files and data are not available. If you want, please contact me.
 
 ## Technology
 
