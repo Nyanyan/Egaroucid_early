@@ -32,8 +32,8 @@ using namespace std;
 #define n_div 1000000
 #define tanh_min -5.0
 #define tanh_max 5.0
-#define exp_min -10.0
-#define exp_max 10.0
+#define exp_min -30.0
+#define exp_max 30.0
 
 #define compress_digit 16
 #define ln_char 2
