@@ -216,7 +216,9 @@ def que_next_move(grid, player):
     with open('some_boards.txt', 'a') as f:
         f.write(board + '\n')
 
-def exe_que(ln):
+mx_value = 4.0
+
+def exe_que(ln, mode):
     mr = subprocess.run(cmd2.split(), capture_output=True)
     raw_val = mr.stdout.decode().strip().splitlines()
     val_idx = 0
@@ -226,17 +228,28 @@ def exe_que(ln):
             if ':' in raw_val[val_idx]:
                 break
             val_idx += 1
-        next_move_str = raw_val[val_idx][1:3]
-        y = int(next_move_str[1]) - 1
-        x = ord(next_move_str[0]) - ord('A')
-        res.append(y * hw + x)
+        next_move_value = float(raw_val[val_idx].split()[0][3:])
+        if abs(next_move_value) < mx_value or mode:
+            next_move_str = raw_val[val_idx][1:3]
+            y = int(next_move_str[1]) - 1
+            x = ord(next_move_str[0]) - ord('A')
+            res.append(y * hw + x)
+        else:
+            res.append(-1)
         val_idx += 1
     return res
 
-mx_ln = 12
+mx_ln = 16
 
 book = {to_str_record([37]): 45}
 for player in range(2):
+    '''
+    if player == 0:
+        records = [[37]]
+    else:
+        records = [[37, 43]]
+        book[to_str_record([37])] = 43
+    '''
     records = [[37]]
     while len(records[0]) < mx_ln - 1:
         grids = []
@@ -271,19 +284,20 @@ for player in range(2):
             f.write('')
         for _, grid in grids:
             que_next_move(grid, player)
-        next_moves = exe_que(len(grids))
+        next_moves = exe_que(len(grids), len(records[0]) < 5)
         records = []
         for i in range(len(grids)):
-            book[to_str_record(grids[i][0])] = next_moves[i]
-            grids[i][0].append(next_moves[i])
-            records.append([i for i in grids[i][0]])
+            if next_moves[i] != -1:
+                book[to_str_record(grids[i][0])] = next_moves[i]
+                grids[i][0].append(next_moves[i])
+                records.append([i for i in grids[i][0]])
         #print(records)
-        print(len(records[0]), len(book.keys()))
+        print(len(records[0]), len(book.keys()), len(records))
 
 print('ln book', len(book.keys()))
 print('max key ln', max(len(i) for i in book.keys()))
 
 with open('param/book.txt', 'w') as f:
     for record in book.keys():
-        f.write(record + ' ' + all_chars[book[record]])
+        f.write(record[1:] + ' ' + all_chars[book[record]])
 
