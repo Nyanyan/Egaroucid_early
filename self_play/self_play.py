@@ -2,6 +2,7 @@ from random import randint
 import subprocess
 from os import rename, path, listdir
 from tqdm import trange
+import numpy as np
 
 hw = 8
 hw2 = 64
@@ -160,10 +161,11 @@ class reversi:
 
 
 record_num = digit(sum(path.isfile(path.join('records', name)) for name in listdir('records')), 7)
-for n_record in trange(10):
+strt = int(input())
+for n_record in trange(strt, strt + 100):
     ais = [subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
     for i in range(2):
-        ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n').encode('utf-8'))
+        ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n' + str(max(0.1, min(2.0, np.random.normal(0.7, 0.1)))) + '\n' + str(max(0.01, min(0.1, np.random.normal(0.05, 0.01)))) + '\n' + str(max(0.01, min(1.0, np.random.normal(0.1, 0.01)))) + '\n').encode('utf-8'))
         ais[i].stdin.flush()
     rv = reversi()
     boards = [[], []]

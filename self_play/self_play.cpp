@@ -49,9 +49,9 @@ using namespace std;
 #define evaluate_count 400
 #define mcts_comp_stones 10
 #define comp_stones 10
-#define c_puct 0.7
-#define p_offset 0.05
-#define div_puct 0.1
+double c_puct; // 0.7
+double p_offset; // 0.05
+double div_puct; // 0.1
 
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
@@ -1059,6 +1059,9 @@ int main(){
     long long first_tl;
     cin >> xorw;
     cin >> board_c.ai_player;
+    cin >> c_puct; // 0.7
+    cin >> p_offset; // 0.05
+    cin >> div_puct; // 0.1
     //cin >> tl;
     //cin >> book_stones;
     //cin >> first_tl;
