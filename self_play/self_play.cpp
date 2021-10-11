@@ -456,9 +456,18 @@ class predict_c{
 
             FILE *fp;
             char cbuf[1024];
-            if ((fp = fopen("param/param.txt", "r")) == NULL){
-                printf("param file not exist");
-                exit(1);
+            int mode;
+            cin >> mode;
+            if (mode == 0){
+                if ((fp = fopen("param/param.txt", "r")) == NULL){
+                    printf("param file not exist");
+                    exit(1);
+                }
+            } else{
+                if ((fp = fopen("param/param_new.txt", "r")) == NULL){
+                    printf("param file not exist");
+                    exit(1);
+                }
             }
             for (i = 0; i < n_kernels; ++i){
                 for (j = 0; j < n_board_input; ++j){

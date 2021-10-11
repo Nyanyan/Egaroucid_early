@@ -20,7 +20,7 @@ hw2 = 64
 all_data = {}
 
 n_epochs = 200
-game_num = 100
+game_num = 4900
 test_ratio = 0.1
 n_boards = 3
 
@@ -271,7 +271,7 @@ print(model.evaluate([train_board], [train_policies, train_value]))
 early_stop = EarlyStopping(monitor='val_loss', patience=5)
 history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])
 
-with open('param/param.txt', 'w') as f:
+with open('param/param_new.txt', 'w') as f:
     i = 0
     while True:
         try:
@@ -303,7 +303,7 @@ with open('param/param.txt', 'w') as f:
 now = datetime.datetime.today()
 print(str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2))
 #model.save('param/additional_learn_model/' + str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2) + '.h5')
-model.save('param/model.h5')
+model.save('param/model_new.h5')
 
 for key in ['policy_loss', 'val_policy_loss']:
     plt.plot(history.history[key], label=key)

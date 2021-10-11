@@ -161,61 +161,73 @@ class reversi:
 
 
 record_num = digit(sum(path.isfile(path.join('records', name)) for name in listdir('records')), 7)
-strt = int(input('strt: '))
-game_num = 1000
-black_win = 0
-white_win = 0
-for n_record in trange(strt, strt + game_num):
-    ais = [subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
-    for i in range(2):
-        ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n' + str(max(0.1, min(2.0, np.random.normal(0.7, 0.1)))) + '\n' + str(max(0.01, min(0.1, np.random.normal(0.05, 0.01)))) + '\n' + str(max(0.01, min(1.0, np.random.normal(0.1, 0.01)))) + '\n0\n').encode('utf-8'))
-        ais[i].stdin.flush()
-    rv = reversi()
-    boards = [[], []]
-    n_turn = 0
-    record = ''
-    while True:
-        if rv.check_pass() and rv.check_pass():
-            break
-        board_str = ''
+game_num = 100
+new_win = 0
+best_win = 0
+for n_record in trange(game_num):
+    for mode in [[0, 1], [1, 0]]:
+        ais = [subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
+        for i in range(2):
+            ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n' + str(max(0.1, min(2.0, np.random.normal(0.7, 0.1)))) + '\n' + str(max(0.01, min(0.1, np.random.normal(0.05, 0.01)))) + '\n' + str(max(0.01, min(1.0, np.random.normal(0.1, 0.01)))) + '\n' + str(mode[i]) + '\n').encode('utf-8'))
+            ais[i].stdin.flush()
+        rv = reversi()
+        #boards = [[], []]
+        n_turn = 0
+        #record = ''
+        while True:
+            if rv.check_pass() and rv.check_pass():
+                break
+            board_str = ''
+            for y in range(hw):
+                for x in range(hw):
+                    board_str += '0' if rv.grid[y][x] == 0 else '1' if rv.grid[y][x] == 1 else '.'
+            #print(board_str)
+            ais[rv.player].stdin.write((board_str + '\n').encode('utf-8'))
+            ais[rv.player].stdin.flush()
+            coord = ais[rv.player].stdout.readline().decode()
+            #record += coord[:2]
+            x = int(ord(coord[0]) - ord('a'))
+            y = int(coord[1]) - 1
+            #if n_turn >= 4:
+            #    boards[rv.player].append(board_str + ' ' + str(y * hw + x))
+            rv.move(y, x)
+            n_turn += 1
+        nums = [0, 0]
         for y in range(hw):
             for x in range(hw):
-                board_str += '0' if rv.grid[y][x] == 0 else '1' if rv.grid[y][x] == 1 else '.'
-        #print(board_str)
-        ais[rv.player].stdin.write((board_str + '\n').encode('utf-8'))
-        ais[rv.player].stdin.flush()
-        coord = ais[rv.player].stdout.readline().decode()
-        record += coord[:2]
-        x = int(ord(coord[0]) - ord('a'))
-        y = int(coord[1]) - 1
-        if n_turn >= 4:
-            boards[rv.player].append(board_str + ' ' + str(y * hw + x))
-        rv.move(y, x)
-        n_turn += 1
-    nums = [0, 0]
-    for y in range(hw):
-        for x in range(hw):
-            if rv.grid[y][x] >= 0:
-                nums[rv.grid[y][x]] += 1
-    score = 1 if nums[0] > nums[1] else -1 if nums[0] < nums[1] else 0
-    if score == 1:
-        black_win += 1
-    elif score == -1:
-        white_win += 1
-    record += ' ' + str(score)
-    for i in range(len(boards[0])):
-        boards[0][i] += ' ' + str(score)
-    for i in range(len(boards[1])):
-        boards[1][i] = boards[1][i].replace('0', '2').replace('1', '0').replace('2', '1')
-        boards[1][i] += ' ' + str(-score)
-    with open('learn_data/' + digit(n_record, 7) + '.txt', 'w') as f:
-        for i in boards:
-            for j in i:
-                f.write(j + '\n')
-    with open('records/' + record_num + '.txt', 'a') as f:
-        f.write(record + '\n')
-    for i in range(2):
-        ais[i].kill()
+                if rv.grid[y][x] >= 0:
+                    nums[rv.grid[y][x]] += 1
+        score = 1 if nums[0] > nums[1] else -1 if nums[0] < nums[1] else 0
+        if mode == [0, 1]:
+            if score == -1:
+                new_win += 1
+            elif score == 1:
+                best_win += 1
+        else:
+            if score == 1:
+                new_win += 1
+            elif score == -1:
+                best_win += 1
+        '''
+        record += ' ' + str(score)
+        for i in range(len(boards[0])):
+            boards[0][i] += ' ' + str(score)
+        for i in range(len(boards[1])):
+            boards[1][i] = boards[1][i].replace('0', '2').replace('1', '0').replace('2', '1')
+            boards[1][i] += ' ' + str(-score)
+        with open('learn_data/' + digit(n_record, 7) + '.txt', 'w') as f:
+            for i in boards:
+                for j in i:
+                    f.write(j + '\n')
+        with open('records/' + record_num + '.txt', 'a') as f:
+            f.write(record + '\n')
+        '''
+        for i in range(2):
+            ais[i].kill()
 
-print('b win', black_win)
-print('w win', white_win)
+print('b win', best_win)
+print('n win', new_win)
+if new_win > best_win:
+    print('new won')
+else:
+    print('best won')
