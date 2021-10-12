@@ -992,30 +992,44 @@ class search_c{
             for (i = 0; i < evaluate_count; ++i){
                 search_c::evaluate(board_idx, false, board_c.n_stones, 3, player);
             }
-            double policies[hw2];
-            for (i = 0; i < hw2; ++i)
-                policies[i] = 0.0;
-            double all_sm = 0.0;
-            for (const int& cell : board_c.vacant_lst){
-                if (search_c::nodes[board_idx].children[cell] != -1){
-                    policies[cell] = (double)search_c::nodes[search_c::nodes[board_idx].children[cell]].n;
-                    all_sm += policies[cell];
-                }
-            }
-            for (i = 0; i < hw2; ++i)
-                policies[i] /= all_sm;
+            double rnd1 = myrandom();
             int policy = -1;
-            double rnd = myrandom();
-            double sm = 0.0;
-            for (i = 0; i < hw2; ++i){
-                sm += policies[i];
-                if (rnd <= sm){
-                    policy = i;
-                    break;
+            if (rnd1 < 0.8){
+                int mx = -inf;
+                for (const int& cell : board_c.vacant_lst){
+                    if (search_c::nodes[board_idx].children[cell] != -1){
+                        if (mx < search_c::nodes[search_c::nodes[board_idx].children[cell]].n){
+                            mx = search_c::nodes[search_c::nodes[board_idx].children[cell]].n;
+                            policy = cell;
+                        }
+                    }
                 }
+                cout << board_c.coord_str(policy) << " 0" << endl;
+            } else{
+                double policies[hw2];
+                for (i = 0; i < hw2; ++i)
+                    policies[i] = 0.0;
+                double all_sm = 0.0;
+                for (const int& cell : board_c.vacant_lst){
+                    if (search_c::nodes[board_idx].children[cell] != -1){
+                        policies[cell] = (double)search_c::nodes[search_c::nodes[board_idx].children[cell]].n;
+                        all_sm += policies[cell];
+                    }
+                }
+                for (i = 0; i < hw2; ++i)
+                    policies[i] /= all_sm;
+                double rnd = myrandom();
+                double sm = 0.0;
+                for (i = 0; i < hw2; ++i){
+                    sm += policies[i];
+                    if (rnd <= sm){
+                        policy = i;
+                        break;
+                    }
+                }
+                //cerr << "SEARCH " << search_c::nodes[search_c::nodes[board_idx].children[policy]].n << " " << search_c::used_idx << endl;
+                cout << board_c.coord_str(policy) << " 1" << endl;
             }
-            //cerr << "SEARCH " << search_c::nodes[search_c::nodes[board_idx].children[policy]].n << " " << search_c::used_idx << endl;
-            cout << board_c.coord_str(policy) << endl;
             return search_c::nodes[board_idx].children[policy];
         }
 
@@ -1043,7 +1057,7 @@ class search_c{
                     board_c.move(board, n_board, cell);
                     g = -search_c::nega_alpha(n_board, -1.0, 1.0, 0);
                     if (g == 1.0){
-                        cout << board_c.coord_str(cell) << endl;
+                        cout << board_c.coord_str(cell) << " 0" << endl;
                         return;
                     } else if (g == 0.0)
                         draw_policy = cell;
@@ -1051,10 +1065,10 @@ class search_c{
                 }
             }
             if (draw_policy != -1){
-                cout << board_c.coord_str(draw_policy) << endl;
+                cout << board_c.coord_str(draw_policy) << " 0" << endl;
                 return;
             }
-            cout << board_c.coord_str(lose_policy) << endl;
+            cout << board_c.coord_str(lose_policy) << " 0" << endl;
         }
 };
 
@@ -1082,29 +1096,14 @@ int main(){
     search_c.init();
     //cerr << "initialized" << endl;
     search_c.first_search();
+    board_c.direction = 0;
     if (board_c.ai_player == 0){
-        board_c.direction = 0;
         string raw_board;
         cin >> raw_board; cin.ignore();
         policy = 37;
         //cerr << "FIRST direction " << board_c.direction << endl; 
         //cerr << "book policy " << policy << endl;
-        cout << board_c.coord_str(policy) << endl;
-    } else {
-        string board_turns[4] = {
-            "...........................10......000..........................",
-            "...........................10......00.......0...................",
-            "..........................000......01...........................",
-            "...................0.......00......01..........................."
-        };
-        string board_str;
-        cin >> board_str; cin.ignore();
-        for (i = 0; i < 4; ++i){
-            if (board_str == board_turns[i])
-                board_c.direction = i;
-        }
-        int first_board[b_idx_num] = {0, 0, 0, 189, 702, 0, 0, 0, 0, 0, 0, 189, 216, 162, 0, 0, 0, 0, 0, 0, 216, 189, 54, 0, 0, 0, 0, 0, 0, 0, 0, 27, 216, 54, 18, 0, 0, 0};
-        mcts_idx = search_c.mcts(first_board, 0, board_c.ai_player);
+        cout << board_c.coord_str(policy) << " 1" << endl;
     }
     mcts_idx = 0;
     while (true){
@@ -1128,6 +1127,16 @@ int main(){
         //cerr << mx_idx << " " << mx << " " << tmp.value << endl;
         return 0;
         */
+        if (vacant_cnt >= hw2 - 4 - 5){
+            vector<int> legal;
+            for (i = 0; i < hw2; ++i){
+                if (board_c.check_legal(board, i))
+                    legal.push_back(i);
+            }
+            int idx = (int)(myrandom() * legal.size());
+            cout << board_c.coord_str(legal[idx]) << " 1" << endl;
+            continue;
+        }
         if (vacant_cnt > comp_stones)
             mcts_idx = search_c.mcts(board, mcts_idx, board_c.ai_player);
         else

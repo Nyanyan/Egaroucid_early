@@ -162,13 +162,16 @@ class reversi:
 
 record_num = digit(sum(path.isfile(path.join('records', name)) for name in listdir('records')), 7)
 game_num = 100
-new_win = 0
-best_win = 0
+new_b_win = 0
+best_b_win = 0
+new_w_win = 0
+best_w_win = 0
 for n_record in trange(game_num):
     for mode in [[0, 1], [1, 0]]:
         ais = [subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
         for i in range(2):
-            ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n' + str(max(0.1, min(2.0, np.random.normal(0.7, 0.1)))) + '\n' + str(max(0.01, min(0.1, np.random.normal(0.05, 0.01)))) + '\n' + str(max(0.01, min(1.0, np.random.normal(0.1, 0.01)))) + '\n' + str(mode[i]) + '\n').encode('utf-8'))
+            #ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n' + str(max(0.1, min(2.0, np.random.normal(0.7, 0.1)))) + '\n' + str(max(0.01, min(0.1, np.random.normal(0.05, 0.01)))) + '\n' + str(max(0.01, min(1.0, np.random.normal(0.1, 0.01)))) + '\n' + str(mode[i]) + '\n').encode('utf-8'))
+            ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n0.5\n0.1\n0.1\n' + str(mode[i]) + '\n').encode('utf-8'))
             ais[i].stdin.flush()
         rv = reversi()
         #boards = [[], []]
@@ -200,14 +203,14 @@ for n_record in trange(game_num):
         score = 1 if nums[0] > nums[1] else -1 if nums[0] < nums[1] else 0
         if mode == [0, 1]:
             if score == -1:
-                new_win += 1
+                new_w_win += 1
             elif score == 1:
-                best_win += 1
+                best_b_win += 1
         else:
             if score == 1:
-                new_win += 1
+                new_b_win += 1
             elif score == -1:
-                best_win += 1
+                best_w_win += 1
         '''
         record += ' ' + str(score)
         for i in range(len(boards[0])):
@@ -225,9 +228,11 @@ for n_record in trange(game_num):
         for i in range(2):
             ais[i].kill()
 
-print('b win', best_win)
-print('n win', new_win)
-if new_win > best_win:
+print('b black win', best_b_win)
+print('n black win', new_b_win)
+print('b white win', best_w_win)
+print('n white win', new_w_win)
+if new_b_win > best_b_win and new_w_win > best_w_win:
     print('new won')
 else:
     print('best won')

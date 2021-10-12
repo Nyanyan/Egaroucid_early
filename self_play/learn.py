@@ -19,7 +19,7 @@ hw2 = 64
 
 all_data = {}
 
-n_epochs = 200
+n_epochs = 50
 game_num = 4900
 test_ratio = 0.1
 n_boards = 3
@@ -108,7 +108,7 @@ def reshape_data_train():
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
                 grid_space_fill += '0 ' if board[idx] == '.' else '1 '
                 stone_num += board[idx] != '.'
-        if stone_num < 10 or stone_num > 56:
+        if stone_num > 54:
             continue
         #grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
@@ -265,7 +265,7 @@ test_policies = []
 test_value = []
 reshape_data_test()
 
-model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
+model.compile(loss=['categorical_crossentropy', 'mse'], optimizer=Adam(learning_rate=0.001))
 
 print(model.evaluate([train_board], [train_policies, train_value]))
 early_stop = EarlyStopping(monitor='val_loss', patience=5)

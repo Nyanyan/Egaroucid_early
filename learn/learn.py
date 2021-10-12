@@ -20,12 +20,12 @@ hw2 = 64
 all_data = {}
 
 n_epochs = 200
-game_num = 40000
+game_num = 5000
 test_ratio = 0.1
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 40
+n_kernels = 49
 n_residual = 1
 
 leakyrelu_alpha = 0.01
