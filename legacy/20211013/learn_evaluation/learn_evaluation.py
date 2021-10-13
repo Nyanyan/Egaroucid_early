@@ -1,3 +1,6 @@
+from random import random, randrange
+import trueskill
+import subprocess
 from tqdm import trange
 
 hw = 8
@@ -155,54 +158,135 @@ class reversi:
             #print('Draw!', self.nums[0], '-', self.nums[1])
             return -1
 
-def collect_data(num, s):
-    global dict_data
-    grids = [[], []]
+def self_play():
+    ais = []
+    for i in range(2):
+        ais.append(subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE))
+        ais[i].stdin.write((str(i) + '\n' + str(i) + '\n').encode('utf-8'))
+        ais[i].stdin.flush()
     rv = reversi()
-    idx = 0
-    turn = 0
     while True:
-        if idx >= len(s):
-            return
         if rv.check_pass() and rv.check_pass():
             break
-        x = ord(s[idx]) - ord('a')
-        y = int(s[idx + 1]) - 1
-        idx += 2
-        if turn < 52:
-            grid_str = ''
-            for i in range(hw):
-                for j in range(hw):
-                    grid_str += '0' if rv.grid[i][j] == rv.player else '1' if rv.grid[i][j] == 1 - rv.player else '.' # 0 to move
-            grids[rv.player].append([grid_str, str(y * hw + x)])
-        if rv.move(y, x):
-            print('error')
-            exit()
-        turn += 1
-        if rv.end():
-            break
-    rv.check_pass()
-    #score = 1 if rv.nums[0] > rv.nums[1] else 0 if rv.nums[0] == rv.nums[1] else -1
-    result = rv.nums[0] - rv.nums[1]
-    score = 1 if result > 0 else -1 if result < 0 else 0
-    with open('learn_data/' + digit(num, 7) + '.txt', 'w') as f:
-        for grid, policy in grids[0]:
-            f.write(grid + ' ' + policy + ' ' + str(score) + '\n')
-        for grid, policy in grids[1]:
-            f.write(grid + ' ' + policy + ' ' + str(-score) + '\n')
+        s = ''
+        for y in range(hw):
+            for x in range(hw):
+                s += '0' if rv.grid[y][x] == 0 else '1' if rv.grid[y][x] == 1 else '.'
+        s += '\n'
+        ais[rv.player].stdin.write(s.encode('utf-8'))
+        ais[rv.player].stdin.flush()
+        move = ais[rv.player].stdout.readline().decode().rstrip()
+        x = ord(move[0]) - 97
+        y = int(move[1]) - 1
+        rv.move(y, x)
+    stones = [0, 0]
+    for y in range(hw):
+        for x in range(hw):
+            for p in range(2):
+                stones[p] += rv.grid[y][x] == p
+    ranks = [0, 1] if stones[0] > stones[1] else [1, 0] if stones[0] < stones[1] else [0, 0]
+    for i in range(2):
+        ais[i].kill()
+    return ranks
+
+n_param = 74
+population = 10
+times1 = 5
+times2 = 10
+
+params = [[random() * 2.0 - 1.0 for _ in range(n_param)] for _ in range(population)]
+rates = [None for _ in range(population)]
+
+mu = 25.0
+sigma = mu / 3.0
+beta = sigma / 2.0
+tau = sigma / 100.0
+draw_probability = 0.1
+backend = None
+
+env = trueskill.TrueSkill(mu=mu, sigma=sigma, beta=beta, tau=tau, draw_probability=draw_probability, backend=backend)
+
+for i in range(population):
+    rates[i] = env.create_rating()
 
 
-games = []
-for year in reversed(range(2000, 2019 + 1)):
-    raw_data = ''
-    with open('third_party/records/' + str(year) + '.csv', 'r', encoding='utf-8-sig') as f:
-        raw_data = f.read()
-    games.extend([i for i in raw_data.splitlines()])
-dict_data = {}
-idx = 0
-for i in trange(len(games)):
-    if len(games[i]) == 0:
-        continue
-    collect_data(idx, games[i])
-    idx += 1
-print(idx)
+for _ in trange(population * times1):
+    p0 = randrange(0, population)
+    p1 = p0
+    while p0 == p1:
+        p1 = randrange(0, population)
+    with open('param/param_eval0.txt', 'w') as f:
+        for elem in params[p0]:
+            f.write(str(elem) + '\n')
+    with open('param/param_eval1.txt', 'w') as f:
+        for elem in params[p1]:
+            f.write(str(elem) + '\n')
+    ranks = self_play()
+    (rates[p0],), (rates[p1],) = env.rate(((rates[p0],), (rates[p1],),), ranks=ranks)
+
+for i in range(population):
+    print(env.expose(rates[i]), end=' ')
+print('')
+
+
+n = 0
+while True:
+    n += 1
+    print(n)
+    parent0 = randrange(0, population)
+    parent1 = parent0
+    while parent0 == parent1:
+        parent1 = randrange(0, population)
+    children = [[-10.0 for _ in range(n_param)] for _ in range(2)]
+    dv = randrange(1, n_param - 1)
+    for i in range(dv):
+        children[0][i] = params[parent0][i]
+        children[1][i] = params[parent1][i]
+    for i in range(dv, n_param):
+        children[0][i] = params[parent1][i]
+        children[1][i] = params[parent0][i]
+    rates_children = [env.create_rating() for _ in range(2)]
+    for child in range(2):
+        with open('param/param_eval0.txt', 'w') as f:
+            for elem in children[child]:
+                f.write(str(elem) + '\n')
+        for _ in range(times2):
+            p = randrange(0, population)
+            with open('param/param_eval1.txt', 'w') as f:
+                for elem in params[p]:
+                    f.write(str(elem) + '\n')
+            ranks = self_play()
+            (rates_children[child],), (rates[p],) = env.rate(((rates_children[child],), (rates[p],),), ranks=ranks)
+    rates4 = [env.expose(rates[parent0]), env.expose(rates[parent1]), env.expose(rates_children[0]), env.expose(rates_children[1])]
+    parent_params = [[elem for elem in params[p]] for p in [parent0, parent1]]
+    for p in [parent0, parent1]:
+        mx = -10000.0
+        idx = -1
+        for j in range(4):
+            if rates4[j] > mx:
+                mx = rates4[j]
+                idx = j
+        rates4[idx] = -10000.0
+        if idx < 2:
+            params[p] = [elem for elem in parent_params[idx]]
+            parents = [parent0, parent1]
+            rates[p] = rates[parents[idx]]
+        else:
+            params[p] = [elem for elem in children[idx - 2]]
+            rates[p] = rates_children[idx - 2]
+            print('child won')
+    mx = -10000.0
+    idx = -1
+    for i in range(population):
+        rate = env.expose(rates[i])
+        if rate > mx:
+            mx = rate
+            idx = i
+    print('max rate', mx, idx)
+    with open('param/param_eval_best.txt', 'w') as f:
+        for elem in params[idx]:
+            f.write(str(elem) + '\n')
+
+        
+
+    

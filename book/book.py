@@ -216,9 +216,7 @@ def que_next_move(grid, player):
     with open('some_boards.txt', 'a') as f:
         f.write(board + '\n')
 
-mx_value = 4.0
-
-def exe_que(ln, mode):
+def exe_que(ln, mx_value):
     mr = subprocess.run(cmd2.split(), capture_output=True)
     raw_val = mr.stdout.decode().strip().splitlines()
     val_idx = 0
@@ -229,7 +227,7 @@ def exe_que(ln, mode):
                 break
             val_idx += 1
         next_move_value = float(raw_val[val_idx].split()[0][3:])
-        if abs(next_move_value) < mx_value or mode:
+        if abs(next_move_value) < mx_value:
             next_move_str = raw_val[val_idx][1:3]
             y = int(next_move_str[1]) - 1
             x = ord(next_move_str[0]) - ord('A')
@@ -239,21 +237,17 @@ def exe_que(ln, mode):
         val_idx += 1
     return res
 
-mx_ln = 16
+def calc_mx(turn):
+    return 8.0 / (1.0 + turn) + 2.0
+
+mx_ln = 25
 
 book = {to_str_record([37]): 45}
-for player in range(2):
-    '''
-    if player == 0:
-        records = [[37]]
-    else:
-        records = [[37, 43]]
-        book[to_str_record([37])] = 43
-    '''
-    records = [[37]]
-    while len(records[0]) < mx_ln - 1:
+records = [[[37]] for _ in range(2)]
+while True:
+    for player in reversed(range(2)):
         grids = []
-        for record in records:
+        for record in records[player]:
             rv = reversi()
             for mov in record:
                 y = mov // hw
@@ -284,20 +278,23 @@ for player in range(2):
             f.write('')
         for _, grid in grids:
             que_next_move(grid, player)
-        next_moves = exe_que(len(grids), len(records[0]) < 5)
-        records = []
+        mx_val = calc_mx(len(records[player][0]))
+        next_moves = exe_que(len(grids), mx_val)
+        records[player] = []
         for i in range(len(grids)):
             if next_moves[i] != -1:
                 book[to_str_record(grids[i][0])] = next_moves[i]
                 grids[i][0].append(next_moves[i])
-                records.append([i for i in grids[i][0]])
+                records[player].append([i for i in grids[i][0]])
         #print(records)
-        print(len(records[0]), len(book.keys()), len(records))
+        print(len(records[player][0]), len(book.keys()), len(records[player]), mx_val)
+
+        with open('param/book_' + str(len(records[player][0])) + '.txt', 'w') as f:
+            for record in book.keys():
+                f.write(record[1:] + ' ' + all_chars[book[record]])
 
 print('ln book', len(book.keys()))
 print('max key ln', max(len(i) for i in book.keys()))
 
-with open('param/book.txt', 'w') as f:
-    for record in book.keys():
-        f.write(record[1:] + ' ' + all_chars[book[record]])
+
 

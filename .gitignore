@@ -32,3 +32,5 @@ self_play/param
 self_play/learn_data
 self_play/self_play.out
 self_play/graph
+learn_evaluation/param
+learn_evaluation/self_play.out

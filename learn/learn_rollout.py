@@ -20,14 +20,14 @@ hw2 = 64
 
 all_data = {}
 
-n_epochs = 200
-game_num = 65000
+n_epochs = 1000
+game_num = 1000
 test_ratio = 0.1
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 50
-n_residual = 1
+n_kernels = 64
+n_residual = 0
 
 leakyrelu_alpha = 0.01
 
@@ -225,18 +225,13 @@ for _ in range(n_residual):
     x = LeakyReLU(x)
 x = GlobalAveragePooling2D()(x)
 
-yp = Activation('tanh')(x)
-yp = Dense(hw2)(yp)
-yp = Activation('softmax', name='policy')(yp)
+y = Activation('tanh')(x)
+y = Dense(hw2)(y)
+y = Activation('softmax')(y)
 
-yv = Dense(16)(x)
-yv = LeakyReLU(yv)
-yv = Dense(1)(yv)
-yv = Activation('tanh', name='value')(yv)
+model = Model(inputs=inputs, outputs=y)
 
-model = Model(inputs=inputs, outputs=[yp, yv])
-
-#model = load_model('param/model.h5')
+#model = load_model('param/model_rollout.h5')
 #plot_model(model, to_file='graph/model.png', show_shapes=True, expand_nested=True)
 
 model.summary()
@@ -269,11 +264,12 @@ reshape_data_test()
 
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
 
-print(model.evaluate([train_board], [train_policies, train_value]))
-early_stop = EarlyStopping(monitor='val_loss', patience=5)
-history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])
 
-with open('param/param.txt', 'w') as f:
+print(model.evaluate(train_board, train_policies))
+early_stop = EarlyStopping(monitor='val_loss', patience=5)
+history = model.fit(train_board, train_policies, epochs=n_epochs, validation_data=(test_board, test_policies), callbacks=[early_stop])
+
+with open('param/param_rollout.txt', 'w') as f:
     i = 0
     while True:
         try:
@@ -305,22 +301,14 @@ with open('param/param.txt', 'w') as f:
 now = datetime.datetime.today()
 print(str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2))
 #model.save('param/additional_learn_model/' + str(now.year) + digit(now.month, 2) + digit(now.day, 2) + '_' + digit(now.hour, 2) + digit(now.minute, 2) + '.h5')
-model.save('param/model.h5')
+model.save('param/model_rollout.h5')
 
-for key in ['policy_loss', 'val_policy_loss']:
+for key in ['loss', 'val_loss']:
     plt.plot(history.history[key], label=key)
 plt.xlabel('epoch')
 plt.ylabel('policy loss')
 plt.legend(loc='best')
-plt.savefig('graph/policy_loss.png')
-plt.clf()
-
-for key in ['value_loss', 'val_value_loss']:
-    plt.plot(history.history[key], label=key)
-plt.xlabel('epoch')
-plt.ylabel('value loss')
-plt.legend(loc='best')
-plt.savefig('graph/value_loss.png')
+plt.savefig('graph/rollout_loss.png')
 plt.clf()
 
 all_data = []
@@ -332,7 +320,7 @@ test_policies = []
 test_value = []
 reshape_data_test()
 
-print(model.evaluate(test_board, [test_policies, test_value]))
+print(model.evaluate(test_board, test_policies))
 
 prediction = model.predict(test_board[:10])
 for i in range(10):
@@ -340,10 +328,9 @@ for i in range(10):
     mx = 0.0
     policy = -1
     for j in range(hw2):
-        print(prediction[0][i][j], end=' ')
-        if mx < prediction[0][i][j]:
-            mx = prediction[0][i][j]
+        print(prediction[i][j], end=' ')
+        if mx < prediction[i][j]:
+            mx = prediction[i][j]
             policy = j
     print('')
     print(policy, mx)
-    print(prediction[1][i])
