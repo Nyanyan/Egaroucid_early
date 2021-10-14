@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from tqdm import trange
 from random import random, randint, shuffle, sample
 import subprocess
-from math import exp
+from math import comb, exp
 import datetime
 
 hw = 8
@@ -21,25 +21,27 @@ hw2 = 64
 all_data = {}
 
 n_epochs = 200
-game_num = 65000
-test_ratio = 0.1
+game_num = 5000
+test_ratio = 0.2
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 50
+n_kernels = 35
+n_kernels2 = 16
 n_residual = 1
 
 leakyrelu_alpha = 0.01
 
 train_board = None
+train_edge = None
 train_policies = None
 train_value = None
 
 test_raw_board = []
 test_board = []
+test_edge = []
 test_policies = []
 test_value = []
-
 
 def digit(n, r):
     n = str(n)
@@ -76,7 +78,7 @@ def collect_data(num):
         all_data.append([board, policy, score])
 
 def reshape_data_train():
-    global train_board, train_policies, train_value, mean, std
+    global train_board, train_policies, train_value, train_edge
     tmp_data = []
     print('calculating score & additional data')
     for itr in trange(len(all_data)):
@@ -93,36 +95,21 @@ def reshape_data_train():
         board, policies, score = tmp_data[ii]
         #board, policies, score = tmp_data[ii]
         stone_num = 0
-        grid_space0 = ''
-        grid_space0_rev = ''
-        grid_space1 = ''
-        grid_space1_rev = ''
-        grid_space_fill = ''
-        grid_space_vacant = ''
+        grid_space0 = []
+        grid_space1 = []
+        grid_space_vacant = []
         for i in range(hw):
             for j in range(hw):
                 idx = i * hw + j
-                grid_space0 += '1 ' if board[idx] == '0' else '0 '
-                grid_space0_rev += '0 ' if board[idx] == '0' else '1 '
-                grid_space1 += '1 ' if board[idx] == '1' else '0 '
-                grid_space1_rev += '0 ' if board[idx] == '1' else '1 '
-                grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
-                grid_space_fill += '0 ' if board[idx] == '.' else '1 '
+                grid_space0.append(1 if board[idx] == '0' else 0)
+                grid_space1.append(1 if board[idx] == '1' else 0)
+                grid_space_vacant.append(1 if board[idx] == '.' else 0)
                 stone_num += board[idx] != '.'
         if stone_num < 10 or stone_num > 56:
             continue
-        #grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
-        grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
-        #train_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)])
-        #train_param.append([float(i) for i in param.split()])
-        #train_policies.append(policies)
-        #train_value.append(score)
-        '''
-        train_board[idx] = [[[grid_flat[k * hw2 + j * hw + i] for k in range(3)] for j in range(hw)] for i in range(hw)]
-        train_param[idx] = [float(i) for i in param.split()]
-        train_policies[idx] = policies
-        train_value[idx] = score
-        '''
+        grid_flat = grid_space0
+        grid_flat.extend(grid_space1)
+        grid_flat.extend(grid_space_vacant)
         for i in range(hw):
             for j in range(hw):
                 for k in range(n_boards):
@@ -169,31 +156,24 @@ def reshape_data_test():
     print('creating test data & labels')
     for ii in trange(ln):
         board, policies, score = tmp_data[ii]
+        test_raw_board.append(board)
         #board, policies, score = tmp_data[ii]
         stone_num = 0
-        grid_space0 = ''
-        grid_space0_rev = ''
-        grid_space1 = ''
-        grid_space1_rev = ''
-        grid_space_fill = ''
-        grid_space_vacant = ''
+        grid_space0 = []
+        grid_space1 = []
+        grid_space_vacant = []
         for i in range(hw):
             for j in range(hw):
                 idx = i * hw + j
-                grid_space0 += '1 ' if board[idx] == '0' else '0 '
-                grid_space0_rev += '0 ' if board[idx] == '0' else '1 '
-                grid_space1 += '1 ' if board[idx] == '1' else '0 '
-                grid_space1_rev += '0 ' if board[idx] == '1' else '1 '
-                grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
-                grid_space_fill += '0 ' if board[idx] == '.' else '1 '
+                grid_space0.append(1 if board[idx] == '0' else 0)
+                grid_space1.append(1 if board[idx] == '1' else 0)
+                grid_space_vacant.append(1 if board[idx] == '.' else 0)
                 stone_num += board[idx] != '.'
         if stone_num < 10 or stone_num > 56:
             continue
-        if stone_num < 10 or stone_num > 56:
-            continue
-        test_raw_board.append(board)
-        #grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
-        grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
+        grid_flat = grid_space0
+        grid_flat.extend(grid_space1)
+        grid_flat.extend(grid_space_vacant)
         test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(n_boards)] for j in range(hw)] for i in range(hw)])
         #test_param.append([float(i) for i in param.split()])
         test_policies.append(policies)
@@ -216,14 +196,24 @@ def LeakyReLU(x):
 
 
 inputs = Input(shape=(hw, hw, n_boards,))
-x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
-x = LeakyReLU(x)
+x1 = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
+x1 = LeakyReLU(x1)
 for _ in range(n_residual):
-    sc = x
-    x = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x)
-    x = Add()([x, sc])
-    x = LeakyReLU(x)
-x = GlobalAveragePooling2D()(x)
+    sc = x1
+    x1 = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(x1)
+    x1 = Add()([x1, sc])
+    x1 = LeakyReLU(x1)
+x1 = GlobalAveragePooling2D()(x1)
+
+x2 = Conv2D(n_kernels2, (1, hw), strides=(hw - 1, 1), padding='valid', use_bias=False)(inputs)
+x2 = LeakyReLU(x2)
+x2 = GlobalAveragePooling2D()(x2)
+
+x3 = Conv2D(n_kernels2, (hw, 1), strides=(1, hw - 1), padding='valid', use_bias=False)(inputs)
+x3 = LeakyReLU(x3)
+x3 = GlobalAveragePooling2D()(x3)
+
+x = concatenate([x1, x2, x3])
 
 yp = Activation('tanh')(x)
 yp = Dense(hw2)(yp)
@@ -249,11 +239,11 @@ n_test_data = int(game_num * test_ratio)
 idxes = list(range(game_num + 100))
 shuffle(idxes)
 
-
 all_data = []
 for i in trange(n_train_data):
     collect_data(idxes[i])
 train_board = np.zeros((len(all_data), hw, hw, n_boards))
+train_edge = np.zeros((len(all_data), hw, 1, 12))
 train_policies = np.zeros((len(all_data), hw2))
 train_value = np.zeros(len(all_data))
 reshape_data_train()
@@ -263,12 +253,12 @@ for i in trange(n_train_data, game_num):
     collect_data(idxes[i])
 test_raw_board = []
 test_board = []
+test_edge = []
 test_policies = []
 test_value = []
 reshape_data_test()
 
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
-
 print(model.evaluate([train_board], [train_policies, train_value]))
 early_stop = EarlyStopping(monitor='val_loss', patience=5)
 history = model.fit(train_board, [train_policies, train_value], epochs=n_epochs, validation_data=(test_board, [test_policies, test_value]), callbacks=[early_stop])
