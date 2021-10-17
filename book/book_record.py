@@ -1,8 +1,6 @@
-from random import randint
 import subprocess
-from os import rename, path, listdir
 from tqdm import trange
-import numpy as np
+from copy import deepcopy
 
 hw = 8
 hw2 = 64
@@ -16,6 +14,35 @@ def digit(n, r):
     for i in range(r - l):
         n = '0' + n
     return n
+
+all_chars = ['!', '#', '$', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?', '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', ']', '^', '_', '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~']
+
+print(''.join(all_chars[:hw2]))
+
+char_dict = {}
+for i in range(hw2):
+    char_dict[all_chars[i]] = i
+
+def to_str_record(record):
+    res = ''
+    for coord in record:
+        res += all_chars[coord]
+    return res
+
+def str_to_num(record):
+    res = []
+    for i in range(0, len(record), 2):
+        x = (hw - 1 - (ord(record[i]) - ord('A')))
+        y = hw - 1 - (int(record[i + 1]) - 1)
+        res.append(y * hw + x)
+    return res
+
+def to_str_record_human(record):
+    res = ''
+    for coord in record:
+        res += chr(coord % hw + ord('A'))
+        res += str(coord // hw + 1)
+    return res
 
 def empty(grid, y, x):
     return grid[y][x] == -1 or grid[y][x] == 2
@@ -160,93 +187,19 @@ class reversi:
             return -1
 
 
-record_num = digit(sum(path.isfile(path.join('records', name)) for name in listdir('records')), 7)
-game_num = 60
-new_b_win = 0
-best_b_win = 0
-new_w_win = 0
-best_w_win = 0
-all_idx = 0
-for n_record in range(game_num // 6):
-    for mode in [[0, 1], [1, 0]]:
-        for book_mode in [[0, 1], [1, 0], [1, 1]]:
-            ais = [subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
-            for i in range(2):
-                if mode[i] == 0:
-                    param = '0.0\n1.0\n0.7\n0.05\n0.1\n'
-                else:
-                    param = '0.0\n1.0\n0.7\n0.05\n0.01\n'
-                ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + param + str(i) + '\n' + str(book_mode[i]) + '\n' + str(mode[i]) + '\n').encode('utf-8'))
-                ais[i].stdin.flush()
-            rv = reversi()
-            #boards = [[], []]
-            n_turn = 0
-            #record = ''
-            while True:
-                if rv.check_pass() and rv.check_pass():
-                    break
-                board_str = ''
-                for y in range(hw):
-                    for x in range(hw):
-                        board_str += '0' if rv.grid[y][x] == 0 else '1' if rv.grid[y][x] == 1 else '.'
-                    board_str += '\n'
-                #print(board_str)
-                ais[rv.player].stdin.write(board_str.encode('utf-8'))
-                ais[rv.player].stdin.flush()
-                coord = ais[rv.player].stdout.readline().decode()
-                #record += coord[:2]
-                x = int(ord(coord[0]) - ord('a'))
-                y = int(coord[1]) - 1
-                #if n_turn >= 4:
-                #    boards[rv.player].append(board_str + ' ' + str(y * hw + x))
-                rv.move(y, x)
-                n_turn += 1
-            nums = [0, 0]
-            for y in range(hw):
-                for x in range(hw):
-                    if rv.grid[y][x] >= 0:
-                        nums[rv.grid[y][x]] += 1
-            score = 1 if nums[0] > nums[1] else -1 if nums[0] < nums[1] else 0
-            if mode == [0, 1]:
-                if score == -1:
-                    new_w_win += 1
-                elif score == 1:
-                    best_b_win += 1
-            else:
-                if score == 1:
-                    new_b_win += 1
-                elif score == -1:
-                    best_w_win += 1
-            for i in range(2):
-                ais[i].kill()
-            all_idx += 1
-            print('\r', end=' ')
-            print(all_idx, end=' ')
-            print(round(all_idx / game_num, 2), end=' ')
-            all_num = 50
-            black_win = max(1, best_b_win + new_b_win)
-            print('black', end=' ')
-            for _ in range(int(all_num * best_b_win / black_win)):
-                print('.', end='')
-            for _ in range(int(all_num * new_b_win / black_win)):
-                print('=', end='')
-            print(' ', end='')
-            white_win = max(1, best_w_win + new_w_win)
-            print('white', end=' ')
-            for _ in range(int(all_num * best_w_win / white_win)):
-                print('.', end='')
-            for _ in range(int(all_num * new_w_win / white_win)):
-                print('=', end='')
-            for _ in range(10):
-                print(' ', end='')
-print('')
-print('best black', best_b_win)
-print('new  black', new_b_win)
-print('')
-print('best white', best_w_win)
-print('new  white', new_w_win)
+with open('third_party/records.txt', 'r') as f:
+    records = f.read().splitlines()
 
-if new_b_win > best_b_win and new_w_win > best_w_win:
-    print('new won')
-else:
-    print('best won')
+plus_records = []
+for record in records:
+    r, s = record.split(' ; ')
+    if len(r) < 10 * 2 or (0.0 <= float(s) <= 2.0 and len(r) <= 20 * 2):
+        plus_records.append(str_to_num(r))
+
+print(len(plus_records))
+
+with open('param/book.txt', 'w') as f:
+    for record in plus_records:
+        r = record[1:-1]
+        coord = record[-1]
+        f.write(to_str_record(r) + ' ' + to_str_record([coord]))

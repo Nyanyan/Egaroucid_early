@@ -19,8 +19,8 @@ hw2 = 64
 
 all_data = {}
 
-n_epochs = 50
-game_num = 4900
+n_epochs = 5
+game_num = 7900
 test_ratio = 0.1
 n_boards = 3
 
@@ -108,7 +108,7 @@ def reshape_data_train():
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
                 grid_space_fill += '0 ' if board[idx] == '.' else '1 '
                 stone_num += board[idx] != '.'
-        if stone_num > 54:
+        if stone_num > 44 or stone_num < 10:
             continue
         #grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]
         grid_flat = [float(i) for i in (grid_space0 + grid_space1 + grid_space_vacant).split()]
@@ -186,9 +186,7 @@ def reshape_data_test():
                 grid_space_vacant += '1 ' if board[idx] == '.' else '0 '
                 grid_space_fill += '0 ' if board[idx] == '.' else '1 '
                 stone_num += board[idx] != '.'
-        if stone_num < 10 or stone_num > 56:
-            continue
-        if stone_num < 10 or stone_num > 56:
+        if stone_num > 44 or stone_num < 10:
             continue
         test_raw_board.append(board)
         #grid_flat = [float(i) for i in (grid_space0 + grid_space0_rev + grid_space1 + grid_space1_rev + grid_space_fill + grid_space_vacant).split()]

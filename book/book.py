@@ -238,9 +238,9 @@ def exe_que(ln, mx_value):
     return res
 
 def calc_mx(turn):
-    return 8.0 / (1.0 + turn) + 2.0
-
-mx_ln = 25
+    if turn < 10:
+        return 1000.0
+    return 10.0 / (1.0 + turn) + 3.0
 
 book = {to_str_record([37]): 45}
 records = [[[37]] for _ in range(2)]
@@ -292,9 +292,6 @@ while True:
         with open('param/book_' + str(len(records[player][0])) + '.txt', 'w') as f:
             for record in book.keys():
                 f.write(record[1:] + ' ' + all_chars[book[record]])
-
-print('ln book', len(book.keys()))
-print('max key ln', max(len(i) for i in book.keys()))
 
 
 

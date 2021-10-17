@@ -162,14 +162,18 @@ class reversi:
 
 record_num = digit(sum(path.isfile(path.join('records', name)) for name in listdir('records')), 7)
 strt = int(input('strt: '))
-game_num = 100
+game_num = 2000
 black_win = 0
 white_win = 0
+param = '0.0\n1.0\n0.7\n0.05\n0.1\n'
+#param = '0.0\n1.0\n0.5\n0.05\n0.01\n'
+
 for n_record in trange(strt, strt + game_num):
     ais = [subprocess.Popen('./self_play.out'.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE) for _ in range(2)]
+    book_mode = [[0, 1], [1, 0]][randint(0, 1)]
     for i in range(2):
         #ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n' + str(max(0.1, min(2.0, np.random.normal(0.7, 0.1)))) + '\n' + str(max(0.01, min(0.1, np.random.normal(0.05, 0.01)))) + '\n' + str(max(0.01, min(1.0, np.random.normal(0.1, 0.01)))) + '\n0\n').encode('utf-8'))
-        ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + str(i) + '\n0.5\n0.1\n0.1\n0\n').encode('utf-8'))
+        ais[i].stdin.write((str(randint(1, 2000000000)) + '\n' + param + str(i) + '\n' + str(book_mode[i]) + '\n0\n').encode('utf-8'))
         ais[i].stdin.flush()
     rv = reversi()
     boards = [[], []]
@@ -182,8 +186,8 @@ for n_record in trange(strt, strt + game_num):
         for y in range(hw):
             for x in range(hw):
                 board_str += '0' if rv.grid[y][x] == 0 else '1' if rv.grid[y][x] == 1 else '.'
-        #print(board_str)
-        ais[rv.player].stdin.write((board_str + '\n').encode('utf-8'))
+            board_str += '\n'
+        ais[rv.player].stdin.write(board_str.encode('utf-8'))
         ais[rv.player].stdin.flush()
         coord, able_append = ais[rv.player].stdout.readline().decode().split()
         able_append = int(able_append)
@@ -191,7 +195,7 @@ for n_record in trange(strt, strt + game_num):
         x = int(ord(coord[0]) - ord('a'))
         y = int(coord[1]) - 1
         if n_turn >= 4 and able_append == 0:
-            boards[rv.player].append(board_str + ' ' + str(y * hw + x))
+            boards[rv.player].append(board_str.replace('\n', '') + ' ' + str(y * hw + x))
         rv.move(y, x)
         n_turn += 1
     nums = [0, 0]

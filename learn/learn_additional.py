@@ -20,13 +20,14 @@ hw2 = 64
 
 all_data = {}
 
-n_epochs = 200
-game_num = 2000
+n_epochs = 2
+game_num = 10
 test_ratio = 0.2
 n_boards = 3
 
 kernel_size = 3
-n_kernels = 40
+n_kernels = 36
+n_kernels2 = 16
 n_residual = 1
 
 leakyrelu_alpha = 0.01
@@ -103,9 +104,10 @@ def reshape_data_train():
                 grid_space0.append(1 if board[idx] == '0' else 0)
                 grid_space1.append(1 if board[idx] == '1' else 0)
                 grid_space_vacant.append(1 if board[idx] == '.' else 0)
-                stone_num += 1 if board[idx] != '.' else 0
-        if stone_num < 14 or stone_num > 56:
+                stone_num += board[idx] != '.'
+        if stone_num < 10 or stone_num > 56:
             continue
+        score = score * stone_num / 64
         grid_flat = grid_space0
         grid_flat.extend(grid_space1)
         grid_flat.extend(grid_space_vacant)
@@ -167,9 +169,10 @@ def reshape_data_test():
                 grid_space0.append(1 if board[idx] == '0' else 0)
                 grid_space1.append(1 if board[idx] == '1' else 0)
                 grid_space_vacant.append(1 if board[idx] == '.' else 0)
-                stone_num += 1 if board[idx] != '.' else 0
-        if stone_num < 14 or stone_num > 56:
+                stone_num += board[idx] != '.'
+        if stone_num < 10 or stone_num > 56:
             continue
+        score = score * stone_num / 64
         grid_flat = grid_space0
         grid_flat.extend(grid_space1)
         grid_flat.extend(grid_space_vacant)
@@ -193,7 +196,7 @@ def reshape_data_test():
 def LeakyReLU(x):
     return tf.math.maximum(0.01 * x, x)
 
-
+'''
 inputs = Input(shape=(hw, hw, n_boards,))
 x1 = Conv2D(n_kernels, kernel_size, padding='same', use_bias=False)(inputs)
 x1 = LeakyReLU(x1)
@@ -204,18 +207,28 @@ for _ in range(n_residual):
     x1 = LeakyReLU(x1)
 x1 = GlobalAveragePooling2D()(x1)
 
-yp = Activation('tanh')(x1)
+x2 = Conv2D(n_kernels2, (1, hw), strides=(hw - 1, 1), padding='valid', use_bias=False)(inputs)
+x2 = LeakyReLU(x2)
+x2 = GlobalAveragePooling2D()(x2)
+
+x3 = Conv2D(n_kernels2, (hw, 1), strides=(1, hw - 1), padding='valid', use_bias=False)(inputs)
+x3 = LeakyReLU(x3)
+x3 = GlobalAveragePooling2D()(x3)
+
+x = concatenate([x1, x2, x3])
+
+yp = Activation('tanh')(x)
 yp = Dense(hw2)(yp)
 yp = Activation('softmax', name='policy')(yp)
 
-yv = Dense(32)(x1)
+yv = Dense(16)(x)
 yv = LeakyReLU(yv)
 yv = Dense(1)(yv)
 yv = Activation('tanh', name='value')(yv)
 
 model = Model(inputs=inputs, outputs=[yp, yv])
-
-#model = load_model('param/model.h5')
+'''
+model = load_model('param/model_1009.h5')
 #plot_model(model, to_file='graph/model.png', show_shapes=True, expand_nested=True)
 
 model.summary()
@@ -313,36 +326,16 @@ reshape_data_test()
 
 print(model.evaluate(test_board, [test_policies, test_value]))
 
-i = 0
-while True:
-    try:
-        #print(i, model.layers[i])
-        dammy = model.layers[i]
-        j = 0
-        while True:
-            try:
-                print(model.layers[i].weights[j].shape)
-                j += 1
-            except:
-                break
-        i += 1
-    except:
-        break
-
-prediction = model.predict(test_board)
-gap = Model(inputs=model.input, outputs=model.get_layer('global_average_pooling2d').output)
-gap_prediction = gap.predict(test_board)
+prediction = model.predict(test_board[:10])
 for i in range(10):
     print(test_raw_board[i])
-    print(gap_prediction[i])
     mx = 0.0
     policy = -1
     for j in range(hw2):
-        #print(prediction[0][i][j], end=' ')
+        print(prediction[0][i][j], end=' ')
         if mx < prediction[0][i][j]:
             mx = prediction[0][i][j]
             policy = j
-    #print('')
+    print('')
     print(policy, mx)
     print(prediction[1][i])
-    print('')

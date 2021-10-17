@@ -1,3 +1,4 @@
+
 #pragma GCC target("avx2")
 #pragma GCC optimize("O3")
 #pragma GCC optimize("unroll-loops")
@@ -30,7 +31,6 @@ using namespace std;
 #define b_idx_num 38
 
 #define n_div 1000000
-#define max_search 1000000
 #define tanh_min -5.0
 #define tanh_max 5.0
 #define exp_min -30.0
@@ -38,34 +38,26 @@ using namespace std;
 
 #define compress_digit 16
 #define ln_char 2
+#define ln_repair 90
 #define n_board_input 3
 #define kernel_size 3
 #define n_kernels 40
-//#define n_kernels2 8
 #define n_dense1_value 16
-#define n_combined n_kernels //(n_kernels + n_kernels2 * 2)
 #define conv_size (hw_p1 - kernel_size)
 #define conv_padding (kernel_size / 2)
 #define conv_padding2 (conv_padding * 2)
 
-#define tl 142
-#define mcts_comp_stones 9
+#define evaluate_count 400
+#define mcts_comp_stones 10
 #define comp_stones 10
-double c_policy;
-double c_value;
-double c_puct;
-double p_offset;
-double div_puct;
+double c_puct; // 0.7
+double p_offset; // 0.05
+double div_puct; // 0.1
 
-int book_mode;
-
-#define ln_repair 27
 #define hash_table_size 16384
 #define hash_mask (hash_table_size - 1)
-#define book_stones (24 + 4)
+#define book_stones (16 + 4)
 #define ln_repair_book 27
-
-#define evaluate_count 100
 
 int xorx=123456789, xory=362436069, xorz=521288629, xorw=88675123;
 inline double myrandom(){
@@ -301,17 +293,17 @@ class board_c{
                 tmp = board[i];
                 for (j = 0; j < hw; ++j){
                     if (tmp % 3 == 0){
-                        cerr << ". ";
+                        //cerr << ". ";
                     }else if (tmp % 3 == 1){
-                        cerr << "P ";
+                        //cerr << "P ";
                     }else{
-                        cerr << "O ";
+                        //cerr << "O ";
                     }
                     tmp /= 3;
                 }
-                cerr << endl;
+                //cerr << endl;
             }
-            cerr << endl;
+            //cerr << endl;
         }
 
         inline int input_board(int (&board)[b_idx_num]){
@@ -319,22 +311,18 @@ class board_c{
             unsigned long long p = 0, o = 0;
             char elem;
             int vacant_cnt = 0;
+            int action_count;
             board_c::n_stones = 0;
             board_c::vacant_lst = {};
-            for (i = 0; i < hw; ++i){
-                string raw_board;
-                cin >> raw_board; cin.ignore();
-                //cerr << raw_board << endl;
-                for (j = 0; j < hw; ++j){
-                    elem = raw_board[j];
-                    if (elem != '.'){
-                        p |= (unsigned long long)(elem == '0') << board_c::turn_board[board_c::direction][i * hw + j];
-                        o |= (unsigned long long)(elem == '1') << board_c::turn_board[board_c::direction][i * hw + j];
-                        ++board_c::n_stones;
-                    } else{
-                        ++vacant_cnt;
-                        board_c::vacant_lst.push_back(board_c::turn_board[board_c::direction][i * hw + j]);
-                    }
+            for (i = 0; i < hw2; ++i){
+                cin >> elem;
+                if (elem != '.'){
+                    p |= (unsigned long long)(elem == '0') << board_c::turn_board[board_c::direction][i];
+                    o |= (unsigned long long)(elem == '1') << board_c::turn_board[board_c::direction][i];
+                    ++board_c::n_stones;
+                } else{
+                    ++vacant_cnt;
+                    board_c::vacant_lst.push_back(board_c::turn_board[board_c::direction][i]);
                 }
             }
             if (board_c::ai_player == 1)
@@ -439,12 +427,12 @@ class predict_c{
         double tanh_arr[n_div];
 
         double conv1[n_kernels][n_board_input][kernel_size][kernel_size];
-        double conv1_residual[n_kernels][n_kernels][kernel_size][kernel_size];
-        //double conv2[n_kernels2][n_board_input][hw];
-        //double conv3[n_kernels2][n_board_input][hw];
-        double dense1_policy[hw2][n_combined];
+        double conv_residual[n_kernels][n_kernels][kernel_size][kernel_size];
+
+        double dense1_policy[hw2][n_kernels];
         double bias1_policy[hw2];
-        double dense1_value[n_dense1_value][n_combined];
+
+        double dense1_value[n_dense1_value][n_kernels];
         double bias1_value[n_dense1_value];
         double dense2_value[n_dense1_value];
         double bias2_value;
@@ -466,6 +454,7 @@ class predict_c{
             int i, j, k, l;
             for (i = 0; i < n_div; ++i)
                 predict_c::tanh_arr[i] = tanh(rev_map_liner(i, tanh_min, tanh_max));
+
             FILE *fp;
             char cbuf[1024];
             int mode;
@@ -494,28 +483,12 @@ class predict_c{
                 for (j = 0; j < n_kernels; ++j){
                     for (k = 0; k < kernel_size; ++k){
                         for (l = 0; l < kernel_size; ++l){
-                            predict_c::conv1_residual[i][j][k][l] = get_element(cbuf, fp);
+                            predict_c::conv_residual[i][j][k][l] = get_element(cbuf, fp);
                         }
                     }
                 }
             }
-            /*
-            for (i = 0; i < n_kernels2; ++i){
-                for (j = 0; j < n_board_input; ++j){
-                    for (k = 0; k < hw; ++k){
-                        predict_c::conv2[i][j][k] = get_element(cbuf, fp);
-                    }
-                }
-            }
-            for (i = 0; i < n_kernels2; ++i){
-                for (j = 0; j < n_board_input; ++j){
-                    for (k = 0; k < hw; ++k){
-                        predict_c::conv3[i][j][k] = get_element(cbuf, fp);
-                    }
-                }
-            }
-            */
-            for (i = 0; i < n_combined; ++i){
+            for (i = 0; i < n_kernels; ++i){
                 for (j = 0; j < n_dense1_value; ++j){
                     predict_c::dense1_value[j][i] = get_element(cbuf, fp);
                 }
@@ -523,7 +496,7 @@ class predict_c{
             for (i = 0; i < n_dense1_value; ++i){
                 predict_c::bias1_value[i] = get_element(cbuf, fp);
             }
-            for (i = 0; i < n_combined; ++i){
+            for (i = 0; i < n_kernels; ++i){
                 for (j = 0; j < hw2; ++j){
                     predict_c::dense1_policy[j][i] = get_element(cbuf, fp);
                 }
@@ -531,6 +504,7 @@ class predict_c{
             for (i = 0; i < hw2; ++i){
                 predict_c::bias1_policy[i] = get_element(cbuf, fp);
             }
+
             for (i = 0; i < n_dense1_value; ++i){
                 predict_c::dense2_value[i] = get_element(cbuf, fp);
             }
@@ -543,12 +517,11 @@ class predict_c{
             double input_board[n_board_input][hw + conv_padding2][hw + conv_padding2];
             double hidden_conv1[n_kernels][hw + conv_padding2][hw + conv_padding2];
             double hidden_conv2[n_kernels][hw + conv_padding2][hw + conv_padding2];
-            double after_conv[n_combined];
+            double after_conv[n_kernels];
             double hidden1[64];
-            double hidden_tmp;
             // reshape input
             board_c.create_predict_board(board, input_board);
-            // conv1 and leaky-relu
+            // conv and leaky-relu
             for (i = 0; i < n_kernels; ++i){
                 for (y = 0; y < hw + conv_padding2; ++y){
                     for (x = 0; x < hw + conv_padding2; ++x)
@@ -569,7 +542,7 @@ class predict_c{
                         hidden_conv1[i][y][x] = predict_c::leaky_relu(hidden_conv1[i][y][x]);
                 }
             }
-            // residual-error
+            // residual-error-block
             for (i = 0; i < n_kernels; ++i){
                 for (y = 0; y < hw + conv_padding2; ++y){
                     for (x = 0; x < hw + conv_padding2; ++x)
@@ -580,7 +553,7 @@ class predict_c{
                         for (sx = 0; sx < hw; ++sx){
                             for (y = 0; y < kernel_size; ++y){
                                 for (x = 0; x < kernel_size; ++x)
-                                    hidden_conv2[i][sy + conv_padding][sx + conv_padding] += predict_c::conv1_residual[i][j][y][x] * hidden_conv1[j][sy + y][sx + x];
+                                    hidden_conv2[i][sy + conv_padding][sx + conv_padding] += predict_c::conv_residual[i][j][y][x] * hidden_conv1[j][sy + y][sx + x];
                             }
                         }
                     }
@@ -601,55 +574,28 @@ class predict_c{
                 }
                 after_conv[i] /= hw2;
             }
-            /*
-            // conv2, leaky-relu and global-average-pooling
-            for (i = 0; i < n_kernels2; ++i){
-                after_conv[n_kernels + i] = 0.0;
-                for (j = 0; j < n_board_input; ++j){
-                    for (x = 0; x < hw; x += hw_m1){
-                        hidden_tmp = 0.0;
-                        for (y = 0; y < hw; ++y)
-                            hidden_tmp += predict_c::conv2[i][j][y] * input_board[j][y + conv_padding][x + conv_padding];
-                        after_conv[n_kernels + i] += leaky_relu(hidden_tmp);
-                    }
-                }
-                after_conv[n_kernels + i] /= 2;
-            }
-            // conv3, leaky-relu and global-average-pooling
-            for (i = 0; i < n_kernels2; ++i){
-                after_conv[n_kernels + n_kernels2 + i] = 0.0;
-                for (j = 0; j < n_board_input; ++j){
-                    for (y = 0; y < hw; y += hw_m1){
-                        hidden_tmp = 0.0;
-                        for (x = 0; x < hw; ++x)
-                            hidden_tmp += predict_c::conv3[i][j][x] * input_board[j][y + conv_padding][x + conv_padding];
-                        after_conv[n_kernels + n_kernels2 + i] += leaky_relu(hidden_tmp);
-                    }
-                }
-                after_conv[n_kernels + n_kernels2 + i] /= 2;
-            }
-            */
             // tanh for policy
-            for (i = 0; i < n_combined; ++i)
+            for (i = 0; i < n_kernels; ++i)
                 hidden1[i] = predict_c::tanh_arr[map_liner(after_conv[i], tanh_min, tanh_max)];
             // dense1 for policy
             for (j = 0; j < hw2; ++j){
                 res.policies[j] = predict_c::bias1_policy[j];
-                for (i = 0; i < n_combined; ++i)
+                for (i = 0; i < n_kernels; ++i)
                     res.policies[j] += predict_c::dense1_policy[j][i] * hidden1[i];
             }
             // dense1 for value
             for (j = 0; j < n_dense1_value; ++j){
                 hidden1[j] = predict_c::bias1_value[j];
-                for (i = 0; i < n_combined; ++i)
+                for (i = 0; i < n_kernels; ++i)
                     hidden1[j] += predict_c::dense1_value[j][i] * after_conv[i];
                 hidden1[j] = predict_c::leaky_relu(hidden1[j]);
             }
-            // dense2 for value
+            // dense3 for value
             res.value = predict_c::bias2_value;
             for (i = 0; i < n_dense1_value; ++i)
                 res.value += predict_c::dense2_value[i] * hidden1[i];
             res.value = predict_c::tanh_arr[map_liner(res.value, tanh_min, tanh_max)];
+
             // return
             return res;
         }
@@ -658,7 +604,7 @@ class predict_c{
 predict_c predict_c;
 
 class book_c{
-    private:
+    private:        
         struct node_t{
             int k[hw];
             int policy;
@@ -716,7 +662,7 @@ class book_c{
 
         int n_book = 0;
         unordered_map<char, int> char_keys;
-        node_t *book[hash_table_size];
+        book_c::node_t *book[hash_table_size];
         const string chars = "!#$&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abc";
         string param_compressed1;
 
@@ -736,9 +682,9 @@ class book_c{
             int i, j;
             for (i = 0; i < hw2; ++i)
                 book_c::char_keys[book_c::chars[i]] = i;
-            ifstream ifs("param/book.txt");
+            ifstream ifs("book/param/book.txt");
             if (ifs.fail()){
-                cerr << "book file not exist" << endl;
+                //cerr << "book file not exist" << endl;
                 exit(1);
             }
             getline(ifs, book_c::param_compressed1);
@@ -770,7 +716,7 @@ class book_c{
         }
 };
 
-book_c book_c;
+//book_c book_c;
 
 struct mcts_node{
     int board[b_idx_num];
@@ -787,8 +733,7 @@ struct mcts_node{
 
 class search_c{
     private:
-        mcts_node nodes[max_search];
-        double sqrt_arr[max_search];
+        vector<mcts_node> nodes;
         double exp_arr[n_div];
     
     public:
@@ -845,7 +790,7 @@ class search_c{
 
         inline double expand_policy(int idx){
             predictions pred = predict_c.predict(search_c::nodes[idx].board);
-            search_c::nodes[idx].w += c_value * pred.value;
+            search_c::nodes[idx].w += pred.value;
             ++search_c::nodes[idx].n;
             double p_sum = 0.0;
             for (const int& cell : board_c.vacant_lst){
@@ -858,14 +803,14 @@ class search_c{
             }
             for (const int& cell : board_c.vacant_lst)
                 search_c::nodes[idx].p[cell] /= p_sum;
-            return c_value * pred.value;
+            return pred.value;
         }
 
 
         inline double expand_pass_policy(int idx){
             for (const int& cell : board_c.vacant_lst)
                 search_c::nodes[idx].p[cell] = 0.0;
-            double value = c_value * predict_c.predict(search_c::nodes[idx].board).value;
+            double value = predict_c.predict(search_c::nodes[idx].board).value;
             search_c::nodes[idx].w += value;
             ++search_c::nodes[idx].n;
             return value;
@@ -873,24 +818,26 @@ class search_c{
 
         inline int get_next_child(int idx, int depth, int player){
             int a_cell = -1;
-            if (book_mode && player == board_c.ai_player && search_c::nodes[idx].n_stones < book_stones){
+            /*
+            if (player == board_c.ai_player && search_c::nodes[idx].n_stones < book_stones){
                 a_cell = book_c.get_val_hash(search_c::nodes[idx].board);
                 if (a_cell != -1)
                     return a_cell;
             }
+            */
             double max_priority = -inf;
             double priority;
-            double t_sqrt = search_c::sqrt_arr[search_c::nodes[idx].n];
+            double t_sqrt = sqrt((double)search_c::nodes[idx].n);
             //double t_sqrt = (double)search_c::nodes[idx].n / search_c::nodes[idx].n_canput;
             for (const int& cell : board_c.vacant_lst){
                 if (search_c::nodes[idx].legal[cell]){
-                    //cerr << search_c::nodes[idx].p[cell] << " ";
+                    ////cerr << search_c::nodes[idx].p[cell] << " ";
                     if (search_c::nodes[idx].children[cell] != -1){
-                        priority = c_policy * search_c::nodes[idx].p[cell] + c_puct * (search_c::nodes[idx].p[cell] + p_offset) * t_sqrt / (div_puct + (double)search_c::nodes[search_c::nodes[idx].children[cell]].n) - search_c::nodes[search_c::nodes[idx].children[cell]].w / search_c::nodes[search_c::nodes[idx].children[cell]].n;
+                        priority = c_puct * (search_c::nodes[idx].p[cell] + p_offset) * t_sqrt / (div_puct + (double)search_c::nodes[search_c::nodes[idx].children[cell]].n) - search_c::nodes[search_c::nodes[idx].children[cell]].w / search_c::nodes[search_c::nodes[idx].children[cell]].n;
                     } else{
                         if (depth > 0)
                             return cell;
-                        priority = c_policy * search_c::nodes[idx].p[cell] + c_puct * (search_c::nodes[idx].p[cell] + p_offset) * t_sqrt / div_puct;
+                        priority = c_puct * (search_c::nodes[idx].p[cell] + p_offset) * t_sqrt / div_puct;
                     }
                     if (max_priority < priority){
                         max_priority = priority;
@@ -903,6 +850,8 @@ class search_c{
 
         inline void create_node(int idx, int a_cell, int n_stones){
             search_c::nodes[idx].children[a_cell] = search_c::used_idx;
+            mcts_node node;
+            search_c::nodes.push_back(node);
             search_c::nodes[search_c::used_idx].w = 0.0;
             search_c::nodes[search_c::used_idx].n = 0;
             search_c::nodes[search_c::used_idx].pass = true;
@@ -914,6 +863,8 @@ class search_c{
 
         inline void create_pass_node(int idx, int n_stones){
             search_c::nodes[idx].children[hw2] = search_c::used_idx;
+            mcts_node node;
+            search_c::nodes.push_back(node);
             search_c::nodes[search_c::used_idx].w = 0.0;
             search_c::nodes[search_c::used_idx].n = 0;
             search_c::nodes[search_c::used_idx].pass = true;
@@ -987,8 +938,12 @@ class search_c{
             return -1;
         }
 
-        inline void init_parent(int board_idx, const int *board, int n_stones){
+        inline void init_parent(const int *board, int n_stones){
             int i;
+            int board_idx = 0;
+            search_c::nodes = {};
+            mcts_node node;
+            search_c::nodes.push_back(node);
             search_c::used_idx = board_idx;
             // set parent node
             for (i = 0; i < b_idx_num; ++i)
@@ -1008,25 +963,23 @@ class search_c{
     public:
         inline void init(){
             int i;
-            for (i = 0; i < max_search; ++i)
-                search_c::sqrt_arr[i] = sqrt((double)i);
             for (i = 0; i < n_div; ++i)
                 search_c::exp_arr[i] = exp(rev_map_liner(i, exp_min, exp_max));
         }
 
-        inline void first_search(long long first_tl){
+        inline void first_search(){
             //cerr << "first search" << endl;
             int i;
             board_c.vacant_lst = {};
             for (i = 0; i < hw2; ++i)
                 board_c.vacant_lst.push_back(i);
             int board[b_idx_num] = {0, 0, 0, 189, 702, 0, 0, 0, 0, 0, 0, 189, 216, 162, 0, 0, 0, 0, 0, 0, 216, 189, 54, 0, 0, 0, 0, 0, 0, 0, 0, 27, 216, 54, 18, 0, 0, 0};
-            init_parent(0, board, 10);
-            long long strt = tim();
-            for (i = 0; i < evaluate_count; ++i)
+            search_c::init_parent(board, 10);
+            for (i = 0; i < evaluate_count; ++i){
                 search_c::evaluate(0, false, 5, 10, 1);
             }
-            //cerr << t << " times searched" << endl;
+            //cerr << i << " times searched" << endl;
+        }
 
         inline int mcts(const int *board, int former_idx, int player){
             int i, cell;
@@ -1034,16 +987,12 @@ class search_c{
             //cerr << "board idx " << board_idx << endl;
             if (board_idx == -1){
                 board_idx = 0;
-                search_c::init_parent(board_idx, board, board_c.n_stones);
+                search_c::init_parent(board, board_c.n_stones);
             }
-            int t = 0;
-            long long strt = tim();
             //cerr << "start searching" << endl;
             for (i = 0; i < evaluate_count; ++i){
                 search_c::evaluate(board_idx, false, board_c.n_stones, 3, player);
-                ++t;
             }
-            //cerr << t << " times searched" << endl;
             double rnd1 = myrandom();
             int policy = -1;
             if (rnd1 < 0.8){
@@ -1085,24 +1034,19 @@ class search_c{
             return search_c::nodes[board_idx].children[policy];
         }
 
-        inline int book_mcts(const int *board, int former_idx, int player, int policy){
+        inline int book_mcts(const int *board, int former_idx, int player){
             int i, cell;
             int board_idx = search_c::get_parent_idx(board, board_c.n_stones, former_idx);
             //cerr << "board idx " << board_idx << endl;
             if (board_idx == -1){
                 board_idx = 0;
-                search_c::init_parent(board_idx, board, board_c.n_stones);
+                search_c::init_parent(board, board_c.n_stones);
             }
-            int t = 0;
-            long long strt = tim();
-            //cerr << "start searching" << endl;
-            while (tim() - strt  < tl){
+            for (i = 0; i < evaluate_count; ++i){
                 search_c::evaluate(board_idx, false, board_c.n_stones, 3, player);
-                ++t;
             }
-            //cerr << t << " times searched" << endl;
             //cerr << "ADDITIONAL SEARCH " << search_c::used_idx << endl;
-            return nodes[board_idx].children[policy];
+            return board_idx;
         }
 
         inline void complete(const int *board){
@@ -1132,36 +1076,31 @@ class search_c{
 search_c search_c;
 
 int main(){
-    cin >> xorw;
-    cin >> c_policy;
-    cin >> c_value;
-    cin >> c_puct;
-    cin >> p_offset;
-    cin >> div_puct;
-    cin >> board_c.ai_player;
-    cin >> book_mode;
     int i, j, vacant_cnt, mcts_idx, policy;
     char elem;
-    int board[b_idx_num];
+    int board[b_idx_num], n_board[b_idx_num];
     pair<unsigned long long, unsigned long long> key;
-    int board_size;
+    long long first_tl;
+    cin >> xorw;
+    cin >> board_c.ai_player;
+    cin >> c_puct; // 0.7
+    cin >> p_offset; // 0.05
+    cin >> div_puct; // 0.1
+    //cin >> tl;
+    //cin >> book_stones;
+    //cin >> first_tl;
+    //book_stones += 4;
     //cerr << "start initializing" << endl;
-    long long strt = tim();
     board_c.init();
     predict_c.init();
-    book_c.init();
+    //book_c.init();
     search_c.init();
-    //cerr << "initialized in " << tim() - strt << " ms" << endl;
-    search_c.first_search(1990 - tim() + strt);
-    //cerr << "start! " << tim() - strt << " ms" << endl;
+    //cerr << "initialized" << endl;
+    search_c.first_search();
     board_c.direction = 0;
     if (board_c.ai_player == 0){
-        for (i = 0; i < hw; ++i){
-            string raw_board;
-            cin >> raw_board; cin.ignore();
-            //cerr << raw_board << endl;
-        }
-        //cerr << endl;
+        string raw_board;
+        cin >> raw_board; cin.ignore();
         policy = 37;
         //cerr << "FIRST direction " << board_c.direction << endl; 
         //cerr << "book policy " << policy << endl;
@@ -1170,33 +1109,39 @@ int main(){
     mcts_idx = 0;
     while (true){
         vacant_cnt = board_c.input_board(board);
-        if (book_mode){
-            if (board_c.n_stones < book_stones){
-                policy = book_c.get_val_hash(board);
-                //cerr << "book policy " << policy << endl;
-                if (policy != -1){
-                    mcts_idx = search_c.book_mcts(board, mcts_idx, board_c.ai_player, policy);
-                    cout << board_c.coord_str(policy) << " 0" << endl;
-                    continue;
-                }
+        /*
+        for (i = 0; i < b_idx_num; ++i)
+            //cerr << board[i] << ", ";
+        //cerr << endl;
+        board_c.print_board(board);
+        predictions tmp = predict_c.predict(board);
+        double mx = -1000.0;
+        int mx_idx = -1;
+        for (i = 0; i < hw2; ++i){
+            //cerr << tmp.policies[i] << " ";
+            if (mx < tmp.policies[i]){
+                mx = tmp.policies[i];
+                mx_idx = i;
             }
         }
-        if (vacant_cnt == hw2 - 4 - 1 || (vacant_cnt > hw2 - 4 - 10 && myrandom() < 0.1)){
-            vector<int> legals;
-            int siz = 0;
-            for (int cell = 0; cell < hw2; ++cell){
-                if (board_c.check_legal(board, cell)){
-                    legals.push_back(cell);
-                    ++siz;
-                }
+        //cerr << endl;
+        //cerr << mx_idx << " " << mx << " " << tmp.value << endl;
+        return 0;
+        */
+        if (vacant_cnt >= hw2 - 4 - 5){
+            vector<int> legal;
+            for (i = 0; i < hw2; ++i){
+                if (board_c.check_legal(board, i))
+                    legal.push_back(i);
             }
-            policy = legals[(int)(myrandom() * siz)];
-            cout << board_c.coord_str(policy) << " 1" << endl;
-        } else if (vacant_cnt > comp_stones)
+            int idx = (int)(myrandom() * legal.size());
+            cout << board_c.coord_str(legal[idx]) << " 1" << endl;
+            continue;
+        }
+        if (vacant_cnt > comp_stones)
             mcts_idx = search_c.mcts(board, mcts_idx, board_c.ai_player);
         else
             search_c.complete(board);
-        
     }
     return 0;
 }
