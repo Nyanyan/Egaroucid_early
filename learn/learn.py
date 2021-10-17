@@ -37,10 +37,10 @@ train_policies = None
 train_value = None
 
 test_raw_board = []
-test_board = []
-test_edge = []
-test_policies = []
-test_value = []
+test_board = None
+test_edge = None
+test_policies = None
+test_value = None
 
 def digit(n, r):
     n = str(n)
@@ -153,6 +153,7 @@ def reshape_data_test():
     ln = len(tmp_data)
     print('got', ln)
     print('creating test data & labels')
+    test_idx = 0
     for ii in trange(ln):
         board, policies, score = tmp_data[ii]
         test_raw_board.append(board)
@@ -173,21 +174,17 @@ def reshape_data_test():
         grid_flat = grid_space0
         grid_flat.extend(grid_space1)
         grid_flat.extend(grid_space_vacant)
-        test_board.append([[[grid_flat[k * hw2 + j * hw + i] for k in range(n_boards)] for j in range(hw)] for i in range(hw)])
-        #test_param.append([float(i) for i in param.split()])
-        test_policies.append(policies)
-        test_value.append(score)
-    test_board = np.array(test_board)
-    #test_param = np.array(test_param)
-    test_policies = np.array(test_policies)
-    test_value = np.array(test_value)
-    #test_param = (test_param - mean) / std
-    '''
-    print(test_board[0])
-    print(test_param[0])
-    print(test_policies[0])
-    print(test_value[0])
-    '''
+        for i in range(hw):
+            for j in range(hw):
+                for k in range(n_boards):
+                    test_board[test_idx][i][j][k] = grid_flat[k * hw2 + j * hw + i]
+        for i in range(hw2):
+            test_policies[test_idx][i] = policies[i]
+        test_value[test_idx] = score
+        test_idx += 1
+    test_board = train_board[0:test_idx]
+    test_policies = train_policies[0:test_idx]
+    test_value = train_value[0:test_idx]
     print('test', test_board.shape, test_policies.shape, test_value.shape)
 
 def LeakyReLU(x):
@@ -240,11 +237,10 @@ reshape_data_train()
 all_data = []
 for i in trange(n_train_data, game_num):
     collect_data(idxes[i])
-test_raw_board = []
-test_board = []
-test_edge = []
-test_policies = []
-test_value = []
+test_board = np.zeros((len(all_data), hw, hw, n_boards))
+test_edge = np.zeros((len(all_data), hw, 1, 12))
+test_policies = np.zeros((len(all_data), hw2))
+test_value = np.zeros(len(all_data))
 reshape_data_test()
 
 model.compile(loss=['categorical_crossentropy', 'mse'], optimizer='adam')
